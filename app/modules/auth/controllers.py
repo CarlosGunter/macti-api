@@ -24,7 +24,7 @@ class AuthController:
         db.commit()
         db.refresh(db_account_request)
 
-        return {"message": "Account request created successfully", "account_request": db_account_request}
+        return {"message": "Solicitud de cuenta en proceso", "account_request": db_account_request}
 
     @staticmethod
     def list_accounts_requests(
@@ -39,7 +39,7 @@ class AuthController:
             .filter(AccountRequest.course_id == course_id)\
             .all()
         
-        return {"message": "Account requests fetched successfully", "account_requests": account_requests}
+        return {"message": "Listado de solicitudes de cuenta", "account_requests": account_requests}
 
     @staticmethod
     def confirm_account(data: ConfirmAccountSchema, db: Session):
@@ -66,7 +66,7 @@ class AuthController:
         
         # Refresh to get the updated record
         account_confirmed = db.query(AccountRequest).filter(AccountRequest.id == request_id).first()
-        return {"message": "Account request status updated successfully", "account_request": account_confirmed}
+        return {"message": "Estado de la solicitud de cuenta actualizado con éxito", "account_request": account_confirmed}
     
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
@@ -128,7 +128,7 @@ class AuthController:
         # db.refresh(account_request)
         
         return {
-            "message": "User account created successfully in Keycloak and Moodle",
+            "message": "Cuenta creada exitosamente en Keycloak y Moodle",
             # "keycloak_id": kc_result.get("id"),
             # "moodle_id": moodle_result.get("id")
         }
