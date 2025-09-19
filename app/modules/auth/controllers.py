@@ -4,7 +4,6 @@ from fastapi import HTTPException
 from app.modules.auth.services import KeycloakService, MoodleService
 from .models import AccountRequest
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
-from typing import List
 
 class AuthController:
     @staticmethod
@@ -24,13 +23,14 @@ class AuthController:
         db.add(db_account_request)
         db.commit()
         db.refresh(db_account_request)
-        return db_account_request
-    
+
+        return {"message": "Account request created successfully", "account_request": db_account_request}
+
     @staticmethod
     def list_accounts_requests(
         db: Session,
         course_id: int
-    ) -> List[AccountRequest]:
+    ):
         """
         Obtiene todas las solicitudes de cuenta filtradas por curso
         Es usado en el endpoint /list-accounts-requests
@@ -39,7 +39,7 @@ class AuthController:
             .filter(AccountRequest.course_id == course_id)\
             .all()
         
-        return account_requests
+        return {"message": "Account requests fetched successfully", "account_requests": account_requests}
 
     @staticmethod
     def confirm_account(data: ConfirmAccountSchema, db: Session):
@@ -65,7 +65,8 @@ class AuthController:
         db.commit()
         
         # Refresh to get the updated record
-        return db.query(AccountRequest).filter(AccountRequest.id == request_id).first()
+        account_confirmed = db.query(AccountRequest).filter(AccountRequest.id == request_id).first()
+        return {"message": "Account request status updated successfully", "account_request": account_confirmed}
     
     @staticmethod
     async def create_account(post: CreateAccountSchema, db: Session):
@@ -125,4 +126,9 @@ class AuthController:
         # account_request.moodle_id = moodle_result.get("id")
         # db.commit()
         # db.refresh(account_request)
-        return account_request
+        
+        return {
+            "message": "User account created successfully in Keycloak and Moodle",
+            # "keycloak_id": kc_result.get("id"),
+            # "moodle_id": moodle_result.get("id")
+        }

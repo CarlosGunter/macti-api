@@ -11,7 +11,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post(
     "/request-account",
-    response_model=AccountRequestSchema,
     summary="Endpoint que se encarga de crear una solicitud de cuenta",
     description="La solicitud de cuenta se crea desde el perfil del estudiante (antes de inscribirse en un curso)"
 )
@@ -25,7 +24,6 @@ async def request_account(
 
 @router.get(
     "/list-accounts-requests",
-    response_model=List[AccountRequestSchema],
     summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
     description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso"
 )
@@ -39,7 +37,6 @@ async def list_accounts_requests(
 
 @router.patch(
     "/confirm-account",
-    response_model=ConfirmAccountSchema,
     summary="Endpoint que se encarga de confirmar o rechazar una solicitud de cuenta",
     description="El profesor puede confirmar o rechazar una solicitud de cuenta desde su perfil"
 )
@@ -53,7 +50,6 @@ async def confirm_account(
 
 @router.post(
     "/create-account",
-    response_model=CreateAccountSchema,
     summary="Endpoint que se encarga de crear una cuenta en Keycloak y Moodle",
     description="Este endpoint crea una cuenta en Keycloak y Moodle desde el perfil del administrador del sistema"
 )
