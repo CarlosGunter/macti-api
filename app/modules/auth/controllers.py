@@ -9,7 +9,10 @@ from typing import List
 class AuthController:
     @staticmethod
     def request_account(data: AccountRequestSchema, db: Session):
-        """Create a new account request"""
+        """
+        Crea una nueva solicitud de cuenta para un estudiante.
+        Es usado en el endpoint /request-account
+        """
         db_account_request = AccountRequest(
             name=data.name,
             last_name=data.last_name,
@@ -28,7 +31,10 @@ class AuthController:
         db: Session,
         course_id: int
     ) -> List[AccountRequest]:
-        """Get list of all account requests"""
+        """
+        Obtiene todas las solicitudes de cuenta filtradas por curso
+        Es usado en el endpoint /list-accounts-requests
+        """
         account_requests = db.query(AccountRequest)\
             .filter(AccountRequest.course_id == course_id)\
             .all()
@@ -37,7 +43,10 @@ class AuthController:
 
     @staticmethod
     def confirm_account(data: ConfirmAccountSchema, db: Session):
-        """Update account request status to Confirmed"""
+        """
+        Confirma una solicitud de cuenta.
+        Es usado en el endpoint /confirm-account
+        """
         request_id = data.id
         status = data.status
         
@@ -60,7 +69,10 @@ class AuthController:
     
     @staticmethod
     async def create_account(post: CreateAccountSchema, db: Session):
-        """Create a new user account"""
+        """
+        Crea una nueva cuenta de usuario en Keycloak y Moodle.
+        Es usado en el endpoint /create-account
+        """
         user_id = post.id
         password = post.password
 
