@@ -1,0 +1,32 @@
+### POST Request User
+POST http://localhost:8000/api/request-account
+Content-Type: application/json
+
+{
+    "name": "testuser",
+    "last_name": "testlast",
+    "email": "test3@example.com",
+    "teacher_name": "teacher1",
+    "course_id": "1"
+}
+
+### GET List Accounts Requested
+GET http://localhost:8000/api/list-accounts-requested?course_id=1
+
+### PATCH Approve User Request
+PATCH http://localhost:8000/api/confirm-account
+Content-Type: application/json
+
+{
+    "id": 3,
+    "status": "approved"
+}
+
+### POST Create User in All Platforms
+POST http://localhost:8000/api/create-account
+Content-Type: application/json
+
+{
+    "id": 1,
+    "password": "testpass"
+}

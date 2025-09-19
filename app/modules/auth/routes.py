@@ -1,43 +1,66 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_db
-from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
 from .controllers import AuthController
-from typing import List
+from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/request-account", response_model=AccountRequestSchema)
+
+@router.post(
+    "/request-account",
+    response_model=AccountRequestSchema,
+    summary="Endpoint que se encarga de crear una solicitud de cuenta",
+    description="La solicitud de cuenta se crea desde el perfil del estudiante (antes de inscribirse en un curso)"
+)
 async def request_account(
     data: AccountRequestSchema,
-    controller: AuthController = Depends(),
     db=Depends(get_db)
 ):
-    return controller.request_account(data=data, db=db)
+    """Crea una nueva solicitud de cuenta para un estudiante."""
+    return AuthController.request_account(data=data, db=db)
 
-@router.get("/list-accounts-requests", response_model=List[AccountRequestSchema])
+
+@router.get(
+    "/list-accounts-requests",
+    response_model=List[AccountRequestSchema],
+    summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
+    description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso"
+)
 async def list_accounts_requests(
-    course_id: int = Query(description="Filter by course ID"),
-    controller: AuthController = Depends(),
+    course_id: int = Query(description="Filtra las solicitudes por ID de curso"),
+    # controller: AuthController = Depends(),
     db=Depends(get_db)
 ):
-    return controller.list_accounts_requests(
-        db=db,
-        course_id=course_id
-    )
+    """Lista todas las solicitudes de cuenta filtradas por curso."""
+    return AuthController.list_accounts_requests(db=db, course_id=course_id)
 
-@router.patch("/confirm-account", response_model=ConfirmAccountSchema)
+
+@router.patch(
+    "/confirm-account",
+    response_model=ConfirmAccountSchema,
+    summary="Endpoint que se encarga de confirmar o rechazar una solicitud de cuenta",
+    description="El profesor puede confirmar o rechazar una solicitud de cuenta desde su perfil"
+)
 async def confirm_account(
     data: ConfirmAccountSchema,
-    controller: AuthController = Depends(),
     db=Depends(get_db)
 ):
-    return controller.confirm_account(data, db=db)
+    """Confirma o rechaza una solicitud de cuenta (profesor)."""
+    return AuthController.confirm_account(data, db=db)
 
-@router.post("/create-account", response_model=CreateAccountSchema)
+
+@router.post(
+    "/create-account",
+    response_model=CreateAccountSchema,
+    summary="Endpoint que se encarga de crear una cuenta en Keycloak y Moodle",
+    description="Este endpoint crea una cuenta en Keycloak y Moodle desde el perfil del administrador del sistema"
+)
 async def create_account(
     post: CreateAccountSchema,
-    controller: AuthController = Depends(),
     db=Depends(get_db)
 ):
-    return controller.create_account(post=post, db=db)
+    """Crea una cuenta en Keycloak y Moodle (administrador)."""
+    return AuthController.create_account(post=post, db=db)
