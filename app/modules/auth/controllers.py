@@ -69,13 +69,13 @@ class AuthController:
         return {"message": "Account request status updated successfully", "account_request": account_confirmed}
     
     @staticmethod
-    async def create_account(post: CreateAccountSchema, db: Session):
+    async def create_account(data: CreateAccountSchema, db: Session):
         """
         Crea una nueva cuenta de usuario en Keycloak y Moodle.
         Es usado en el endpoint /create-account
         """
-        user_id = post.id
-        password = post.password
+        user_id = data.id
+        password = data.password
 
         if not all([user_id, password]):
             raise HTTPException(status_code=400, detail="User ID and password are required")

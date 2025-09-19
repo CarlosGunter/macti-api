@@ -13,11 +13,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     description="La solicitud de cuenta se crea desde el perfil del estudiante (antes de inscribirse en un curso)"
 )
 async def request_account(
-    data: AccountRequestSchema,
+    body_info: AccountRequestSchema,
     db=Depends(get_db)
 ):
     """Crea una nueva solicitud de cuenta para un estudiante."""
-    return AuthController.request_account(data=data, db=db)
+    return AuthController.request_account(data=body_info, db=db)
 
 
 @router.get(
@@ -39,11 +39,11 @@ async def list_accounts_requests(
     description="El profesor puede confirmar o rechazar una solicitud de cuenta desde su perfil"
 )
 async def confirm_account(
-    data: ConfirmAccountSchema,
+    body_info: ConfirmAccountSchema,
     db=Depends(get_db)
 ):
     """Confirma o rechaza una solicitud de cuenta (profesor)."""
-    return AuthController.confirm_account(data, db=db)
+    return AuthController.confirm_account(data=body_info, db=db)
 
 
 @router.post(
@@ -52,8 +52,8 @@ async def confirm_account(
     description="Este endpoint crea una cuenta en Keycloak y Moodle desde el perfil del administrador del sistema"
 )
 async def create_account(
-    post: CreateAccountSchema,
+    body_info: CreateAccountSchema,
     db=Depends(get_db)
 ):
     """Crea una cuenta en Keycloak y Moodle (administrador)."""
-    return AuthController.create_account(post=post, db=db)
+    return AuthController.create_account(data=body_info, db=db)
