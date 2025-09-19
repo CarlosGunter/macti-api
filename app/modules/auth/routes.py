@@ -31,7 +31,6 @@ async def request_account(
 )
 async def list_accounts_requests(
     course_id: int = Query(description="Filtra las solicitudes por ID de curso"),
-    # controller: AuthController = Depends(),
     db=Depends(get_db)
 ):
     """Lista todas las solicitudes de cuenta filtradas por curso."""
