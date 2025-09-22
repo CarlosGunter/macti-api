@@ -15,3 +15,6 @@ class ConfirmAccountSchema(BaseModel):
 class CreateAccountSchema(BaseModel):
     id: int
     password: str
+
+class EmailValidationSchema(BaseModel):
+    email: EmailStr

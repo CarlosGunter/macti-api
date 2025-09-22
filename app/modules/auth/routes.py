@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
-
+from .email_service import EmailService
 from app.core.database import get_db
 from .controllers import AuthController
-from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
+from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema, EmailValidationSchema
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -48,3 +48,9 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     """Crea una cuenta en Keycloak y Moodle (administrador)."""
     return AuthController.create_account(data=body_info, db=db)
+
+
+@router.post("/validate-email", summary="Enviar correo de validación")
+async def validate_email(body_info: EmailValidationSchema):
+    result = EmailService.send_validation_email(to_email=body_info.email)
+    return result
