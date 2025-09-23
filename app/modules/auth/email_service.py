@@ -12,8 +12,12 @@ class EmailService:
 
     @staticmethod
     def send_validation_email(to_email: str):
+        # Al recuperar los daros del usuario, se debe obtener el instituto al que solicita la cuenta y redirigir al link correspondiente
+        # Remplazar "institute_id_placeholder" por el ID real del instituto
+        institute_id = "institute_id_placeholder"
+
         token = str(uuid4())
-        confirm_link = f"http://localhost:8000/auth/confirm?token={token}"
+        confirm_link = f"http://localhost:3000/{institute_id}/registro/confirmacion?token={token}"
         msg = EmailMessage()
         msg['Subject'] = 'Confirma tu correo'
         msg['From'] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
