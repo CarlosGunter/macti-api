@@ -1,6 +1,8 @@
 import smtplib
 from email.message import EmailMessage
 from uuid import uuid4
+import sqlite3
+from datetime import datetime, timedelta
 
 class EmailService:
     SMTP_HOST = 'smtp.titan.email'
@@ -12,18 +14,26 @@ class EmailService:
 
     @staticmethod
     def send_validation_email(to_email: str):
-        # Al recuperar los daros del usuario, se debe obtener el instituto al que solicita la cuenta y redirigir al link correspondiente
-        # Remplazar "institute_id_placeholder" por el ID real del instituto
-        institute_id = "institute_id_placeholder"
-
         token = str(uuid4())
+        fecha_solicitud = datetime.now()
+        fecha_expiracion = fecha_solicitud + timedelta(hours=1)
+        conn = sqlite3.connect('macti.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO MCT_Validacion (correo, token, fecha_solicitud, fecha_expiracion, bandera)
+            VALUES (?, ?, ?, ?, 0)
+        """, (to_email, token, fecha_solicitud, fecha_expiracion))
+
+        conn.commit()
+        conn.close()
+        institute_id = "institute_id_placeholder"
         confirm_link = f"http://localhost:3000/{institute_id}/registro/confirmacion?token={token}"
         msg = EmailMessage()
         msg['Subject'] = 'Confirma tu correo'
         msg['From'] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
         msg['To'] = to_email
-        msg.set_content(f'Hola!\n\nConfirma tu correo haciendo click aquí: {confirm_link}\n\nGracias!')
-
+        msg.set_content(f'Hola!\n\nConfirma tu correo haciendo click aquí: {confirm_link}\n\nGracias! ATT MACTI')
         try:
             with smtplib.SMTP(EmailService.SMTP_HOST, EmailService.SMTP_PORT) as smtp:
                 smtp.starttls()
@@ -32,3 +42,32 @@ class EmailService:
             return {"message": f"Correo enviado a {to_email}", "token": token}
         except Exception as e:
             return {"error": str(e)}
+
+    @staticmethod
+    def validate_token(token: str):
+        #Aquí quieres que se consuma otro endpoint que te rediriga al form con los datos de correo y día de creación para 
+        #la solicitud que se genra y se la manda al docente?
+        conn = sqlite3.connect('macti.db')
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT correo, fecha_expiracion, bandera FROM MCT_Validacion WHERE token = ?
+        """, (token,))
+        row = cursor.fetchone()
+
+        if not row:
+            return {"error": "Token inválido"}
+
+        correo, fecha_expiracion, bandera = row
+        now = datetime.now()
+
+        if bandera == 1:
+            return {"error": "Token ya utilizado"}
+
+        if now > datetime.strptime(fecha_expiracion, "%Y-%m-%d %H:%M:%S"):
+            return {"error": "Token expirado"}
+        cursor.execute("UPDATE MCT_Validacion SET bandera = 1 WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+
+        return {"success": f"Token válido para {correo}"}

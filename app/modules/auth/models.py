@@ -29,7 +29,6 @@ class AccountRequest(Base):
 
 class MCT_Validacion(Base):
     __tablename__ = "MCT_Validacion"
-
     id = Column(Integer, primary_key=True, index=True)
     correo = Column(String, nullable=False, unique=True, index=True)
     token = Column(String, nullable=False, unique=True)
