@@ -46,6 +46,10 @@ class EmailService:
     def validate_token(token: str):
         #Aquí quieres que se consuma otro endpoint que te rediriga al form con los datos de correo y día de creación para 
         #la solicitud que se genra y se la manda al docente?
+        # Respuesta: No es necesario, solo despues de validar el token, se tiene que buscar la información del usuario
+        # - Primero se busca el id del usuario en la tabla MCT_Validacion que coincida con el token
+        # - Luego se busca la información del usuario en la tabla AccountRequest usando el id obtenido del paso anterior
+        # - Finalmente se retorna la información del usuario :)
         conn = sqlite3.connect('macti.db')
         cursor = conn.cursor()
 
@@ -69,4 +73,8 @@ class EmailService:
         conn.commit()
         conn.close()
 
-        return {"success": f"Token válido para {correo}"}
+        return {
+            "success": True,
+            "message": f"Token válido para {correo}",
+            "data": False # Aquí se retornan los datos del usuario
+        }
