@@ -2,5 +2,5 @@ POST http://localhost:8000/auth/validate-email
 Content-Type: application/json
 
 {
-    "email": "jscurso17@gmail.com"
+    "email": "jscurso17@gmail.com" 
 }
