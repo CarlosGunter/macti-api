@@ -47,7 +47,7 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
 )
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     """Crea una cuenta en Keycloak y Moodle (administrador)."""
-    return AuthController.create_account(data=body_info, db=db)
+    return await AuthController.create_account(data=body_info, db=db)
 
 
 @router.post("/validate-email", summary="Enviar correo de validación")
