@@ -27,8 +27,7 @@ class EmailService:
 
         conn.commit()
         conn.close()
-        institute_id = "institute_id_placeholder"
-        confirm_link = f"http://localhost:3000/{institute_id}/registro/confirmacion?token={token}"
+        confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
         msg = EmailMessage()
         msg['Subject'] = 'Confirma tu correo'
         msg['From'] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
