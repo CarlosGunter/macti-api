@@ -3,6 +3,8 @@ from email.message import EmailMessage
 from uuid import uuid4
 import sqlite3
 from datetime import datetime, timedelta
+from dateutil.parser import parse
+
 
 class EmailService:
     SMTP_HOST = 'smtp.titan.email'
@@ -27,7 +29,7 @@ class EmailService:
 
         conn.commit()
         conn.close()
-        confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
+        confirm_link = f"http://localhost:8000/auth/confirmacion?token={token}"
         msg = EmailMessage()
         msg['Subject'] = 'Confirma tu correo'
         msg['From'] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
@@ -44,37 +46,38 @@ class EmailService:
 
     @staticmethod
     def validate_token(token: str):
-        #Aquí quieres que se consuma otro endpoint que te rediriga al form con los datos de correo y día de creación para 
-        #la solicitud que se genra y se la manda al docente?
-        # Respuesta: No es necesario, solo despues de validar el token, se tiene que buscar la información del usuario
-        # - Primero se busca el id del usuario en la tabla MCT_Validacion que coincida con el token
-        # - Luego se busca la información del usuario en la tabla AccountRequest usando el id obtenido del paso anterior
-        # - Finalmente se retorna la información del usuario :)
-        conn = sqlite3.connect('macti.db')
+        conn = sqlite3.connect("macti.db")
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT correo, fecha_expiracion, bandera FROM MCT_Validacion WHERE token = ?
+            SELECT id, correo, fecha_expiracion, bandera FROM MCT_Validacion WHERE token = ?
         """, (token,))
         row = cursor.fetchone()
 
         if not row:
-            return {"error": "Token inválido"}
+            conn.close()
+            return {"success": False, "error": "Token inválido"}
 
-        correo, fecha_expiracion, bandera = row
+        val_id, correo, fecha_expiracion, bandera = row
         now = datetime.now()
 
         if bandera == 1:
-            return {"error": "Token ya utilizado"}
+            conn.close()
+            return {"success": False, "error": "Token ya utilizado"}
 
-        if now > datetime.strptime(fecha_expiracion, "%Y-%m-%d %H:%M:%S"):
-            return {"error": "Token expirado"}
-        cursor.execute("UPDATE MCT_Validacion SET bandera = 1 WHERE token = ?", (token,))
+        if now > datetime.fromisoformat(fecha_expiracion):
+            conn.close()
+            return {"success": False, "error": "Token expirado"}
+
+        cursor.execute("UPDATE MCT_Validacion SET bandera = 1 WHERE id = ?", (val_id,))
         conn.commit()
         conn.close()
 
         return {
             "success": True,
-            "message": f"Token válido para {correo}",
-            "data": False # Aquí se retornan los datos del usuario
+            "message": "Token válido",
+            "data": {
+                "id": val_id,
+                "correo": correo
+            }
         }
