@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
+from app.modules.auth.email_service import EmailService
 from app.modules.auth.services import KeycloakService, MoodleService
 from .models import AccountRequest
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
@@ -61,7 +62,8 @@ class AuthController:
             raise HTTPException(status_code=400, detail="Request ID is required")
 
         query = db.query(AccountRequest).filter(AccountRequest.id == request_id)
-        if not query.first():
+        account_request = query.first()
+        if not account_request:
             raise HTTPException(
                 status_code=404,
                 detail=f"Account request with ID {request_id} not found"
@@ -70,6 +72,11 @@ class AuthController:
         # Update status
         query.update({"status": status}) 
         db.commit()
+        db.refresh(account_request)
+        
+        # Enviar correo al estudiante
+        user_email = str(account_request.email)
+        EmailService.send_validation_email(user_email)
         
         return {
             "success": True,
