@@ -64,7 +64,13 @@ async def validate_email(body_info: EmailValidationSchema):
 async def confirm_email(token: str = Query(..., description="Token de validación enviado por email")):
     result = EmailService.validate_token(token)
     if not result.get("success"):
-        return JSONResponse(status_code=400, content={"error": result.get("error")})
+        return JSONResponse(
+            status_code=404,
+            content={
+                "success": False,
+                "error": result.get("error")
+            }
+        )
     
     return {
         "success": True,

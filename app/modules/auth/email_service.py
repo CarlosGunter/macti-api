@@ -18,7 +18,7 @@ class EmailService:
     def send_validation_email(to_email: str):
         token = str(uuid4())
         fecha_solicitud = datetime.now()
-        fecha_expiracion = fecha_solicitud + timedelta(hours=1)
+        fecha_expiracion = fecha_solicitud + timedelta(hours=12)
         conn = sqlite3.connect('macti.db')
         cursor = conn.cursor()
 
@@ -29,7 +29,7 @@ class EmailService:
 
         conn.commit()
         conn.close()
-        confirm_link = f"http://localhost:8000/auth/confirmacion?token={token}"
+        confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
         msg = EmailMessage()
         msg['Subject'] = 'Confirma tu correo'
         msg['From'] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
@@ -69,8 +69,8 @@ class EmailService:
             conn.close()
             return {"success": False, "error": "Token expirado"}
 
-        cursor.execute("UPDATE MCT_Validacion SET bandera = 1 WHERE id = ?", (val_id,))
-        conn.commit()
+        # cursor.execute("UPDATE MCT_Validacion SET bandera = 1 WHERE id = ?", (val_id,))
+        # conn.commit()
         conn.close()
 
         return {
