@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.modules.auth.email_service import EmailService
-from app.modules.auth.services import KeycloakService, MoodleService
+from app.modules.auth.services.email_service import EmailService
+from app.modules.auth.services.kc_service import KeycloakService
+from app.modules.auth.services.moodle_service import MoodleService
 from .models import AccountRequest
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
 
@@ -144,7 +145,5 @@ class AuthController:
         
         return {
             "success": True,
-            "message": "Cuenta creada exitosamente en Keycloak y Moodle",
-            # "keycloak_id": kc_result.get("id"),
-            # "moodle_id": moodle_result.get("id")
+            "message": "Cuenta creada exitosamente en Keycloak y Moodle"
         }

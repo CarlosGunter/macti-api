@@ -1,12 +1,9 @@
 from fastapi import APIRouter, Depends, Query
-from .email_service import EmailService
+from .services.email_service import EmailService
 from app.core.database import get_db
 from .controllers import AuthController
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema, EmailValidationSchema
-#agregue yo
-import sqlite3
 from fastapi.responses import JSONResponse
-from datetime import datetime
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])

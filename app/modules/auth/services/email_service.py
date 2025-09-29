@@ -3,7 +3,6 @@ from email.message import EmailMessage
 from uuid import uuid4
 import sqlite3
 from datetime import datetime, timedelta
-from dateutil.parser import parse
 
 
 class EmailService:
