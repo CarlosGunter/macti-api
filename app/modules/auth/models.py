@@ -12,9 +12,9 @@ class AccountRequest(Base):
     last_name = Column(String, nullable=False)
     email = Column(String, nullable=False, index=True)
     course_id = Column(Integer, nullable=False)
-    status = Column(String, default="Pending")
+    status = Column(String, default="pending")
     kc_id = Column(String, nullable=True)
-    course_id = Column(String, nullable=True)
+    moodle_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class MCT_Validacion(Base):

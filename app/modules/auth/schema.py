@@ -5,7 +5,6 @@ class AccountRequestSchema(BaseModel):
     name: str
     last_name: str
     email: EmailStr
-    teacher: str
     course_id: int
 
 class ConfirmAccountSchema(BaseModel):

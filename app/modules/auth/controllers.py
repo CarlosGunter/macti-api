@@ -18,7 +18,6 @@ class AuthController:
             name=data.name,
             last_name=data.last_name,
             email=data.email,
-            teacher=data.teacher,
             course_id=data.course_id,
             status="pending"
         )
