@@ -107,18 +107,26 @@ class AuthController:
                 detail="Failed to create user in Keycloak"
             )
         
-        # Create the user in Moodle
+                # Create the user in Moodle
         moodle_result = await MoodleService.create_user({
             "name": account_request.name,
             "last_name": account_request.last_name,
             "email": account_request.email,
-            "course_id": account_request.course_id
+            "course_id": account_request.course_id,
+            "password": password
         })
         if not moodle_result.get("created"):
             raise HTTPException(
                 status_code=500,
                 detail="Failed to create user in Moodle"
             )
+
+        # After creating the user in Moodle, enroll them in the course
+        await MoodleService.enroll_user(
+            user_id=moodle_result["id"], 
+            course_id=account_request.course_id
+        )
+
         
         # Insert ids into the BD
         # account_request.status = "created"
