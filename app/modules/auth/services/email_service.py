@@ -70,13 +70,24 @@ class EmailService:
 
         # cursor.execute("UPDATE MCT_Validacion SET bandera = 1 WHERE id = ?", (val_id,))
         # conn.commit()
+        
+        # Get id user using email and "account_requests" table
+        cursor.execute("SELECT id FROM account_requests WHERE email = ?", (correo,))
+        user_row = cursor.fetchone()
+
         conn.close()
+
+        if not user_row:
+            return {"success": False, "error": "User not found"}
+        
+        user_id = user_row[0]
+
 
         return {
             "success": True,
             "message": "Token válido",
             "data": {
-                "id": val_id,
+                "id": user_id,
                 "correo": correo
             }
         }

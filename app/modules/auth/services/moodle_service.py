@@ -4,9 +4,11 @@ Service for interacting with Moodle LMS API
 
 import os
 import httpx
+from dotenv import load_dotenv
+load_dotenv()
 
 class MoodleService:
-    MOODLE_URL = os.getenv("MOODLE_URL", "http://localhost/moodle")
+    MOODLE_URL = os.getenv("MOODLE_URL")
     MOODLE_TOKEN = os.getenv("MOODLE_TOKEN")
 
     @staticmethod
@@ -14,6 +16,10 @@ class MoodleService:
         """
         Create a user in Moodle using the REST API.
         """
+        print({
+            "MoodleService.MOODLE_TOKEN": MoodleService.MOODLE_TOKEN,
+            "MoodleService.MOODLE_URL": MoodleService.MOODLE_URL
+        })
         endpoint = f"{MoodleService.MOODLE_URL}/webservice/rest/server.php"
         params = {
             "wstoken": MoodleService.MOODLE_TOKEN,
