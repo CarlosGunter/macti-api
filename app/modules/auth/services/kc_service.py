@@ -1,25 +1,31 @@
+import os
 import httpx
-from app.core.config import settings
+# from app.core.config import settings
 from typing import Dict, Any
 
 class KeycloakService:
-    BASE_URL = settings.KEYCLOAK_SERVER_URL 
-    REALM = settings.KEYCLOAK_REALM
-    
+
+    BASE_URL = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
+    REALM = os.getenv("KEYCLOAK_REALM", "myrealm")
+
     TOKEN_URL = f"{BASE_URL}/realms/{REALM}/protocol/openid-connect/token"
     USERS_API_URL = f"{BASE_URL}/admin/realms/{REALM}/users"
 
     @classmethod
     async def _get_admin_token(cls) -> str:
         """Obtiene un token de acceso usando client_credentials para la API de Admin."""
+
+        ADMIN_CLIENT_ID = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "admin-cli")
+        ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "secret")
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     cls.TOKEN_URL,
                     data={
                         "grant_type": "client_credentials",
-                        "client_id": settings.KEYCLOAK_ADMIN_CLIENT_ID,
-                        "client_secret": settings.KEYCLOAK_ADMIN_CLIENT_SECRET
+                        "client_id": ADMIN_CLIENT_ID,
+                        "client_secret": ADMIN_CLIENT_SECRET
                     }
                 )
                 response.raise_for_status() 
