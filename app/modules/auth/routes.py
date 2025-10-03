@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, Query
-
+from .services.email_service import EmailService
 from app.core.database import get_db
 from .controllers import AuthController
-from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
+from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema, EmailValidationSchema
+from fastapi.responses import JSONResponse
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,6 +47,32 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     summary="Endpoint que se encarga de crear una cuenta en Keycloak y Moodle",
     description="Este endpoint crea una cuenta en Keycloak y Moodle desde el perfil del administrador del sistema"
 )
+#Aquí se crea moodel por lo que entiendo
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     """Crea una cuenta en Keycloak y Moodle (administrador)."""
     return await AuthController.create_account(data=body_info, db=db)
+
+#Usas este para validar los correos?
+@router.post("/validate-email", summary="Enviar correo de validación")
+async def validate_email(body_info: EmailValidationSchema):
+    result = EmailService.send_validation_email(to_email=body_info.email)
+    return result
+
+@router.get("/confirmacion", summary="Confirma un correo usando token")
+async def confirm_email(token: str = Query(..., description="Token de validación enviado por email")):
+    result = EmailService.validate_token(token)
+    if not result.get("success"):
+        return JSONResponse(
+            status_code=404,
+            content={
+                "success": False,
+                "error": result.get("error")
+            }
+        )
+    
+    return {
+        "success": True,
+        "message": "Correo confirmado correctamente",
+        "data": result.get("data")
+    }
+

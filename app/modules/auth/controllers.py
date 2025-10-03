@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.modules.auth.services import KeycloakService, MoodleService
+from app.modules.auth.services.email_service import EmailService
+from app.modules.auth.services.kc_service import KeycloakService
+from app.modules.auth.services.moodle_service import MoodleService
 from .models import AccountRequest
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
 
@@ -16,7 +18,6 @@ class AuthController:
             name=data.name,
             last_name=data.last_name,
             email=data.email,
-            teacher=data.teacher,
             course_id=data.course_id,
             status="pending"
         )
@@ -24,7 +25,10 @@ class AuthController:
         db.commit()
         db.refresh(db_account_request)
 
-        return {"message": "Solicitud de cuenta en proceso", "account_request": db_account_request}
+        return {
+            "success": True,
+            "message": "Solicitud de cuenta en proceso"
+        }
 
     @staticmethod
     def list_accounts_requests(
@@ -39,14 +43,14 @@ class AuthController:
             .filter(AccountRequest.course_id == course_id)\
             .all()
         
-        return {"message": "Listado de solicitudes de cuenta", "account_requests": account_requests}
+        return {
+            "success": True,
+            "message": "Listado de solicitudes de cuenta",
+            "data": account_requests
+        }
 
     @staticmethod
     def confirm_account(data: ConfirmAccountSchema, db: Session):
-        """
-        Confirma una solicitud de cuenta.
-        Es usado en el endpoint /confirm-account
-        """
         request_id = data.id
         status = data.status
         
@@ -54,20 +58,23 @@ class AuthController:
             raise HTTPException(status_code=400, detail="Request ID is required")
 
         query = db.query(AccountRequest).filter(AccountRequest.id == request_id)
-        if not query.first():
+        account_request = query.first()
+        if not account_request:
             raise HTTPException(
                 status_code=404,
                 detail=f"Account request with ID {request_id} not found"
             )
-        
-        # Update status
         query.update({"status": status}) 
         db.commit()
+        db.refresh(account_request)
+        user_email = str(account_request.email)
+        EmailService.send_validation_email(user_email)
         
-        # Refresh to get the updated record
-        account_confirmed = db.query(AccountRequest).filter(AccountRequest.id == request_id).first()
-        return {"message": "Estado de la solicitud de cuenta actualizado con éxito", "account_request": account_confirmed}
-    
+        return {
+            "success": True,
+            "message": "Estado de la solicitud de cuenta actualizado con éxito"
+        }
+
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
         """
@@ -93,8 +100,7 @@ class AuthController:
                 status_code=400,
                 detail="Account request must be approved before creating an account"
             )
-        
-        # Create the user in KC
+        #Comenzamos con Key siuu
         kc_result = await KeycloakService.create_user({
             "name": account_request.name,
             "last_name": account_request.last_name,
@@ -104,39 +110,41 @@ class AuthController:
         if not kc_result.get("created"):
             raise HTTPException(
                 status_code=500,
-                detail="Failed to create user in Keycloak"
+                detail=f"Failed to create user in Keycloak: {kc_result.get('error', 'Unknown Keycloak error')}"
             )
-        
-                # Create the user in Moodle
+        keycloak_user_id = kc_result.get("user_id")
+        account_request.kc_id = keycloak_user_id
+        db.commit() 
+        db.refresh(account_request)        
+        print(f"Keycloak user created with ID: {keycloak_user_id}. Proceeding to Moodle...")
         moodle_result = await MoodleService.create_user({
             "name": account_request.name,
             "last_name": account_request.last_name,
             "email": account_request.email,
             "course_id": account_request.course_id,
-            "password": password
+            "password": password  
         })
         if not moodle_result.get("created"):
+            #Aquí hay un problema, porque si primero inserta key y falla moodle ¿qué pasa?
+            #tambien faltan los otros dos servicios
             raise HTTPException(
                 status_code=500,
-                detail="Failed to create user in Moodle"
+                detail="Failed to create user in Moodle. Keycloak user was created."
             )
-
-        # After creating the user in Moodle, enroll them in the course
+        moodle_user_id = moodle_result["id"]
+        account_request.moodle_id = str(moodle_user_id)
         await MoodleService.enroll_user(
-            user_id=moodle_result["id"], 
+            user_id=moodle_user_id, 
             course_id=account_request.course_id
         )
-
-        
-        # Insert ids into the BD
-        # account_request.status = "created"
-        # account_request.keycloak_id = kc_result.get("id")
-        # account_request.moodle_id = moodle_result.get("id")
-        # db.commit()
-        # db.refresh(account_request)
+        db.commit()
+        db.refresh(account_request)
         
         return {
+            "success": True,
             "message": "Cuenta creada exitosamente en Keycloak y Moodle",
-            # "keycloak_id": kc_result.get("id"),
-            # "moodle_id": moodle_result.get("id")
+            "data": {
+                "kc_id": keycloak_user_id,
+                "moodle_id": moodle_user_id
+            }
         }
