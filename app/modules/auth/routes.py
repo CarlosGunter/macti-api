@@ -47,6 +47,7 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     summary="Endpoint que se encarga de crear una cuenta en Keycloak y Moodle",
     description="Este endpoint crea una cuenta en Keycloak y Moodle desde el perfil del administrador del sistema"
 )
+#Aquí se crea moodel por lo que entiendo
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     """Crea una cuenta en Keycloak y Moodle (administrador)."""
     return await AuthController.create_account(data=body_info, db=db)
