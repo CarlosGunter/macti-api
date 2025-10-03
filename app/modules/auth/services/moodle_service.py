@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class MoodleService:
-    MOODLE_URL = os.getenv("http://13.58.33.203/moodle")
-    MOODLE_TOKEN = os.getenv("980782459f25a0263c4bc0b8f486f41c ")
+    MOODLE_TOKEN = os.getenv("MOODLE_TOKEN")
+    MOODLE_URL = os.getenv("MOODLE_URL")
     #supongo tengo que meter los datos que nos paso fer, entrar a mi cuenta y sacar mi token jaja como en kayklok
     #Adecuaré esta parte de la url y token en core/config, para tenerlo más ordenado
     #me sale un error de httpx pero ya lo reviso mañana

@@ -102,9 +102,9 @@ class AuthController:
             )
         #Comenzamos con Key siuu
         kc_result = await KeycloakService.create_user({
-            "name": account_request.name,
-            "last_name": account_request.last_name,
-            "email": account_request.email,
+            "name": str(account_request.name),
+            "last_name": str(account_request.last_name),
+            "email": str(account_request.email),
             "password": password
         })
         if not kc_result.get("created"):
@@ -113,10 +113,10 @@ class AuthController:
                 detail=f"Failed to create user in Keycloak: {kc_result.get('error', 'Unknown Keycloak error')}"
             )
         keycloak_user_id = kc_result.get("user_id")
-        account_request.kc_id = keycloak_user_id
+        account_request.update({"keycloak_id": keycloak_user_id})
         db.commit() 
         db.refresh(account_request)        
-        print(f"Keycloak user created with ID: {keycloak_user_id}. Proceeding to Moodle...")
+        # print(f"Keycloak user created with ID: {keycloak_user_id}. Proceeding to Moodle...")
         moodle_result = await MoodleService.create_user({
             "name": account_request.name,
             "last_name": account_request.last_name,
@@ -132,7 +132,7 @@ class AuthController:
                 detail="Failed to create user in Moodle. Keycloak user was created."
             )
         moodle_user_id = moodle_result["id"]
-        account_request.moodle_id = str(moodle_user_id)
+        account_request.update({"moodle_id": str(moodle_user_id)})
         await MoodleService.enroll_user(
             user_id=moodle_user_id, 
             course_id=account_request.course_id
