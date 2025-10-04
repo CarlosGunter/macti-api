@@ -2,33 +2,40 @@ import os
 import httpx
 # from app.core.config import settings
 from typing import Dict, Any
+from dotenv import load_dotenv
+load_dotenv()
 
 class KeycloakService:
 
-    BASE_URL = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
-    REALM = os.getenv("KEYCLOAK_REALM", "myrealm")
+    URL = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
+    REALM = os.getenv("KEYCLOAK_REALM", "master")
+    USERNAME = os.getenv("KEYCLOAK_USERNAME", "admin")
+    PASSWORD = os.getenv("KEYCLOAK_PASSWORD", "admin")
+    ADMIN_CLIENT_ID = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "admin-cli")
 
-    TOKEN_URL = f"{BASE_URL}/realms/{REALM}/protocol/openid-connect/token"
-    USERS_API_URL = f"{BASE_URL}/admin/realms/{REALM}/users"
+    TOKEN_URL = f"{URL}/realms/{REALM}/protocol/openid-connect/token"
+    USERS_API_URL = f"{URL}/admin/realms/{REALM}/users"
+    # ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "secret")
 
     @classmethod
     async def _get_admin_token(cls) -> str:
         """Obtiene un token de acceso usando client_credentials para la API de Admin."""
-
-        ADMIN_CLIENT_ID = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "admin-cli")
-        ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "secret")
-
         try:
+            data = {
+                "client_id": cls.ADMIN_CLIENT_ID,
+                "username": cls.USERNAME,
+                "password": cls.PASSWORD,
+                "grant_type": "password",
+                # "client_secret": ADMIN_CLIENT_SECRET
+            }
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     cls.TOKEN_URL,
-                    data={
-                        "grant_type": "client_credentials",
-                        "client_id": ADMIN_CLIENT_ID,
-                        "client_secret": ADMIN_CLIENT_SECRET
-                    }
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    data=data
                 )
-                response.raise_for_status() 
+                response.raise_for_status()
                 return response.json()["access_token"]
         except Exception as e:
             error_message = f"Fallo al autenticar con Keycloak Admin API. Error: {e}"

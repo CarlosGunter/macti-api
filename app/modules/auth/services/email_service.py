@@ -34,14 +34,14 @@ class EmailService:
         msg['From'] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
         msg['To'] = to_email
         msg.set_content(f'Hola!\n\nConfirma tu correo haciendo click aquí: {confirm_link}\n\nGracias! ATT MACTI')
-        try:
-            with smtplib.SMTP(EmailService.SMTP_HOST, EmailService.SMTP_PORT) as smtp:
-                smtp.starttls()
-                smtp.login(EmailService.SMTP_USER, EmailService.SMTP_PASS)
-                smtp.send_message(msg)
-            return {"message": f"Correo enviado a {to_email}", "token": token}
-        except Exception as e:
-            return {"error": str(e)}
+        # try:
+        #     with smtplib.SMTP(EmailService.SMTP_HOST, EmailService.SMTP_PORT) as smtp:
+        #         smtp.starttls()
+        #         smtp.login(EmailService.SMTP_USER, EmailService.SMTP_PASS)
+        #         smtp.send_message(msg)
+        #     return {"message": f"Correo enviado a {to_email}", "token": token}
+        # except Exception as e:
+        #     return {"error": str(e)}
 
     @staticmethod
     def validate_token(token: str):

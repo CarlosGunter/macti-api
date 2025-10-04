@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from app.core.database import Base
 from datetime import datetime
-from typing import Optional
+
 #Cambie unas cosas de la bd así que ejecuten el resetbd.py
 class AccountRequest(Base):
     __tablename__ = "account_requests"

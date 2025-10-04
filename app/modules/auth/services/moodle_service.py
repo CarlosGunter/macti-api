@@ -4,6 +4,8 @@ Service for interacting with Moodle LMS API
 
 import os
 import httpx
+from dotenv import load_dotenv
+load_dotenv()
 
 class MoodleService:
     MOODLE_TOKEN = os.getenv("MOODLE_TOKEN")

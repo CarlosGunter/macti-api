@@ -88,7 +88,8 @@ class AuthController:
             raise HTTPException(status_code=400, detail="User ID and password are required")
 
         # Fetch the account request
-        account_request = db.query(AccountRequest).filter(AccountRequest.id == user_id).first()
+        query = db.query(AccountRequest).filter(AccountRequest.id == user_id)
+        account_request = query.first()
         if not account_request:
             raise HTTPException(
                 status_code=404,
@@ -112,10 +113,7 @@ class AuthController:
                 status_code=500,
                 detail=f"Failed to create user in Keycloak: {kc_result.get('error', 'Unknown Keycloak error')}"
             )
-        keycloak_user_id = kc_result.get("user_id")
-        account_request.update({"keycloak_id": keycloak_user_id})
-        db.commit() 
-        db.refresh(account_request)        
+        keycloak_user_id = kc_result.get("user_id")      
         # print(f"Keycloak user created with ID: {keycloak_user_id}. Proceeding to Moodle...")
         moodle_result = await MoodleService.create_user({
             "name": account_request.name,
@@ -132,11 +130,16 @@ class AuthController:
                 detail="Failed to create user in Moodle. Keycloak user was created."
             )
         moodle_user_id = moodle_result["id"]
-        account_request.update({"moodle_id": str(moodle_user_id)})
         await MoodleService.enroll_user(
             user_id=moodle_user_id, 
             course_id=account_request.course_id
         )
+
+        # Actualiza la solicitud de cuenta con los IDs de Keycloak y Moodle
+        query.update({
+            "kc_id": keycloak_user_id,
+            "moodle_id": moodle_user_id
+        })
         db.commit()
         db.refresh(account_request)
         
