@@ -17,6 +17,19 @@ class AuthController:
         Crea una nueva solicitud de cuenta para un estudiante.
         Usado en el endpoint /request-account
         """
+        existing_request = db.query(AccountRequest).filter(
+            AccountRequest.email == data.email
+        ).first()
+
+        if existing_request:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "EMAIL_EXISTS",
+                    "message": "El correo ya cuenta con una solicitud registrada."
+                }
+            )
+
         try:
             db_account_request = AccountRequest(
                 name=data.name,
@@ -29,6 +42,7 @@ class AuthController:
             db.commit()
             db.refresh(db_account_request)
             return {"success": True, "message": "Solicitud de cuenta en proceso"}
+
         except SQLAlchemyError as e:
             db.rollback()
             print(f"Error SQL al crear solicitud: {e}")
@@ -92,7 +106,7 @@ class AuthController:
             if status.lower() == "approved":
                 user_email = str(account_request.email)
                 email_result = EmailService.send_validation_email(user_email)
-                if "error" in email_result:
+                if isinstance(email_result, dict) and "error" in email_result:
                     raise HTTPException(
                         status_code=500,
                         detail=f"Error al enviar correo de validación: {email_result['error']}"
@@ -194,7 +208,7 @@ class AuthController:
             raise
         except Exception as e:
             # Si falla Moodle, eliminar usuario en Keycloak
-            if 'keycloak_user_id' in locals() and keycloak_user_id:
+            if keycloak_user_id:
                 print("Eliminando usuario de Keycloak por rollback")
                 await KeycloakService.delete_user(keycloak_user_id)
             db.rollback()
