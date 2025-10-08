@@ -8,21 +8,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class MoodleService:
-    MOODLE_URL = os.getenv("http://13.58.33.203/moodle")
-    MOODLE_TOKEN = os.getenv("980782459f25a0263c4bc0b8f486f41c ")
+    MOODLE_URL = os.getenv("MOODLE_URL")
+    MOODLE_TOKEN = os.getenv("MOODLE_TOKEN")
     #supongo tengo que meter los datos que nos paso fer, entrar a mi cuenta y sacar mi token jaja como en kayklok
     #Adecuaré esta parte de la url y token en core/config, para tenerlo más ordenado
     #me sale un error de httpx pero ya lo reviso mañana
     @staticmethod
     async def create_user(user_data):
         """
-        Create a user in Moodle using the REST API.
+        Create a user in Moodle using the REST API (debug version).
         """
         print({
             "MoodleService.MOODLE_TOKEN": MoodleService.MOODLE_TOKEN,
             "MoodleService.MOODLE_URL": MoodleService.MOODLE_URL
         })
-        endpoint = f"{MoodleService.MOODLE_URL}/webservice/rest/server.php"
+        
+        endpoint = MoodleService.MOODLE_URL  # Ya incluye http://
         params = {
             "wstoken": MoodleService.MOODLE_TOKEN,
             "wsfunction": "core_user_create_users",
@@ -33,30 +34,34 @@ class MoodleService:
 
         data = {
             "users[0][username]": user_data["email"].split("@")[0],
-            "users[0][password]": user_data.get("password", "Password123!"),
+            "users[0][password]": user_data.get("password", "Password1234"),  # más simple para debug
             "users[0][firstname]": user_data.get("name", "User"),
             "users[0][lastname]": user_data.get("last_name", "NA"),
             "users[0][email]": user_data["email"],
+            "users[0][auth]": "manual",       # a veces es obligatorio
+            "users[0][country]": "MX",        # a veces es obligatorio
         }
 
         async with httpx.AsyncClient() as client:
             response = await client.post(endpoint, params=params, data=data)
+            print("Raw Moodle response:", response.text)  # <--- imprime TODO lo que devuelve Moodle
             response.raise_for_status()
-            result = response.json()
-
-        print("DEBUG Moodle response (create_user):", result)
-
+            try:
+                result = response.json()
+            except Exception as e:
+                print(f"ERROR: Respuesta exitosa pero no es JSON: {e}")
+                raise RuntimeError(f"Moodle returned success status but non-JSON data: {response.text[:200]}")
         if isinstance(result, dict) and "exception" in result:
-            raise Exception(f"Error creating user in Moodle: {result}")
-
-        return {**result[0], "created": True}
+            print("Moodle API returned an exception:", result)
+            return {"error": result, "created": False}
+        return {**result[0], "created": True} if isinstance(result, list) else {"result": result, "created": True}
 
     @staticmethod
     async def enroll_user(user_id, course_id):
         """
         Enroll a user in a Moodle course using the REST API.
         """
-        endpoint = f"{MoodleService.MOODLE_URL}/webservice/rest/server.php"
+        endpoint = MoodleService.MOODLE_URL
         params = {
             "wstoken": MoodleService.MOODLE_TOKEN,
             "wsfunction": "enrol_manual_enrol_users",

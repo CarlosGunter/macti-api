@@ -77,74 +77,64 @@ class AuthController:
 
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
-        """
-        Crea una nueva cuenta de usuario en Keycloak y Moodle.
-        Es usado en el endpoint /create-account
-        """
         user_id = data.id
         password = data.password
 
         if not all([user_id, password]):
             raise HTTPException(status_code=400, detail="User ID and password are required")
 
-        # Fetch the account request
         account_request = db.query(AccountRequest).filter(AccountRequest.id == user_id).first()
         if not account_request:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Account request with ID {user_id} not found"
-            )
-
+            raise HTTPException(status_code=404, detail=f"Account request with ID {user_id} not found")
         if str(account_request.status) != "approved":
-            raise HTTPException(
-                status_code=400,
-                detail="Account request must be approved before creating an account"
-            )
-        #Comenzamos con Key siuu
-        kc_result = await KeycloakService.create_user({
-            "name": account_request.name,
-            "last_name": account_request.last_name,
-            "email": account_request.email,
-            "password": password
-        })
-        if not kc_result.get("created"):
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to create user in Keycloak: {kc_result.get('error', 'Unknown Keycloak error')}"
-            )
-        keycloak_user_id = kc_result.get("user_id")
-        account_request.kc_id = keycloak_user_id
-        db.commit() 
-        db.refresh(account_request)        
-        print(f"Keycloak user created with ID: {keycloak_user_id}. Proceeding to Moodle...")
-        moodle_result = await MoodleService.create_user({
-            "name": account_request.name,
-            "last_name": account_request.last_name,
-            "email": account_request.email,
-            "course_id": account_request.course_id,
-            "password": password  
-        })
-        if not moodle_result.get("created"):
-            #Aquí hay un problema, porque si primero inserta key y falla moodle ¿qué pasa?
-            #tambien faltan los otros dos servicios
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create user in Moodle. Keycloak user was created."
-            )
-        moodle_user_id = moodle_result["id"]
-        account_request.moodle_id = str(moodle_user_id)
-        await MoodleService.enroll_user(
-            user_id=moodle_user_id, 
-            course_id=account_request.course_id
-        )
-        db.commit()
-        db.refresh(account_request)
-        
-        return {
-            "success": True,
-            "message": "Cuenta creada exitosamente en Keycloak y Moodle",
-            "data": {
-                "kc_id": keycloak_user_id,
-                "moodle_id": moodle_user_id
+            raise HTTPException(status_code=400, detail="Account request must be approved before creating an account")
+
+        keycloak_user_id = None
+        moodle_user_id = None
+
+        try:
+            # Crear usuario en Keycloak
+            kc_result = await KeycloakService.create_user({
+                "name": account_request.name,
+                "last_name": account_request.last_name,
+                "email": account_request.email,
+                "password": password
+            })
+            if not kc_result.get("created"):
+                raise HTTPException(status_code=500, detail=f"Failed to create user in Keycloak: {kc_result.get('error', 'Unknown error')}")
+            
+            keycloak_user_id = kc_result.get("user_id")
+            account_request.kc_id = keycloak_user_id
+            db.commit()
+            db.refresh(account_request)
+
+            # Crear usuario en Moodle
+            moodle_result = await MoodleService.create_user({
+                "name": account_request.name,
+                "last_name": account_request.last_name,
+                "email": account_request.email,
+                "course_id": account_request.course_id,
+                "password": password
+            })
+            if not moodle_result.get("created"):
+                raise Exception("Failed to create user in Moodle")
+
+            moodle_user_id = moodle_result["id"]
+            account_request.moodle_id = str(moodle_user_id)
+            await MoodleService.enroll_user(user_id=moodle_user_id, course_id=account_request.course_id)
+            db.commit()
+            db.refresh(account_request)
+
+            return {
+                "success": True,
+                "message": "Cuenta creada exitosamente en Keycloak y Moodle",
+                "data": {"kc_id": keycloak_user_id, "moodle_id": moodle_user_id}
             }
-        }
+
+        except Exception as e:
+            # Si falla Moodle, eliminar usuario de Keycloak
+            if keycloak_user_id:
+                await KeycloakService.delete_user(keycloak_user_id)
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+

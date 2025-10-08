@@ -74,3 +74,18 @@ class KeycloakService:
             else:
                 error_detail = response.json() if response.content else response.text
                 return {"created": False, "user_id": None, "error": f"Keycloak failed with status {response.status_code}. Detail: {error_detail}"}
+            
+    @staticmethod
+    async def delete_user(user_id: str) -> bool:
+        try:
+            token = await KeycloakService._get_admin_token()
+            async with httpx.AsyncClient() as client:
+                url = f"{KeycloakService.USERS_API_URL}/{user_id}"
+                response = await client.delete(
+                    url,
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                return response.status_code in [200, 204]
+        except Exception as e:
+            print(f"Error deleting Keycloak user {user_id}: {e}")
+            return False
