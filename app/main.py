@@ -3,9 +3,6 @@ from app.modules.auth.routes import router as auth_router
 from app.core.database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 
-from dotenv import load_dotenv
-load_dotenv()
-
 # Create tables in the database
 Base.metadata.create_all(bind=engine)
 
