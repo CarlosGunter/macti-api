@@ -15,9 +15,12 @@ class KeycloakService:
                 response = await client.post(
                     cls.TOKEN_URL,
                     data={
-                        "grant_type": "client_credentials",
                         "client_id": settings.KEYCLOAK_ADMIN_CLIENT_ID,
-                        "client_secret": settings.KEYCLOAK_ADMIN_CLIENT_SECRET
+                        "client_secret": settings.KEYCLOAK_ADMIN_CLIENT_SECRET,
+                        "grant_type": "client_credentials",
+                        # "username": settings.KEYCLOAK_USERNAME,
+                        # "password": settings.KEYCLOAK_PASSWORD,
+                        # "grant_type": "password",
                     }
                 )
                 response.raise_for_status()

@@ -2,15 +2,12 @@
 Service for interacting with Moodle LMS API
 """
 
-import os
 import httpx
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.core.config import settings
 
 class MoodleService:
-    MOODLE_URL = os.getenv("MOODLE_URL")
-    MOODLE_TOKEN = os.getenv("MOODLE_TOKEN")
+    MOODLE_URL = settings.MOODLE_URL
+    MOODLE_TOKEN = settings.MOODLE_TOKEN
 
     @staticmethod
     async def create_user(user_data):
