@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     MOODLE_URL: str = "http://localhost/moodle"
     MOODLE_TOKEN: str = ""
 
+    SMTP_HOST: str = "smtp.titan.email"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "aramirez@solucionesatd.com"
+    SMTP_PASS: str = ""
+    FROM_ADDRESS: str = "aramirez@solucionesatd.com"
+
     @field_validator("KEYCLOAK_ADMIN_CLIENT_SECRET")
     def check_admin_client_secret(cls, v):
         if not v:
@@ -26,6 +32,12 @@ class Settings(BaseSettings):
             raise ValueError("MOODLE_TOKEN no definido en las variables de entorno")
         if len(v) < 32:
             raise ValueError("MOODLE_TOKEN debe tener 32 caracteres")
+        return v
+    
+    @field_validator("SMTP_PASS")
+    def check_smtp_pass(cls, v):
+        if not v or v.strip() == "":
+            raise ValueError("SMTP_PASS no definido en las variables de entorno")
         return v
 
     class Config:

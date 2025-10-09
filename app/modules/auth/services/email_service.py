@@ -3,13 +3,14 @@ from email.message import EmailMessage
 from uuid import uuid4
 import sqlite3
 from datetime import datetime, timedelta
+from app.core.config import settings
 
 class EmailService:
-    SMTP_HOST = 'smtp.titan.email'
-    SMTP_PORT = 587
-    SMTP_USER = 'aramirez@solucionesatd.com'
-    SMTP_PASS = '17A07n95t%Rmz!'
-    FROM_ADDRESS = 'aramirez@solucionesatd.com'
+    SMTP_HOST = settings.SMTP_HOST
+    SMTP_PORT = settings.SMTP_PORT
+    SMTP_USER = settings.SMTP_USER
+    SMTP_PASS = settings.SMTP_PASS
+    FROM_ADDRESS = settings.FROM_ADDRESS
     FROM_NAME = 'MACTI Proto'
 
     @staticmethod
