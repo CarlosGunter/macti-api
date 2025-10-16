@@ -9,7 +9,6 @@ class KeycloakService:
 
     @classmethod
     async def _get_admin_token(cls) -> str:
-        """Obtiene un token de acceso usando client_credentials para la API de Admin."""
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -18,9 +17,6 @@ class KeycloakService:
                         "client_id": settings.KEYCLOAK_ADMIN_CLIENT_ID,
                         "client_secret": settings.KEYCLOAK_ADMIN_CLIENT_SECRET,
                         "grant_type": "client_credentials",
-                        # "username": settings.KEYCLOAK_USERNAME,
-                        # "password": settings.KEYCLOAK_PASSWORD,
-                        # "grant_type": "password",
                     }
                 )
                 response.raise_for_status()
@@ -32,10 +28,6 @@ class KeycloakService:
 
     @classmethod
     async def create_user(cls, user_data: dict) -> dict:
-        """
-        Crea un usuario en Keycloak.
-        user_data debe contener: email, name, last_name, password
-        """
         try:
             token = await cls._get_admin_token()
             payload = {
@@ -55,7 +47,6 @@ class KeycloakService:
                     headers={"Authorization": f"Bearer {token}"}
                 )
                 if response.status_code in [201, 204]:
-                    # Obtener user_id mediante la búsqueda
                     created_user = await cls.get_user_by_email(user_data["email"])
                     return {"created": True, "user_id": created_user.get("id")}
                 else:
@@ -89,3 +80,27 @@ class KeycloakService:
         except Exception as e:
             print(f"Error deleting Keycloak user {user_id}: {e}")
             return False
+
+     #Actualiza la contraseña de un usuario en Keycloak
+    @classmethod
+    async def update_user_password(cls, user_id: str, new_password: str) -> dict:
+        try:
+            token = await cls._get_admin_token()
+            payload = {
+                "type": "password",
+                "value": new_password,
+                "temporary": False
+            }
+            async with httpx.AsyncClient() as client:
+                url = f"{cls.USERS_API_URL}/{user_id}/reset-password"
+                response = await client.put(
+                    url,
+                    json=payload,
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if response.status_code == 204:
+                    return {"success": True}
+                else:
+                    return {"success": False, "error": response.text}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

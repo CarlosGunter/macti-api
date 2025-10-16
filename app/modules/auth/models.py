@@ -17,7 +17,7 @@ class AccountRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
-    email = Column(String, nullable=False, index=True, unique=True)
+    email = Column(String, nullable=False, index=True)
     course_id = Column(Integer, nullable=False)
 
     status = Column(
@@ -38,7 +38,7 @@ class MCT_Validacion(Base):
     __tablename__ = "MCT_Validacion"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, nullable=False, unique=True, index=True)
+    email = Column(String, nullable=False,  index=True)
     token = Column(String, nullable=False, unique=True)
     fecha_solicitud = Column(DateTime, default=datetime.utcnow)
     fecha_expiracion = Column(DateTime, nullable=True)
