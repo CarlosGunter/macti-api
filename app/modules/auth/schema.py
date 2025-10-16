@@ -5,7 +5,6 @@ class AccountRequestSchema(BaseModel):
     name: str
     last_name: str
     email: EmailStr
-    teacher: str
     course_id: int
 
 class ConfirmAccountSchema(BaseModel):
@@ -15,3 +14,6 @@ class ConfirmAccountSchema(BaseModel):
 class CreateAccountSchema(BaseModel):
     id: int
     password: str
+
+class EmailValidationSchema(BaseModel):
+    email: EmailStr

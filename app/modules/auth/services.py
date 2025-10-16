@@ -1,11 +1,11 @@
 """
 This module contains services for integrating with external APIs.
 """
-
+#instale pip install python-keycloak
+#instale también pip install pydantic-settings
+#a la fecha no sé porque me sale error en este arvhivo
 import os
 import httpx
-
-
 class KeycloakService:
     """
     Service for interacting with Keycloak Identity Provider API
