@@ -10,8 +10,8 @@ from app.core.database import SessionLocal
 from app.modules.auth.models import AccountRequest, AccountStatusEnum, MCT_Validacion
 from app.modules.auth.services.kc_service import KeycloakService
 
-TEST_EMAIL = "pedroramirez32@aragon.unam.mx"
-NEW_PASSWORD = "KiubolezCharls"
+TEST_EMAIL = "the.captain312@gmail.com"
+NEW_PASSWORD = "holaCharles"
 
 @pytest.mark.asyncio
 async def test_change_password_and_update_status():

@@ -64,3 +64,38 @@ class EmailService:
             return {"success": True, "message": f"Correo enviado a {to_email}", "token": token}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    @staticmethod
+    def validate_token(token: str):
+        try:
+            conn = sqlite3.connect('macti.db')
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT email, fecha_expiracion, bandera 
+                FROM MCT_Validacion 
+                WHERE token = ?
+            """, (token,))
+            result = cursor.fetchone()
+
+            if not result:
+                return {"success": False, "message": "Token no encontrado o inválido"}
+
+            email, fecha_expiracion, bandera = result
+            fecha_expiracion = datetime.fromisoformat(fecha_expiracion)
+
+            if datetime.now() > fecha_expiracion:
+                return {"success": False, "message": "El token ha expirado"}
+
+            # NO se cambia bandera aquí
+            return {
+                "success": True,
+                "data": {"correo": email},
+                "message": f"Correo {email} confirmado correctamente"
+            }
+
+        except sqlite3.Error as e:
+            return {"success": False, "message": f"Error de base de datos: {e}"}
+        finally:
+            if 'conn' in locals():
+                conn.close()
