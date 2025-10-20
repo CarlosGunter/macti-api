@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, Form
+from fastapi import APIRouter, Depends, Query, HTTPException, Form, Request
 from app.core.database import get_db
 from .controllers import AuthController
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
@@ -32,11 +32,22 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     result = await AuthController.confirm_account(data=body_info, db=db)
     return {"success": True, "data": result}
 
+
 # Crear cuenta en Keycloak y Moodle 
+#es este dónde se recibe la pass nueva para actulizar el key
 @router.post("/create-account", summary="Crear cuenta en Keycloak y Moodle")
-async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
-    result = await AuthController.create_account(data=body_info, db=db)
-    return {"success": True, "data": result}
+async def create_account(request: Request, db=Depends(get_db)):
+    try:
+        body = await request.json()
+        print("datos:", body)
+    except Exception:
+
+        form = await request.form()
+        print("datos excep:", dict(form))
+
+    # Esto lo dejamos comentado solo mientras debuggeas
+    # result = await AuthController.create_account(data=body_info, db=db)
+    return {"success": True}
 
 # Confirmar datos token
 @router.get("/confirmacion", summary="Confirmar email con token")
@@ -55,21 +66,3 @@ def confirm_email(token: str):
             "message": result.get("message", "Error desconocido")
         }
 
-
-@router.post("/complete-account", summary="Completar cuenta y actualizar contraseña con token")
-async def complete_account(
-    token: str = Form(...),
-    new_password: str = Form(...),
-    db=Depends(get_db)
-):
-    """
-    Valida el token, cambia la contraseña en Keycloak,
-    actualiza el estado y elimina el token de validación.
-    """
-    try:
-        result = await AuthController.complete_account(token=token, new_password=new_password, db=db)
-        return {"success": True, "data": result}
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

@@ -88,6 +88,7 @@ class EmailService:
                 return {"success": False, "message": "El token ha expirado"}
 
             # NO se cambia bandera aquí
+            #Retonar id
             return {
                 "success": True,
                 "data": {"correo": email},

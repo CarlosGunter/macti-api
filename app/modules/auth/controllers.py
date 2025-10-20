@@ -116,101 +116,59 @@ class AuthController:
             print(f"Error en confirm_account: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
-    #Esta es la que valida y hace el cambio de pass
-    @staticmethod
-    async def complete_account(token: str, new_password: str, db: Session):
-        from app.modules.auth.models import MCT_Validacion, AccountRequest
-        validation = db.query(MCT_Validacion).filter(
-            MCT_Validacion.token == token
-        ).first()
-
-        if not validation:
-            raise HTTPException(status_code=400, detail="Token inválido o ya usado")
-        account_request = db.query(AccountRequest).filter(
-            AccountRequest.email == validation.email
-        ).first()
-
-        if not account_request or not account_request.kc_id:
-            raise HTTPException(status_code=404, detail="Cuenta no encontrada")
-        result = await KeycloakService.update_user_password(account_request.kc_id, new_password)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=f"Error actualizando contraseña: {result.get('error')}")
-        account_request.status = "created"
-        db.delete(validation)
-        db.commit()
-        db.refresh(account_request)
-
-        return {"success": True, "message": "Cuenta activada, contraseña actualizada y token eliminado"}
 
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
         """
-        Crea una nueva cuenta de usuario en Keycloak y Moodle.
-        Es usado en el endpoint /create-account
+        Crear o actualizar cuenta en Keycloak y Moodle usando user_id y new_password enviados desde el front.
         """
-        user_id = data.id
-        password = data.password
-
-        if not all([user_id, password]):
-            raise HTTPException(status_code=400, detail="User ID and password are required")
-
-        # Fetch the account request
-        account_request = db.query(AccountRequest).filter(AccountRequest.id == user_id).first()
+        account_request = db.query(AccountRequest).filter(AccountRequest.id == data.user_id).first()
         if not account_request:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Account request with ID {user_id} not found"
-            )
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
 
-        if str(account_request.status) != "approved":
-            raise HTTPException(
-                status_code=400,
-                detail="Account request must be approved before creating an account"
-            )
-        
-        # Create the user in KC
-        kc_result = await KeycloakService.create_user({
-            "name": account_request.name,
-            "last_name": account_request.last_name,
-            "email": account_request.email,
-            "password": password
-        })
-        if not kc_result.get("created"):
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create user in Keycloak"
-            )
-        
-                # Create the user in Moodle
+        if str(account_request.status).lower() != "approved":
+            raise HTTPException(status_code=400, detail="La solicitud debe estar aprobada antes de crear la cuenta")
+
+        # Revisar si ya tiene kc_id (usuario existente en Keycloak)
+        if account_request.kc_id:
+            # Actualizar contraseña
+            kc_result = await KeycloakService.update_user_password(account_request.kc_id, data.new_password)
+            if not kc_result.get("success"):
+                raise HTTPException(status_code=500, detail=f"Error actualizando contraseña en Keycloak: {kc_result.get('error')}")
+        else:
+            # Crear usuario en Keycloak
+            kc_result = await KeycloakService.create_user({
+                "name": account_request.name,
+                "last_name": account_request.last_name,
+                "email": account_request.email,
+                "password": data.new_password
+            })
+            if not kc_result.get("created"):
+                raise HTTPException(status_code=500, detail=f"Error creando usuario en Keycloak: {kc_result.get('error')}")
+            account_request.kc_id = kc_result.get("user_id")
+
+        # Crear usuario en Moodle (puedes agregar lógica similar si ya existe)
         moodle_result = await MoodleService.create_user({
             "name": account_request.name,
             "last_name": account_request.last_name,
             "email": account_request.email,
             "course_id": account_request.course_id,
-            "password": password
+            "password": data.new_password
         })
         if not moodle_result.get("created"):
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create user in Moodle"
-            )
+            raise HTTPException(status_code=500, detail="Error creando usuario en Moodle")
 
-        # After creating the user in Moodle, enroll them in the course
-        await MoodleService.enroll_user(
-            user_id=moodle_result["id"], 
-            course_id=account_request.course_id
-        )
+        # Matricular usuario en el curso
+        await MoodleService.enroll_user(user_id=moodle_result["id"], course_id=account_request.course_id)
 
-        
-        # Insert ids into the BD
-        # account_request.status = "created"
-        # account_request.keycloak_id = kc_result.get("id")
-        # account_request.moodle_id = moodle_result.get("id")
-        # db.commit()
-        # db.refresh(account_request)
-        
+        # Actualizar estado de la solicitud
+        account_request.status = "created"
+        db.commit()
+        db.refresh(account_request)
+
         return {
-            "message": "Cuenta creada exitosamente en Keycloak y Moodle",
-            # "keycloak_id": kc_result.get("id"),
-            # "moodle_id": moodle_result.get("id")
+            "success": True,
+            "message": "Cuenta creada/actualizada exitosamente en Keycloak y Moodle",
+            "keycloak_id": account_request.kc_id,
+            "moodle_id": moodle_result.get("id")
         }

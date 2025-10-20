@@ -12,8 +12,9 @@ class ConfirmAccountSchema(BaseModel):
     status: Literal["pending", "approved", "rejected"]
 
 class CreateAccountSchema(BaseModel):
-    id: int
-    password: str
+    user_id: int
+    new_password: str
+
 
 class EmailValidationSchema(BaseModel):
     email: EmailStr
