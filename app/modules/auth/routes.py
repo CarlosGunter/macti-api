@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, Form
 from app.core.database import get_db
 from .controllers import AuthController
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
 from app.modules.auth.services.email_service import EmailService
+#pip install python-multipart
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -53,3 +54,22 @@ def confirm_email(token: str):
             "success": False,
             "message": result.get("message", "Error desconocido")
         }
+
+
+@router.post("/complete-account", summary="Completar cuenta y actualizar contraseña con token")
+async def complete_account(
+    token: str = Form(...),
+    new_password: str = Form(...),
+    db=Depends(get_db)
+):
+    """
+    Valida el token, cambia la contraseña en Keycloak,
+    actualiza el estado y elimina el token de validación.
+    """
+    try:
+        result = await AuthController.complete_account(token=token, new_password=new_password, db=db)
+        return {"success": True, "data": result}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
