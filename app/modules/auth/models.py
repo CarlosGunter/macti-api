@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.sql import func
 from app.core.database import Base
 from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column
 import enum
 
 class AccountStatusEnum(enum.Enum):
@@ -19,8 +20,8 @@ class AccountRequest(Base):
     last_name = Column(String, nullable=False)
     email = Column(String, nullable=False, index=True)
     course_id = Column(Integer, nullable=False)
-
-    status = Column(
+    #
+    status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
         default=AccountStatusEnum.pending,
         nullable=False

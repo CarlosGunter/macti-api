@@ -89,10 +89,19 @@ class EmailService:
 
             # NO se cambia bandera aquí
             #Retonar id
+            cursor.execute("SELECT id FROM account_requests WHERE email = ?", (email,))
+            user_row = cursor.fetchone()
+
+            if not user_row:
+                return {"success": False, "error": "User not found"}
+        
+            user_id = user_row[0]
+
+
             return {
                 "success": True,
-                "data": {"correo": email},
-                "message": f"Correo {email} confirmado correctamente"
+                "message": "Token válido",
+                "data": {"id": user_id, "email": email}
             }
 
         except sqlite3.Error as e:

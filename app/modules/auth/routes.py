@@ -36,19 +36,9 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
 # Crear cuenta en Keycloak y Moodle 
 #es este dónde se recibe la pass nueva para actulizar el key
 @router.post("/create-account", summary="Crear cuenta en Keycloak y Moodle")
-async def create_account(request: Request, db=Depends(get_db)):
-    try:
-        body = await request.json()
-        print("datos:", body)
-    except Exception:
-
-        form = await request.form()
-        print("datos excep:", dict(form))
-
-    # Esto lo dejamos comentado solo mientras debuggeas
-    # result = await AuthController.create_account(data=body_info, db=db)
-    return {"success": True}
-
+async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
+    """Crea una cuenta en Keycloak y Moodle (administrador)."""
+    return await AuthController.create_account(data=body_info, db=db)
 # Confirmar datos token
 @router.get("/confirmacion", summary="Confirmar email con token")
 def confirm_email(token: str):
