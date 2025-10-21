@@ -1,0 +1,10 @@
+### POST Request User
+POST http://localhost:8000/api/auth/request-account
+Content-Type: application/json
+
+{
+    "name": "testuser",
+    "last_name": "testlast",
+    "email": "the.captain312@gmail.com",
+    "course_id": 1
+}

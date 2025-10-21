@@ -1,17 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Enum
 from sqlalchemy.sql import func
 from app.core.database import Base
+from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column
+import enum
 
-class User(Base):
-    __tablename__ = "users"
+class AccountStatusEnum(enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    created = "created"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    last_name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False, index=True)
-    status = Column(String, default="Pending")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 class AccountRequest(Base):
     __tablename__ = "account_requests"
@@ -20,9 +19,31 @@ class AccountRequest(Base):
     name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     email = Column(String, nullable=False, index=True)
-    teacher = Column(String, nullable=False)
     course_id = Column(Integer, nullable=False)
-    status = Column(String, default="Pending")
+    #
+    status: Mapped[AccountStatusEnum] = mapped_column(
+        Enum(AccountStatusEnum, name="account_status_enum"),
+        default=AccountStatusEnum.pending,
+        nullable=False
+    )
+
     kc_id = Column(String, nullable=True)
     moodle_id = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f"<AccountRequest(email='{self.email}', status='{self.status.value}')>"
+
+
+class MCT_Validacion(Base):
+    __tablename__ = "MCT_Validacion"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False,  index=True)
+    token = Column(String, nullable=False, unique=True)
+    fecha_solicitud = Column(DateTime, default=datetime.utcnow)
+    fecha_expiracion = Column(DateTime, nullable=True)
+    bandera = Column(Integer, default=0)
+
+    def __repr__(self):
+        return f"<EmailValidation(email='{self.email}', is_used={self.bandera})>"

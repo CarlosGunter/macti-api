@@ -1,22 +1,19 @@
-from fastapi import APIRouter, Depends, Query
-
+from fastapi import APIRouter, Depends, Query, HTTPException, Form, Request
 from app.core.database import get_db
 from .controllers import AuthController
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
+from app.modules.auth.services.email_service import EmailService
+#pip install python-multipart
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-@router.post(
-    "/request-account",
-    summary="Endpoint que se encarga de crear una solicitud de cuenta",
-    description="La solicitud de cuenta se crea desde el perfil del estudiante (antes de inscribirse en un curso)"
-)
+# Crear solicitud de cuenta
+@router.post("/request-account", summary="Crear una solicitud de cuenta")
 async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
-    """Crea una nueva solicitud de cuenta para un estudiante."""
-    return AuthController.request_account(data=body_info, db=db)
+    result = AuthController.request_account(data=body_info, db=db)
+    return {"success": True, "data": result}
 
-
+# Listar solicitudes por curso
 @router.get(
     "/list-accounts-requests",
     summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
@@ -29,22 +26,33 @@ async def list_accounts_requests(
     """Lista todas las solicitudes de cuenta filtradas por curso."""
     return AuthController.list_accounts_requests(db=db, course_id=course_id)
 
-
-@router.patch(
-    "/confirm-account",
-    summary="Endpoint que se encarga de confirmar o rechazar una solicitud de cuenta",
-    description="El profesor puede confirmar o rechazar una solicitud de cuenta desde su perfil"
-)
+# Aprobar o rechazar solicitud y enviar correo
+@router.patch("/confirm-account", summary="Aprobar o rechazar solicitud y enviar correo")
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
-    """Confirma o rechaza una solicitud de cuenta (profesor)."""
-    return AuthController.confirm_account(data=body_info, db=db)
+    result = await AuthController.confirm_account(data=body_info, db=db)
+    return {"success": True, "data": result}
 
 
-@router.post(
-    "/create-account",
-    summary="Endpoint que se encarga de crear una cuenta en Keycloak y Moodle",
-    description="Este endpoint crea una cuenta en Keycloak y Moodle desde el perfil del administrador del sistema"
-)
+# Crear cuenta en Keycloak y Moodle 
+#es este dónde se recibe la pass nueva para actulizar el key
+@router.post("/create-account", summary="Crear cuenta en Keycloak y Moodle")
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     """Crea una cuenta en Keycloak y Moodle (administrador)."""
     return await AuthController.create_account(data=body_info, db=db)
+# Confirmar datos token
+@router.get("/confirmacion", summary="Confirmar email con token")
+def confirm_email(token: str):
+    result = EmailService.validate_token(token)
+
+    if result["success"]:
+        return {
+            "success": True,
+            "message": result["message"],
+            "data": result.get("data")
+        }
+    else:
+        return {
+            "success": False,
+            "message": result.get("message", "Error desconocido")
+        }
+
