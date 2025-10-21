@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
 from app.modules.auth.services.email_service import EmailService
+from app.modules.auth.services.moodle_service import MoodleService
 from .models import AccountRequest, AccountStatusEnum
 from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
 from app.modules.auth.services.kc_service import KeycloakService
@@ -148,24 +149,24 @@ class AuthController:
             account_request.kc_id = kc_result.get("user_id")
 
         # Crear usuario en Moodle (puedes agregar lógica similar si ya existe)
-        """ moodle_result = await MoodleService.create_user({
+        moodle_result = await MoodleService.create_user({
             "name": account_request.name,
             "last_name": account_request.last_name,
             "email": account_request.email,
             "course_id": account_request.course_id,
             "password": data.new_password
-        }) """
-        """ if not moodle_result.get("created"):
-            raise HTTPException(status_code=500, detail="Error creando usuario en Moodle") """
-
+        })
+        if not moodle_result.get("created"):
+            raise HTTPException(status_code=500, detail="Error creando usuario en Moodle") 
+        
         # Matricular usuario en el curso
-        """ await MoodleService.enroll_user(user_id=moodle_result["id"], course_id=account_request.course_id) """
-
+        await MoodleService.enroll_user(user_id=moodle_result["id"], course_id=account_request.course_id) 
+        # "moodle_id": moodle_result.get("id")
+        
         # Actualizar estado de la solicitud
-        account_request.status = "created"
+        account_request.status = AccountStatusEnum.created
         db.commit()
         db.refresh(account_request)
-        #"moodle_id": moodle_result.get("id")
         return {
             "success": True,
             "message": "Cuenta creada/actualizada exitosamente en Keycloak y Moodle",
