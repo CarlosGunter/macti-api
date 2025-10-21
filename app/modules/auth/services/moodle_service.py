@@ -14,11 +14,6 @@ class MoodleService:
         """
         Create a user in Moodle using the REST API.
         """
-        print({
-            "MoodleService.MOODLE_TOKEN": MoodleService.MOODLE_TOKEN,
-            "MoodleService.MOODLE_URL": MoodleService.MOODLE_URL
-        })
-
         endpoint = MoodleService.MOODLE_URL
         params = {
             "wstoken": MoodleService.MOODLE_TOKEN,
@@ -26,48 +21,34 @@ class MoodleService:
             "moodlewsrestformat": "json",
         }
 
+        print("DEBUG user_data sent to Moodle:", user_data)
+
         data = {
             "users[0][username]": user_data["email"].split("@")[0],
-            "users[0][password]": user_data.get("password", "Password1234"),
+            "users[0][password]": user_data.get("password", "Password123!"),
             "users[0][firstname]": user_data.get("name", "User"),
             "users[0][lastname]": user_data.get("last_name", "NA"),
             "users[0][email]": user_data["email"],
-            "users[0][auth]": "manual",
-            "users[0][country]": "MX",
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.post(endpoint, params=params, data=data)
-                response.raise_for_status()
-                try:
-                    result = response.json()
-                except Exception as e:
-                    print(f"Error al parsear JSON de Moodle: {e}")
-                    return {"error": "Respuesta no válida del servidor Moodle", "created": False}
-        except httpx.RequestError as e:
-            print(f"Error de conexión con Moodle: {e}")
-            return {"error": "No se pudo conectar con Moodle", "created": False}
-        except httpx.HTTPStatusError as e:
-            print(f"Error HTTP al crear usuario en Moodle: {e}")
-            return {"error": f"HTTP error: {e.response.status_code}", "created": False}
-        except Exception as e:
-            print(f"Error inesperado al crear usuario: {e}")
-            return {"error": str(e), "created": False}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, params=params, data=data)
+            response.raise_for_status()
+            result = response.json()
 
-        # Validar si Moodle devolvió un error
+        print("DEBUG Moodle response (create_user):", result)
+
         if isinstance(result, dict) and "exception" in result:
-            print("Moodle API returned an exception:", result)
-            return {"error": result, "created": False}
+            raise Exception(f"Error creating user in Moodle: {result}")
 
-        return {**result[0], "created": True} if isinstance(result, list) else {"result": result, "created": True}
+        return {**result[0], "created": True}
 
     @staticmethod
     async def enroll_user(user_id, course_id):
         """
         Enroll a user in a Moodle course using the REST API.
         """
-        endpoint = MoodleService.MOODLE_URL
+        endpoint = f"{MoodleService.MOODLE_URL}/webservice/rest/server.php"
         params = {
             "wstoken": MoodleService.MOODLE_TOKEN,
             "wsfunction": "enrol_manual_enrol_users",
@@ -83,32 +64,17 @@ class MoodleService:
             "enrolments[0][suspend]": 0,
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.post(endpoint, params=params, data=data)
-                response.raise_for_status()
-                result = response.json()
-        except httpx.RequestError as e:
-            print(f"Error de conexión con Moodle (enroll_user): {e}")
-            return {"error": "No se pudo conectar con Moodle", "enrolled": False}
-        except httpx.HTTPStatusError as e:
-            print(f"Error HTTP al inscribir usuario en Moodle: {e}")
-            return {"error": f"HTTP error: {e.response.status_code}", "enrolled": False}
-        except Exception as e:
-            print(f"Error inesperado al inscribir usuario: {e}")
-            return {"error": str(e), "enrolled": False}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, params=params, data=data)
+            response.raise_for_status()
+            result = response.json()
 
         print("DEBUG Moodle response (enroll_user):", result)
 
         if isinstance(result, dict) and "exception" in result:
             if result.get("message") == "error/Message was not sent.":
-                print("Moodle no envió correo, pero el usuario fue inscrito")
-                return {
-                    "user_id": user_id,
-                    "course_id": course_id,
-                    "enrolled": True,
-                    "warning": result
-                }
-            return {"error": result, "enrolled": False}
+                print("Moodle could not send email, but the user was enrolled anyway")
+                return {"user_id": user_id, "course_id": course_id, "enrolled": True, "warning": result}
+            raise Exception(f"Error enrolling user in Moodle: {result}")
 
         return {"user_id": user_id, "course_id": course_id, "enrolled": True}
