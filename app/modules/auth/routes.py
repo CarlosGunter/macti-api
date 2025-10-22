@@ -45,15 +45,4 @@ async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
 # Confirmar datos token
 @router.get("/confirmacion", summary="Confirmar email con token")
 def confirm_email(token: str):
-    result = EmailService.validate_token(token)
-
-    if result["success"]:
-        return {
-            "message": result["message"],
-            "data": result.get("data")
-        }
-    else:
-        return {
-            "message": result.get("message", "Error desconocido")
-        }
-
+    return EmailService.validate_token(token)

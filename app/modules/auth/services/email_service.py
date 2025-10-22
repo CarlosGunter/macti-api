@@ -3,6 +3,7 @@ from email.message import EmailMessage
 from uuid import uuid4
 import sqlite3
 from datetime import datetime, timedelta
+from fastapi import HTTPException
 from app.core.config import settings
 
 class EmailService:
@@ -79,13 +80,25 @@ class EmailService:
             result = cursor.fetchone()
 
             if not result:
-                return {"success": False, "message": "Token no encontrado o inválido"}
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error_code": "TOKEN_INVALIDO",
+                        "message": "Token inválido"
+                    }
+                )
 
             email, fecha_expiracion, bandera = result
             fecha_expiracion = datetime.fromisoformat(fecha_expiracion)
 
             if datetime.now() > fecha_expiracion:
-                return {"success": False, "message": "El token ha expirado"}
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "error_code": "TOKEN_EXPIRADO",
+                        "message": "El token ha expirado"
+                    }
+                )
 
             # NO se cambia bandera aquí
             #Retonar id
@@ -93,19 +106,34 @@ class EmailService:
             user_row = cursor.fetchone()
 
             if not user_row:
-                return {"success": False, "error": "User not found"}
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "error_code": "NO_ENCONTRADO",
+                        "message": "No se encontró un usuario con este correo"
+                    }
+                )
         
             user_id = user_row[0]
 
 
             return {
-                "success": True,
-                "message": "Token válido",
-                "data": {"id": user_id, "email": email}
+                "id": user_id,
+                "email": email,
             }
 
         except sqlite3.Error as e:
-            return {"success": False, "message": f"Error de base de datos: {e}"}
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error_code": "DB_ERROR",
+                    "message": f"Error de base de datos: {e}"
+                }
+            )
+
+        except HTTPException as httpe:
+            raise httpe
+        
         finally:
             if 'conn' in locals():
                 conn.close()
