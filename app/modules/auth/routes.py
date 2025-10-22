@@ -4,7 +4,7 @@ from .controllers.request_account import RequestAccountController
 from .controllers.list_account_requests import ListAccountRequestsController
 from .controllers.change_status import ChangeStatusController
 from .controllers.create_account import CreateAccountController
-from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema
+from .schema import AccountRequestSchema, ConfirmAccountSchema, CreateAccountSchema, AccountRequestResponseList
 from app.modules.auth.services.email_service import EmailService
 #pip install python-multipart
 
@@ -20,7 +20,8 @@ async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
 @router.get(
     "/list-accounts-requests",
     summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
-    description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso"
+    description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso",
+    response_model=AccountRequestResponseList
 )
 async def list_accounts_requests(
     course_id: int = Query(description="Filtra las solicitudes por ID de curso"),
