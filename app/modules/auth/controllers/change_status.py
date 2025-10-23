@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.modules.auth.services.email_service import EmailService
-from ..models import AccountRequest
+from ..models import AccountRequest, AccountStatusEnum
 from ..schema import ConfirmAccountSchema
 from app.modules.auth.services.kc_service import KeycloakService
 
@@ -9,7 +9,7 @@ class ChangeStatusController:
     @staticmethod
     async def change_status(data: ConfirmAccountSchema, db: Session):
         request_id = data.id
-        status = data.status.lower()
+        status = data.status
 
         try:
             account_request = db.query(AccountRequest).filter(AccountRequest.id == request_id).first()
@@ -26,7 +26,7 @@ class ChangeStatusController:
             db.commit()
             db.refresh(account_request)
 
-            if status == "approved":
+            if status == AccountStatusEnum.approved:
                 user_email = account_request.email
                 user_firstname = account_request.name
                 user_lastname = account_request.last_name
