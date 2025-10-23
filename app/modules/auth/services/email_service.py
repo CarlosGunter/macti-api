@@ -30,6 +30,10 @@ class EmailService:
             # Elimina cualquier token anterior del mismo email
             cursor.execute("DELETE FROM MCT_Validacion WHERE email = ?", (to_email,))
 
+            # Si institute viene como enum, convertir a string
+            if hasattr(institute, "value"):
+                institute = institute.value
+
             # Inserta nuevo token
             cursor.execute("""
                 INSERT INTO MCT_Validacion (email, token, fecha_solicitud, fecha_expiracion, bandera, institute)
@@ -43,6 +47,7 @@ class EmailService:
         finally:
             if 'conn' in locals():
                 conn.close()
+
 
     @staticmethod
     def send_validation_email(to_email: str, institute: str, subject: str = None, body: str = None, generate_token: bool = True):
