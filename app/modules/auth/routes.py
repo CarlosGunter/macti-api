@@ -13,6 +13,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # Crear solicitud de cuenta
 @router.post("/request-account", summary="Crear una solicitud de cuenta")
 async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
+    print("Datos recibidos del front:", body_info.dict())
     result = RequestAccountController.request_account(data=body_info, db=db)
     return {"success": True, "data": result}
 
