@@ -14,7 +14,11 @@ class EmailService:
     FROM_NAME = 'MACTI Proto'
 
     @staticmethod
-    def generate_and_save_token(to_email: str):
+    def generate_and_save_token(to_email: str, institute: str):
+        """
+        Genera un token UUID, lo guarda en la base de datos junto con la fecha de solicitud,
+        expiración y el instituto.
+        """
         token = str(uuid4())
         fecha_solicitud = datetime.now()
         fecha_expiracion = fecha_solicitud + timedelta(hours=12)
@@ -22,11 +26,16 @@ class EmailService:
         try:
             conn = sqlite3.connect('macti.db')
             cursor = conn.cursor()
+
+            # Elimina cualquier token anterior del mismo email
             cursor.execute("DELETE FROM MCT_Validacion WHERE email = ?", (to_email,))
+
+            # Inserta nuevo token
             cursor.execute("""
-                INSERT INTO MCT_Validacion (email, token, fecha_solicitud, fecha_expiracion, bandera)
-                VALUES (?, ?, ?, ?, 0)
-            """, (to_email, token, fecha_solicitud, fecha_expiracion))
+                INSERT INTO MCT_Validacion (email, token, fecha_solicitud, fecha_expiracion, bandera, institute)
+                VALUES (?, ?, ?, ?, 0, ?)
+            """, (to_email, token, fecha_solicitud, fecha_expiracion, institute))
+
             conn.commit()
             return {"success": True, "token": token}
         except sqlite3.Error as e:
@@ -36,12 +45,15 @@ class EmailService:
                 conn.close()
 
     @staticmethod
-    def send_validation_email(to_email: str, subject: str = None, body: str = None, generate_token: bool = True):
+    def send_validation_email(to_email: str, institute: str, subject: str = None, body: str = None, generate_token: bool = True):
+        """
+        Envía un correo de validación. Genera token si generate_token=True.
+        """
         token = None
         confirm_link = ""
 
         if generate_token:
-            token_result = EmailService.generate_and_save_token(to_email)
+            token_result = EmailService.generate_and_save_token(to_email, institute)
             if not token_result["success"]:
                 return {"success": False, "error": token_result["error"]}
             token = token_result["token"]
@@ -67,6 +79,9 @@ class EmailService:
 
     @staticmethod
     def validate_token(token: str):
+        """
+        Valida que el token exista y no haya expirado. Retorna el email y el user_id.
+        """
         try:
             conn = sqlite3.connect('macti.db')
             cursor = conn.cursor()
@@ -87,16 +102,13 @@ class EmailService:
             if datetime.now() > fecha_expiracion:
                 return {"success": False, "message": "El token ha expirado"}
 
-            # NO se cambia bandera aquí
-            #Retonar id
+            # Obtener id del usuario
             cursor.execute("SELECT id FROM account_requests WHERE email = ?", (email,))
             user_row = cursor.fetchone()
-
             if not user_row:
                 return {"success": False, "error": "User not found"}
-        
-            user_id = user_row[0]
 
+            user_id = user_row[0]
 
             return {
                 "success": True,
