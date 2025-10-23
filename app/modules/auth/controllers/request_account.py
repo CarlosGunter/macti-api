@@ -15,13 +15,17 @@ class RequestAccountController:
                 status_code=400,
                 detail={"error_code": "EMAIL_EXISTS", "message": "El correo ya tiene una solicitud."}
             )
+        """
+            Agregué el instituto para cap en la bd 
+        """
         try:
             db_account_request = AccountRequest(
                 name=data.name,
                 last_name=data.last_name,
                 email=data.email,
                 course_id=data.course_id,
-                status=AccountStatusEnum.pending
+                status=AccountStatusEnum.pending,
+                institute=data.institute
             )
             db.add(db_account_request)
             db.commit()
