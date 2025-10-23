@@ -57,6 +57,9 @@ class CreateAccountController:
         
         # Actualizar estado de la solicitud
         account_request.status = AccountStatusEnum.created
+        token_record = db.query(MCT_Validacion).filter(MCT_Validacion.email == account_request.email).first()
+        if token_record:
+             db.delete(token_record)
         db.commit()
         db.refresh(account_request)
         return {
