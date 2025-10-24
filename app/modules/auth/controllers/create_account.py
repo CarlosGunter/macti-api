@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.modules.auth.services.moodle_service import MoodleService
-from ..models import AccountRequest, AccountStatusEnum
+from ..models import AccountRequest, AccountStatusEnum, MCT_Validacion
 from ..schema import CreateAccountSchema
 from app.modules.auth.services.kc_service import KeycloakService
+
 
 class CreateAccountController:
     @staticmethod
@@ -57,6 +58,10 @@ class CreateAccountController:
         
         # Actualizar estado de la solicitud
         account_request.status = AccountStatusEnum.created
+        token_record = db.query(MCT_Validacion).filter(MCT_Validacion.email == account_request.email).first()
+        if token_record:
+            db.delete(token_record)
+        
         db.commit()
         db.refresh(account_request)
         return {

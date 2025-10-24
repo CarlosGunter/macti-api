@@ -71,3 +71,9 @@ Después de que tu PR haya sido mergeado, asegúrate de actualizar tu rama local
 git checkout dev
 git pull origin dev
 ```
+
+Si lo deseas, puedes eliminar tu rama local (la remota es eliminada por el sistema de PRs):
+
+```bash
+git branch -d feature/nombre-funcionalidad  # o fix/nombre-correcion
+```
