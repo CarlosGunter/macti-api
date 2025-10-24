@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     KEYCLOAK_PASSWORD: str = "admin"
     KEYCLOAK_ADMIN_CLIENT_SECRET: str = ""
 
-    MOODLE_URL: str ="http://13.58.33.203:8084/webservice/rest/server.php"
-    MOODLE_TOKEN: str ="6207d316aa8e794552211ee6138a81d4"
+    MOODLE_URL: str = "http://localhost/moodle"
+    MOODLE_TOKEN: str = ""
 
     SMTP_HOST: str = "smtp.titan.email"
     SMTP_PORT: int = 587
