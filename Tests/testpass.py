@@ -1,10 +1,8 @@
 import asyncio
-import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
-from app.modules.auth.models import MCT_Validacion, AccountRequest, AccountStatusEnum
+from app.modules.auth.models import AccountRequest, AccountStatusEnum
 from app.modules.auth.controllers import AuthController
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.email_service import EmailService
