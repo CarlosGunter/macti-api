@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
 
+
 class AccountStatusEnum(enum.Enum):
     pending = "pending"
     approved = "approved"
@@ -24,12 +25,14 @@ class AccountRequest(Base):
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
         default=AccountStatusEnum.pending,
-        nullable=False
+        nullable=False,
     )
 
     kc_id = Column(String, nullable=True)
     moodle_id = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     def __repr__(self):
         return f"<AccountRequest(email='{self.email}', status='{self.status.value}')>"
@@ -39,7 +42,7 @@ class MCT_Validacion(Base):
     __tablename__ = "MCT_Validacion"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, nullable=False,  index=True)
+    email = Column(String, nullable=False, index=True)
     token = Column(String, nullable=False, unique=True)
     fecha_solicitud = Column(DateTime, default=datetime.utcnow)
     fecha_expiracion = Column(DateTime, nullable=True)
