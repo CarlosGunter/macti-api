@@ -1,9 +1,11 @@
-from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
+
 from ..models import AccountRequest, AccountStatusEnum, MCT_Validacion
 from ..schema import CreateAccountSchema
-from app.modules.auth.services.kc_service import KeycloakService
 
 
 class CreateAccountController:
@@ -37,7 +39,7 @@ class CreateAccountController:
         if str(account_request.kc_id):
             # Actualizar contraseña
             kc_result = await KeycloakService.update_user_password(
-                account_request.kc_id, data.new_password
+                str(account_request.kc_id), data.new_password
             )
             if not kc_result.get("success"):
                 raise HTTPException(

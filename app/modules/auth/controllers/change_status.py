@@ -60,7 +60,7 @@ class ChangeStatusController:
                 token_data = EmailService.generate_and_save_token(user_email)
                 if not token_data.get("success"):
                     # Si falla, eliminamos Keycloak
-                    await KeycloakService.delete_user(account_request.kc_id)
+                    await KeycloakService.delete_user(str(account_request.kc_id))
                     raise HTTPException(
                         status_code=502,
                         detail={
@@ -68,10 +68,7 @@ class ChangeStatusController:
                             "message": f"Error al generar token: {token_data.get('error')}",
                         },
                     )
-                token = token_data.get("token")
-                confirm_link = (
-                    f"http://localhost:3000/registro/confirmacion?token={token}"
-                )
+
                 email_result = EmailService.send_validation_email(user_email)
                 if not email_result.get("success"):
                     print(
