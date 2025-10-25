@@ -16,5 +16,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.3.0",
     "ruff>=0.14.2",
 ]
+
+[tool.pyright]
+exclude = [".venv"]
+venvPath = "."
+venv = ".venv"
