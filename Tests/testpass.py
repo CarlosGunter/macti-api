@@ -1,11 +1,5 @@
-import asyncio
-import uuid
-from datetime import datetime, timezone
-
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
-from app.modules.auth.models import MCT_Validacion, AccountRequest, AccountStatusEnum
-from app.modules.auth.controllers import AuthController
+from app.modules.auth.models import AccountRequest, AccountStatusEnum
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.email_service import EmailService
 
@@ -46,7 +40,9 @@ async def ensure_user_in_keycloak(email):
 
 async def simulate_profesor_approves(db: Session, email: str):
     account_request = db.query(AccountRequest).filter(AccountRequest.email == email).first()
-    account_request.status = "approved"
+    if not account_request:
+        raise Exception(f"No existe la solicitud para {email}")
+    account_request.status = AccountStatusEnum.approved
     db.commit()
     db.refresh(account_request)
 
@@ -57,24 +53,3 @@ async def simulate_profesor_approves(db: Session, email: str):
     print(f"Token generado para {email}: {token_data.get('token')}")
     return token_data.get("token")
 
-async def complete_account_flow(db: Session, token: str, new_password: str):
-    result = await AuthController.complete_account(token=token, new_password=new_password, db=db)
-    print("Resultado de complete_account:", result)
-
-async def test_complete_flow():
-    db = SessionLocal()
-    try:
-  
-        simulate_add_request(db, TEST_EMAIL)
-
-        
-        token = await simulate_profesor_approves(db, TEST_EMAIL)
-
-        
-        await complete_account_flow(db, token, NEW_PASSWORD)
-
-    finally:
-        db.close()
-
-if __name__ == "__main__":
-    asyncio.run(test_complete_flow())

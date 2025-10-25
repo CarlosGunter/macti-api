@@ -33,11 +33,18 @@ class EmailService:
         except sqlite3.Error as e:
             return {"success": False, "error": f"Error en BD: {e}"}
         finally:
-            if 'conn' in locals():
-                conn.close()
+            conn_obj = locals().get('conn', None)
+            if conn_obj is not None:
+                close_method = getattr(conn_obj, "close", None)
+                if callable(close_method):
+                    try:
+                        close_method()
+                    except Exception:
+                        # Ignorar errores al cerrar la conexión
+                        pass
 
     @staticmethod
-    def send_validation_email(to_email: str, subject: str = None, body: str = None, generate_token: bool = True):
+    def send_validation_email(to_email: str, subject: str | None = None, body: str | None = None, generate_token: bool = True):
         token = None
         confirm_link = ""
 
@@ -135,5 +142,12 @@ class EmailService:
             raise httpe
         
         finally:
-            if 'conn' in locals():
-                conn.close()
+            conn_obj = locals().get('conn', None)
+            if conn_obj is not None:
+                close_method = getattr(conn_obj, "close", None)
+                if callable(close_method):
+                    try:
+                        close_method()
+                    except Exception:
+                        # Ignorar errores al cerrar la conexión
+                        pass

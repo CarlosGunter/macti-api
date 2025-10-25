@@ -1,4 +1,5 @@
-import requests
+import httpx
+
 url = "https://pruebasm.solucionesatd.com/webservice/rest/server.php"
 TOKEN = "cf01468d904ad4a3983ab7c0d7efaf69"
 nuevo_usuario = {
@@ -24,9 +25,9 @@ data = {
 }
 
 try:
-    r = requests.post(url, data=data, headers=headers, timeout=15)
+    r = httpx.post(url, data=data, headers=headers, timeout=15)
     r.raise_for_status()  # Lanza error si el código HTTP no es 200
-except requests.exceptions.RequestException as e:
+except httpx.HTTPError as e:
     print("Error en la petición:", e)
     exit()
 

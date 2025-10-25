@@ -34,7 +34,7 @@ class CreateAccountController:
         # Revisar si ya tiene kc_id (usuario existente en Keycloak)
         if str(account_request.kc_id):
             # Actualizar contraseña
-            kc_result = await KeycloakService.update_user_password(account_request.kc_id, data.new_password)
+            kc_result = await KeycloakService.update_user_password(str(account_request.kc_id), data.new_password)
             if not kc_result.get("success"):
                 raise HTTPException(
                     status_code=502,
