@@ -88,21 +88,12 @@ class CreateAccountController:
         
         # Actualizar estado de la solicitud
         account_request.status = AccountStatusEnum.created
-
-        # Guardar la cuenta en la base de datos
-        db.add(account_request)
-        db.commit()
-        db.refresh(account_request)  # Aquí ya tienes account_request.id válido
-
-        # Buscar la validación por email
         token_record = db.query(MCT_Validacion).filter(MCT_Validacion.email == account_request.email).first()
         if token_record:
-            # Asignar directamente el objeto account_request
-            token_record.account = account_request  # SQLAlchemy llenará automáticamente account_id
-            db.commit()
-            db.refresh(token_record)
-
-        # Retornar mensaje
+            db.delete(token_record)
+        
+        db.commit()
+        db.refresh(account_request)
         return {
             "message": "Cuenta creada/actualizada exitosamente en Keycloak y Moodle",
         }
