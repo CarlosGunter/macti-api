@@ -52,6 +52,7 @@ coverage.xml
 *.log
 local_settings.py
 db.sqlite3
+*.db
 
 # Flask stuff:
 instance/
@@ -102,6 +103,8 @@ venv.bak/
 
 # IDE specific files
 .idea/
-.vscode/
 *.swp
 *.swo
+
+# GitHub Copilot
+.github/
