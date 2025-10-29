@@ -4,14 +4,18 @@ from fastapi import HTTPException
 from ..models import AccountRequest, AccountStatusEnum, InstituteEnum  
 from ..schema import AccountRequestSchema
 
+
 class RequestAccountController:
     @staticmethod
     def request_account(data: AccountRequestSchema, db: Session):
-        
+
         existing_request = db.query(AccountRequest).filter(
-            AccountRequest.email == data.email
+            AccountRequest.email == data.email,
+            AccountRequest.institute == data.institute
         ).first()
-        if existing_request:
+
+        # Si ya existe una solicitud con el mismo email e instituto, devolver error.
+        if existing_request is not None:
             raise HTTPException(
                 status_code=400,
                 detail={
