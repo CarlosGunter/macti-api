@@ -27,9 +27,6 @@ class ChangeStatusController:
                 user_email = account_request.email
                 user_firstname = account_request.name
                 user_lastname = account_request.last_name
-                institute = account_request.institute  
-
-                # Crear usuario en Keycloak
                 keycloak_result = await KeycloakService.create_user({
                     "email": user_email,
                     "name": user_firstname,
@@ -45,8 +42,7 @@ class ChangeStatusController:
 
                 account_request.kc_id = keycloak_result.get("user_id")
 
-                # Generar token y enviar correo de validación
-                token_data = EmailService.generate_and_save_token(user_email, institute)
+                token_data = EmailService.generate_and_save_token(user_email)
                 if not token_data.get("success"):
                     # Si falla, eliminamos Keycloak
                     await KeycloakService.delete_user(account_request.kc_id)
@@ -54,13 +50,9 @@ class ChangeStatusController:
                         status_code=500,
                         detail=f"Error al generar token: {token_data.get('error')}"
                     )
-
                 token = token_data.get("token")
-                email_result = EmailService.send_validation_email(
-                    to_email=user_email,
-                    institute=institute
-                )
-
+                confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
+                email_result = EmailService.send_validation_email(user_email)
                 if not email_result.get("success"):
                     print(f"ALERTA: Falló el envío de correo para {user_email}: {email_result.get('error')}")
                     return {
@@ -68,7 +60,6 @@ class ChangeStatusController:
                         "message": "Cuenta creada, pero falló el envío del correo de validación.",
                         "token_sent": token
                     }
-
                 db.commit()
                 db.refresh(account_request)
 

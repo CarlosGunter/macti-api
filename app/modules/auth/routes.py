@@ -13,7 +13,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # Crear solicitud de cuenta
 @router.post("/request-account", summary="Crear una solicitud de cuenta")
 async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
-    print("Datos recibidos del front:", body_info.dict())
     result = RequestAccountController.request_account(data=body_info, db=db)
     return {"success": True, "data": result}
 
@@ -46,17 +45,22 @@ async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
 # Confirmar datos token
 @router.get("/confirmacion", summary="Confirmar email con token")
 def confirm_email(token: str):
-    result = EmailService.validate_token(token)
-
-    if result["success"]:
+    try:
+        result = EmailService.validate_token(token)
+        # Aquí result ya contiene id y email como me lo pediste
         return {
             "success": True,
-            "message": result["message"],
-            "data": result.get("data")
+            "message": "Token válido",
+            "data": result
         }
-    else:
+    except HTTPException as e:
         return {
             "success": False,
-            "message": result.get("message", "Error desconocido")
+            "message": e.detail.get("message", "Error desconocido"),
+            "error_code": e.detail.get("error_code")
         }
-
+    except Exception as e:
+        return {
+            "success": False,
+            "message": str(e)
+        }
