@@ -59,6 +59,15 @@ class EmailService:
                     except Exception:
                         # Ignorar errores al cerrar la conexión
                         pass
+            conn_obj = locals().get('conn', None)
+            if conn_obj is not None:
+                close_method = getattr(conn_obj, "close", None)
+                if callable(close_method):
+                    try:
+                        close_method()
+                    except Exception:
+                        # Ignorar errores al cerrar la conexión
+                        pass
 
     @staticmethod
     def send_validation_email(to_email: str, subject: str | None = None, body: str | None = None, generate_token: bool = True):
@@ -111,7 +120,7 @@ class EmailService:
                         "message": "Token inválido"
                     }
                 )
-
+            
             email, fecha_expiracion, bandera = result
             fecha_expiracion = datetime.fromisoformat(fecha_expiracion)
 
@@ -123,6 +132,7 @@ class EmailService:
                         "message": "El token ha expirado"
                     }
                 )
+
 
             # NO se cambia bandera aquí
             #Retonar id
@@ -137,13 +147,14 @@ class EmailService:
                         "message": "No se encontró un usuario con este correo"
                     }
                 )
+
         
             user_id = user_row[0]
 
 
             return {
                 "id": user_id,
-                "email": email,
+                "email": email
             }
 
         except sqlite3.Error as e:

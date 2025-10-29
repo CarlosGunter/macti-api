@@ -81,7 +81,7 @@ class KeycloakService:
             print(f"Error deleting Keycloak user {user_id}: {e}")
             return False
 
-     #Actualiza la contraseña de un usuario en Keycloak
+    #Actualiza la contraseña de un usuario en Keycloak
     @classmethod
     async def update_user_password(cls, user_id: str, new_password: str) -> dict:
         try:
