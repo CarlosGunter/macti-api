@@ -7,11 +7,11 @@ nuevo_usuario = {
     "password": "Pass123!",
     "firstname": "Nombre",
     "lastname": "Apellido",
-    "email": "correo@dominio.com"
+    "email": "correo@dominio.com",
 }
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Content-Type": "application/x-www-form-urlencoded"
+    "Content-Type": "application/x-www-form-urlencoded",
 }
 data = {
     "wstoken": TOKEN,
@@ -21,7 +21,7 @@ data = {
     "users[0][password]": nuevo_usuario["password"],
     "users[0][firstname]": nuevo_usuario["firstname"],
     "users[0][lastname]": nuevo_usuario["lastname"],
-    "users[0][email]": nuevo_usuario["email"]
+    "users[0][email]": nuevo_usuario["email"],
 }
 
 try:

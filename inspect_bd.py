@@ -11,7 +11,6 @@ for table in inspector.get_table_names():
     for col in inspector.get_columns(table):
         print(f" - {col['name']} ({col['type']})")
 
-
     with engine.connect() as conn:
         result = conn.execute(text(f"SELECT * FROM {table}")).fetchall()
         print(f"\n Datos en {table}:")

@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
 
+
 class AccountStatusEnum(enum.Enum):
     pending = "pending"
     approved = "approved"

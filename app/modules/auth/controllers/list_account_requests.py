@@ -4,6 +4,7 @@ from sqlalchemy import select, cast, String
 from fastapi import HTTPException
 from ..models import AccountRequest
 
+
 class ListAccountRequestsController:
     @staticmethod
     def list_accounts_requests(db: Session, course_id: int):
@@ -28,15 +29,12 @@ class ListAccountRequestsController:
                 status_code=500,
                 detail={
                     "error_code": "DB_ERROR",
-                    "message": "Error al obtener solicitudes"
-                }
+                    "message": "Error al obtener solicitudes",
+                },
             )
-        
+
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail={
-                    "error_code": "ERROR_DESCONOCIDO",
-                    "message": str(e)
-                }
+                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
             )

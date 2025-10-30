@@ -1,5 +1,7 @@
 import httpx
+
 from app.core.config import settings
+
 
 class KeycloakService:
     BASE_URL = settings.KEYCLOAK_SERVER_URL
@@ -17,7 +19,7 @@ class KeycloakService:
                         "client_id": settings.KEYCLOAK_ADMIN_CLIENT_ID,
                         "client_secret": settings.KEYCLOAK_ADMIN_CLIENT_SECRET,
                         "grant_type": "client_credentials",
-                    }
+                    },
                 )
                 response.raise_for_status()
                 return response.json()["access_token"]
@@ -37,14 +39,18 @@ class KeycloakService:
                 "lastName": user_data["last_name"],
                 "enabled": True,
                 "credentials": [
-                    {"type": "password", "value": user_data["password"], "temporary": False}
-                ]
+                    {
+                        "type": "password",
+                        "value": user_data["password"],
+                        "temporary": False,
+                    }
+                ],
             }
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     cls.USERS_API_URL,
                     json=payload,
-                    headers={"Authorization": f"Bearer {token}"}
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 if response.status_code in [201, 204]:
                     created_user = await cls.get_user_by_email(user_data["email"])
@@ -61,7 +67,7 @@ class KeycloakService:
             response = await client.get(
                 cls.USERS_API_URL,
                 params={"email": email},
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
             users = response.json()
             return users[0] if users else {}
@@ -73,30 +79,23 @@ class KeycloakService:
             async with httpx.AsyncClient() as client:
                 url = f"{cls.USERS_API_URL}/{user_id}"
                 response = await client.delete(
-                    url,
-                    headers={"Authorization": f"Bearer {token}"}
+                    url, headers={"Authorization": f"Bearer {token}"}
                 )
                 return response.status_code in [200, 204]
         except Exception as e:
             print(f"Error deleting Keycloak user {user_id}: {e}")
             return False
 
-    #Actualiza la contraseña de un usuario en Keycloak
+    # Actualiza la contraseña de un usuario en Keycloak
     @classmethod
     async def update_user_password(cls, user_id: str, new_password: str) -> dict:
         try:
             token = await cls._get_admin_token()
-            payload = {
-                "type": "password",
-                "value": new_password,
-                "temporary": False
-            }
+            payload = {"type": "password", "value": new_password, "temporary": False}
             async with httpx.AsyncClient() as client:
                 url = f"{cls.USERS_API_URL}/{user_id}/reset-password"
                 response = await client.put(
-                    url,
-                    json=payload,
-                    headers={"Authorization": f"Bearer {token}"}
+                    url, json=payload, headers={"Authorization": f"Bearer {token}"}
                 )
                 if response.status_code == 204:
                     return {"success": True}
