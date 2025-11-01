@@ -6,12 +6,15 @@
 
 ## 🛠️ Tecnologías Utilizadas
 
-- **Framework**: FastAPI 0.116.1
-- **Base de Datos**: SQLite con SQLAlchemy 2.0.43
-- **Validación**: Pydantic 2.11.7
-- **Servidor**: Uvicorn 0.35.0
-- **Autenticación**: Integración con Keycloak y Moodle
+- **Framework**: FastAPI
+- **Base de Datos**: SQLite con SQLAlchemy 2
+- **Validación**: Pydantic 2
+- **Servidor**: Uvicorn
+- **Autenticación**: Integración con Keycloak
 - **Documentación**: Swagger UI y ReDoc (automática con FastAPI)
+- **Gestión de Dependencias**: uv
+- **Linter y Formateo**: Ruff
+- **Control de Calidad**: Pre-commit 4
 
 ---
 
@@ -20,46 +23,53 @@
 ### Prerrequisitos
 
 - Python 3.8+
-- pip (gestor de paquetes de Python)
+- UV (gestor de paquetes de Python)
 
 ### 1. Clonar el Repositorio
 
 ```bash
+# Clonar el repositorio
 git clone https://github.com/CarlosGunter/macti-api
 cd macti-api
 ```
 
-### 2. Crear y Activar Entorno Virtual
+### 2. Instalar uv
 
+Para linux/macOS, ejecuta:
 ```bash
-# Crear entorno virtual
-python -m venv venv
-
-# Activar en Windows
-venv\Scripts\activate
-
-# Activar en Linux/Mac
-source venv/bin/activate
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 3. Instalar Dependencias
-
-```bash
-pip install -r requeriments.txt
+Para Windows:
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 4. Inicializar la Base de Datos
+Puedes encontrar más detalles en la [documentación oficial de uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-La base de datos SQLite se creará automáticamente en la raíz del proyecto (`macti.db`) al ejecutar la aplicación por primera vez.
+> [!TIP]
+> uv se encarga de crear y gestionar entornos virtuales automáticamente. Por lo tanto, no es necesario crear uno manualmente.
 
-### 5. Ejecutar el Servidor
-
+### 3. Ejecutar el proyecto
 ```bash
-# Desde la raíz del proyecto
-uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
-### 6. Acceder a la API
+Éste comando hará lo siguiente:
+- Instalar las dependencias listadas en `pyproject.toml` si no están instaladas.
+- Crear un entorno virtual aislado para el proyecto si no existe.
+- Iniciar el servidor de desarrollo de FastAPI con recarga automática.
+- Iniciará la BD SQLite si no existe.
+- Ejecutar las migraciones de la base de datos si es necesario.
+
+### 4. Configurar Hooks de Pre-Commit
+
+```bash
+# Instalar hooks de pre-commit
+uv run pre-commit install
+```
+
+### 5. Acceder a la API
 Por defecto, FastAPI corre en el puerto 8000. Por lo tanto, los endpoints estarán disponibles en:
 
 - **API Base**: http://localhost:8000
@@ -69,7 +79,7 @@ Por defecto, FastAPI corre en el puerto 8000. Por lo tanto, los endpoints estar�
 Si deseas cambiar el puerto o la dirección, puedes modificar los parámetros en el comando `uvicorn` de la siguiente manera:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -79,27 +89,27 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 backend-py/
 │
-├── 📄 macti.db                    # Base de datos SQLite
 ├── 📄 README.md                   # Este archivo
-├── 📄 requeriments.txt            # Dependencias del proyecto
+├── 📄 pyproject.toml              # Configuración del proyecto
 │
 └── app/                           # Código fuente principal
     ├── 📄 main.py                 # Punto de entrada de la aplicación
     │
     ├── core/                      # Núcleo de la aplicación
     │   └── 📄 database.py         # Configuración de base de datos
+    │   └── 📄 config.py           # Centralización de las variables de entorno
     │
     ├── modules/                   # Módulos de funcionalidad
     │   ├── auth/                  # Módulo de autenticación
-    │   │   ├── 📄 controllers.py  # Lógica de negocio
-    │   │   ├── 📄 models.py       # Modelos de base de datos
-    │   │   ├── 📄 routes.py       # Definición de endpoints
-    │   │   ├── 📄 schema.py       # Esquemas de validación
-    │   │   └── 📄 services.py     # Servicios externos
+    │   │   ├── 📄 controllers    # Lógica de negocio
+    │   │   ├── 📄 models         # Modelos de base de datos
+    │   │   ├── 📄 routes         # Definición de endpoints
+    │   │   ├── 📄 schemas        # Esquemas de validación
+    │   │   └── 📄 services       # Servicios externos como llamadas a APIs
     │   │
     │   └── recomendations/        # Módulo de recomendaciones a usuarios
     │
-    └── utils/                     # Utilidades generales
+    └── shared/                     # Modulo general compartido
 ```
 
 ---
@@ -209,17 +219,6 @@ backend-py/
 
 ## 📊 Modelos de Base de Datos
 
-### 👤 User
-```sql
-- id: Integer (Primary Key)
-- name: String
-- last_name: String  
-- email: String (Unique)
-- status: String (Default: "Pending")
-- created_at: DateTime
-- updated_at: DateTime
-```
-
 ### 📝 AccountRequest
 ```sql
 - id: Integer (Primary Key)
@@ -234,6 +233,16 @@ backend-py/
 - created_at: DateTime
 ```
 
+### ▶️ MCT_Validacion
+```sql
+- id: Integer (Primary Key)
+- email: String
+- token: String
+- fecha_solicitud: DateTime
+- fecha_expiracion: DateTime
+- bandera: String
+```
+
 ---
 
 ## 🔧 Desarrollo
@@ -245,5 +254,11 @@ backend-py/
 3. Implementar la lógica en `controllers.py`
 4. Definir las rutas en `routes.py`
 5. Registrar el router en `main.py`
+
+### Flujo de Trabajo
+
+Puedes seguir el flujo de trabajo descrito en el archivo `CONTRIBUTING.md` para contribuir al proyecto.
+
+No olvides ejecutar el paso 4 de configuración de hooks de pre-commit después de clonar el repositorio.
 
 ---
