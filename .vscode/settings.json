@@ -1,6 +1,15 @@
 {
   "editor.tabSize": 4,
+  "editor.formatOnSave": true,
   "python.analysis.typeCheckingMode": "standard",
   "python.analysis.inlayHints.functionReturnTypes": true,
-  "python.analysis.inlayHints.variableTypes": true
+  "python.analysis.inlayHints.variableTypes": true,
+
+  "[python]": {
+      "editor.codeActionsOnSave": {
+          "source.fixAll.ruff": "explicit",
+          "source.organizeImports.ruff": "explicit"
+      },
+      "editor.defaultFormatter": "charliermarsh.ruff"
+  }
 }

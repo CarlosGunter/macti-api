@@ -6,11 +6,13 @@ from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
+
 class AccountStatusEnum(enum.Enum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
     created = "created"
+
 
 class InstituteEnum(enum.Enum):
     principal = "principal"
@@ -23,6 +25,7 @@ class InstituteEnum(enum.Enum):
     hpc = "hpc"
     igf = "igf"
     ene = "ene"
+
 
 class AccountRequest(Base):
     __tablename__ = "account_requests"
@@ -39,18 +42,15 @@ class AccountRequest(Base):
         nullable=False,
     )
     institute: Mapped[InstituteEnum] = mapped_column(
-            Enum(InstituteEnum, name="institute_enum"),
-            nullable=False
-        )
+        Enum(InstituteEnum, name="institute_enum"), nullable=False
+    )
     kc_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     moodle_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     validaciones: Mapped[list["MCT_Validacion"]] = relationship(
-        "MCT_Validacion",
-        back_populates="account",
-        cascade="all, delete-orphan"
+        "MCT_Validacion", back_populates="account", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -70,8 +70,8 @@ class MCT_Validacion(Base):
     )
     bandera: Mapped[int] = mapped_column(Integer, default=0)
     account: Mapped["AccountRequest"] = relationship(
-            "AccountRequest",
-            back_populates="validaciones"
-        )
+        "AccountRequest", back_populates="validaciones"
+    )
+
     def __repr__(self):
         return f"<EmailValidation(email='{self.email}', is_used={self.bandera})>"

@@ -1,18 +1,22 @@
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
-from ..models import AccountRequest, AccountStatusEnum, InstituteEnum  
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from ..models import AccountRequest, AccountStatusEnum
 from ..schema import AccountRequestSchema
 
 
 class RequestAccountController:
     @staticmethod
     def request_account(data: AccountRequestSchema, db: Session):
-
-        existing_request = db.query(AccountRequest).filter(
-            AccountRequest.email == data.email,
-            AccountRequest.institute == data.institute
-        ).first()
+        existing_request = (
+            db.query(AccountRequest)
+            .filter(
+                AccountRequest.email == data.email,
+                AccountRequest.institute == data.institute,
+            )
+            .first()
+        )
 
         # Si ya existe una solicitud con el mismo email e instituto, devolver error.
         if existing_request is not None:
@@ -20,10 +24,10 @@ class RequestAccountController:
                 status_code=400,
                 detail={
                     "error_code": "EMAIL_EXISTENTE",
-                    "message": "El correo ya tiene una solicitud."
-                }
+                    "message": "El correo ya tiene una solicitud.",
+                },
             )
-        
+
         try:
             db_account_request = AccountRequest(
                 name=data.name,
@@ -31,15 +35,13 @@ class RequestAccountController:
                 email=data.email,
                 course_id=data.course_id,
                 institute=data.institute,
-                status=AccountStatusEnum.pending
+                status=AccountStatusEnum.pending,
             )
             db.add(db_account_request)
             db.commit()
             db.refresh(db_account_request)
-            
-            return {
-                "message": "Solicitud de cuenta en proceso"
-            }
+
+            return {"message": "Solicitud de cuenta en proceso"}
 
         except SQLAlchemyError:
             db.rollback()
@@ -47,16 +49,13 @@ class RequestAccountController:
                 status_code=500,
                 detail={
                     "error_code": "DB_ERROR",
-                    "message": "Error al registrar la solicitud"
-                }
+                    "message": "Error al registrar la solicitud",
+                },
             )
-        
+
         except Exception as e:
             db.rollback()
             raise HTTPException(
                 status_code=500,
-                detail={
-                    "error_code": "ERROR_DESCONOCIDO",
-                    "message": str(e)
-                }
+                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
             )

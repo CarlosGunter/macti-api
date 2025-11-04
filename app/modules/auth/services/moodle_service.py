@@ -5,6 +5,7 @@ Service for interacting with Moodle LMS API
 import httpx
 from app.core.config import settings
 
+
 class MoodleService:
     MOODLE_URL = settings.MOODLE_URL
     MOODLE_TOKEN = settings.MOODLE_TOKEN
@@ -74,7 +75,12 @@ class MoodleService:
         if isinstance(result, dict) and "exception" in result:
             if result.get("message") == "error/Message was not sent.":
                 print("Moodle could not send email, but the user was enrolled anyway")
-                return {"user_id": user_id, "course_id": course_id, "enrolled": True, "warning": result}
+                return {
+                    "user_id": user_id,
+                    "course_id": course_id,
+                    "enrolled": True,
+                    "warning": result,
+                }
             raise Exception(f"Error enrolling user in Moodle: {result}")
 
         return {"user_id": user_id, "course_id": course_id, "enrolled": True}

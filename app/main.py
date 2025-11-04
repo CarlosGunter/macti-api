@@ -13,12 +13,14 @@ app.add_middleware(
     allow_origins=["*"],  # Cambia esto en producción
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def read_root():
     return {"Inicio": "MACTI API"}
+
 
 # Include the auth router
 app.include_router(auth_router)
