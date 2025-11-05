@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.modules.auth.models import AccountStatusEnum
@@ -31,7 +29,7 @@ class AccountsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-ListAccountsResponse = List[AccountsResponse]
+ListAccountsResponse = list[AccountsResponse]
 
 
 class ConfirmAccountSchema(BaseModel):

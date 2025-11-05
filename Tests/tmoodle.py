@@ -1,7 +1,9 @@
 import httpx
 
-url = "https://pruebasm.solucionesatd.com/webservice/rest/server.php"
-TOKEN = "cf01468d904ad4a3983ab7c0d7efaf69"
+from app.core.config import settings
+
+url = settings.MOODLE_URL
+TOKEN = settings.MOODLE_TOKEN
 nuevo_usuario = {
     "username": "nuevo.usuario",
     "password": "Pass123!",

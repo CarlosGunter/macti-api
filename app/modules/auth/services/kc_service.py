@@ -26,7 +26,7 @@ class KeycloakService:
         except Exception as e:
             error_message = f"Fallo al autenticar con Keycloak Admin API: {e}"
             print(error_message)
-            raise Exception(error_message)
+            raise Exception(error_message) from e
 
     @classmethod
     async def create_user(cls, user_data: dict) -> dict:

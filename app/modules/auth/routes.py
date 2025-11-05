@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, Query
+
 from app.core.database import get_db
-from .controllers.request_account import RequestAccountController
-from .controllers.list_account_requests import ListAccountRequestsController
+from app.modules.auth.services.email_service import EmailService
+
 from .controllers.change_status import ChangeStatusController
 from .controllers.create_account import CreateAccountController
+from .controllers.list_account_requests import ListAccountRequestsController
+from .controllers.request_account import RequestAccountController
 from .schema import (
     AccountRequestResponse,
     AccountRequestSchema,
@@ -14,7 +17,6 @@ from .schema import (
     EmailValidationResponse,
     ListAccountsResponse,
 )
-from app.modules.auth.services.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
