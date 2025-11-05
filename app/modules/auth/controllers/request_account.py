@@ -51,11 +51,11 @@ class RequestAccountController:
                     "error_code": "DB_ERROR",
                     "message": "Error al registrar la solicitud",
                 },
-            )
+            ) from SQLAlchemyError
 
         except Exception as e:
             db.rollback()
             raise HTTPException(
                 status_code=500,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            )
+            ) from e

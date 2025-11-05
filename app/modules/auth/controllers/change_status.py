@@ -101,4 +101,4 @@ class ChangeStatusController:
             raise HTTPException(
                 status_code=400,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            )
+            ) from e

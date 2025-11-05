@@ -5,7 +5,7 @@ from app.modules.auth.services.email_service import EmailService
 from app.modules.auth.services.kc_service import KeycloakService
 
 TEST_EMAIL = "hola@correo.com"
-NEW_PASSWORD = "correpruebas!1"
+NEW_PASSWORD = "correpruebas!1"  # noqa: S105
 
 
 def simulate_add_request(db: Session, email: str):

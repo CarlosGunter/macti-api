@@ -1,3 +1,4 @@
+import contextlib
 import smtplib
 import sqlite3
 from datetime import datetime, timedelta
@@ -65,26 +66,22 @@ class EmailService:
             if conn_obj is not None:
                 close_method = getattr(conn_obj, "close", None)
                 if callable(close_method):
-                    try:
+                    with contextlib.suppress(Exception):
                         close_method()
-                    except Exception:
-                        # Ignorar errores al cerrar la conexión
-                        pass
+
             conn_obj = locals().get("conn", None)
             if conn_obj is not None:
                 close_method = getattr(conn_obj, "close", None)
                 if callable(close_method):
-                    try:
+                    with contextlib.suppress(Exception):
                         close_method()
-                    except Exception:
-                        # Ignorar errores al cerrar la conexión
-                        pass
 
     @staticmethod
     def send_validation_email(
         to_email: str,
         subject: str | None = None,
         body: str | None = None,
+        *,
         generate_token: bool = True,
     ):
         token = None
@@ -131,8 +128,8 @@ class EmailService:
 
             cursor.execute(
                 """
-                SELECT email, fecha_expiracion, bandera 
-                FROM MCT_Validacion 
+                SELECT email, fecha_expiracion, bandera
+                FROM MCT_Validacion
                 WHERE token = ?
             """,
                 (token,),
@@ -185,7 +182,7 @@ class EmailService:
                     "error_code": "DB_ERROR",
                     "message": f"Error de base de datos: {e}",
                 },
-            )
+            ) from e
 
         except HTTPException as httpe:
             raise httpe
@@ -195,8 +192,5 @@ class EmailService:
             if conn_obj is not None:
                 close_method = getattr(conn_obj, "close", None)
                 if callable(close_method):
-                    try:
+                    with contextlib.suppress(Exception):
                         close_method()
-                    except Exception:
-                        # Ignorar errores al cerrar la conexión
-                        pass

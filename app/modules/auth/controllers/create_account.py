@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
 
-from ..models import AccountRequest, AccountStatusEnum, MCT_Validacion
+from ..models import AccountRequest, AccountStatusEnum, MCTValidacion
 from ..schema import CreateAccountSchema
 
 
@@ -98,8 +98,8 @@ class CreateAccountController:
         # Actualizar estado de la solicitud
         account_request.status = AccountStatusEnum.created
         token_record = (
-            db.query(MCT_Validacion)
-            .filter(MCT_Validacion.email == account_request.email)
+            db.query(MCTValidacion)
+            .filter(MCTValidacion.email == account_request.email)
             .first()
         )
         if token_record:

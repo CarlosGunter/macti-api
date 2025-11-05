@@ -1,7 +1,8 @@
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select, cast, String
 from fastapi import HTTPException
+from sqlalchemy import String, cast, select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from ..models import AccountRequest
 
 
@@ -31,10 +32,10 @@ class ListAccountRequestsController:
                     "error_code": "DB_ERROR",
                     "message": "Error al obtener solicitudes",
                 },
-            )
+            ) from SQLAlchemyError
 
         except Exception as e:
             raise HTTPException(
                 status_code=500,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            )
+            ) from e

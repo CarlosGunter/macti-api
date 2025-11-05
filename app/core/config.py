@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     KEYCLOAK_REALM: str = "master"
     KEYCLOAK_ADMIN_CLIENT_ID: str = "fastapi-auth-service"
     KEYCLOAK_USERNAME: str = "admin"
-    KEYCLOAK_PASSWORD: str = "admin"
+    KEYCLOAK_PASSWORD: str = ""
     KEYCLOAK_ADMIN_CLIENT_SECRET: str = ""
 
     MOODLE_URL: str = "http://localhost/moodle"
@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     FROM_ADDRESS: str = "aramirez@solucionesatd.com"
 
     @field_validator("KEYCLOAK_ADMIN_CLIENT_SECRET")
+    @classmethod
     def check_admin_client_secret(cls, v):
         if not v:
             raise ValueError(
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
         return v
 
     @field_validator("MOODLE_TOKEN")
+    @classmethod
     def check_moodle_token(cls, v):
         if not v:
             raise ValueError("MOODLE_TOKEN no definido en las variables de entorno")
@@ -38,6 +40,7 @@ class Settings(BaseSettings):
         return v
 
     @field_validator("SMTP_PASS")
+    @classmethod
     def check_smtp_pass(cls, v):
         if not v or v.strip() == "":
             raise ValueError("SMTP_PASS no definido en las variables de entorno")

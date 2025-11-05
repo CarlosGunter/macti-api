@@ -3,6 +3,7 @@ Service for interacting with Moodle LMS API
 """
 
 import httpx
+
 from app.core.config import settings
 
 

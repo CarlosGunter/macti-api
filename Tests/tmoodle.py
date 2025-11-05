@@ -1,7 +1,9 @@
 import httpx
 
+from app.core.config import settings
+
 url = "https://pruebasm.solucionesatd.com/webservice/rest/server.php"
-TOKEN = "cf01468d904ad4a3983ab7c0d7efaf69"
+TOKEN = settings.SMTP_PASS
 nuevo_usuario = {
     "username": "nuevo.usuario",
     "password": "Pass123!",

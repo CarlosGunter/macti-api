@@ -12,7 +12,7 @@ for table in inspector.get_table_names():
         print(f" - {col['name']} ({col['type']})")
 
     with engine.connect() as conn:
-        result = conn.execute(text(f"SELECT * FROM {table}")).fetchall()
+        result = conn.execute(text(f"SELECT * FROM {table}")).fetchall()  # noqa: S608
         print(f"\n Datos en {table}:")
         if result:
             for row in result:
