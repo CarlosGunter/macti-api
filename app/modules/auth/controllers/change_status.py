@@ -41,7 +41,10 @@ class ChangeStatusController:
                         "name": user_firstname,
                         "last_name": user_lastname,
                         "password": "temporal123",
-                    }
+                    },
+                    getattr(
+                        account_request.institute, "value", account_request.institute
+                    ),
                 )
                 if not keycloak_result.get("created"):
                     print(
@@ -60,7 +63,14 @@ class ChangeStatusController:
                 token_data = EmailService.generate_and_save_token(user_email)
                 if not token_data.get("success"):
                     # Si falla, eliminamos Keycloak
-                    await KeycloakService.delete_user(str(account_request.kc_id))
+                    await KeycloakService.delete_user(
+                        str(account_request.kc_id),
+                        getattr(
+                            account_request.institute,
+                            "value",
+                            account_request.institute,
+                        ),
+                    )
                     raise HTTPException(
                         status_code=502,
                         detail={
@@ -101,4 +111,4 @@ class ChangeStatusController:
             raise HTTPException(
                 status_code=400,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            )
+            ) from e

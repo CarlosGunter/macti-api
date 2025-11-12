@@ -1,10 +1,11 @@
-from typing import Optional
-from sqlalchemy import Integer, String, DateTime, Enum
-from sqlalchemy.sql import func
-from app.core.database import Base
-from datetime import datetime
-from sqlalchemy.orm import Mapped, mapped_column
 import enum
+from datetime import datetime
+
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+
+from app.core.database import Base
 
 
 class AccountStatusEnum(enum.Enum):
@@ -12,6 +13,19 @@ class AccountStatusEnum(enum.Enum):
     approved = "approved"
     rejected = "rejected"
     created = "created"
+
+
+class InstituteEnum(enum.Enum):
+    principal = "principal"
+    cuantico = "cuantico"
+    ciencias = "ciencias"
+    ingenieria = "ingenieria"
+    encit = "encit"
+    ier = "ier"
+    enes_m = "enes_m"
+    hpc = "hpc"
+    igf = "igf"
+    ene = "ene"
 
 
 class AccountRequest(Base):
@@ -28,28 +42,38 @@ class AccountRequest(Base):
         default=AccountStatusEnum.pending,
         nullable=False,
     )
-
-    kc_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    moodle_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    institute: Mapped[str] = mapped_column(
+        Enum(InstituteEnum, name="institute_enum"),
+        nullable=False,
+    )
+    kc_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    moodle_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    validaciones: Mapped[list["MCTValidacion"]] = relationship(
+        "MCTValidacion", back_populates="account", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
         return f"<AccountRequest(email='{self.email}', status='{self.status.value}')>"
 
 
-class MCT_Validacion(Base):
+class MCTValidacion(Base):
     __tablename__ = "MCT_Validacion"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    account_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("account_requests.id"), nullable=True
+    )
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     token: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     fecha_solicitud: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    fecha_expiracion: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, nullable=True
-    )
+    fecha_expiracion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     bandera: Mapped[int] = mapped_column(Integer, default=0)
+    account: Mapped["AccountRequest"] = relationship(
+        "AccountRequest", back_populates="validaciones"
+    )
 
     def __repr__(self):
         return f"<EmailValidation(email='{self.email}', is_used={self.bandera})>"

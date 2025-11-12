@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
 
-from ..models import AccountRequest, AccountStatusEnum, MCT_Validacion
+from ..models import AccountRequest, AccountStatusEnum, MCTValidacion
 from ..schema import CreateAccountSchema
 
 
@@ -39,7 +39,9 @@ class CreateAccountController:
         if str(account_request.kc_id):
             # Actualizar contraseña
             kc_result = await KeycloakService.update_user_password(
-                str(account_request.kc_id), data.new_password
+                str(account_request.kc_id),
+                data.new_password,
+                account_request.institute,  # <--- pasa institute
             )
             if not kc_result.get("success"):
                 raise HTTPException(
@@ -57,7 +59,8 @@ class CreateAccountController:
                     "last_name": account_request.last_name,
                     "email": account_request.email,
                     "password": data.new_password,
-                }
+                },
+                account_request.institute,  # <--- pasa el institute
             )
             if not kc_result.get("created"):
                 raise HTTPException(
@@ -98,8 +101,8 @@ class CreateAccountController:
         # Actualizar estado de la solicitud
         account_request.status = AccountStatusEnum.created
         token_record = (
-            db.query(MCT_Validacion)
-            .filter(MCT_Validacion.email == account_request.email)
+            db.query(MCTValidacion)
+            .filter(MCTValidacion.email == account_request.email)
             .first()
         )
         if token_record:

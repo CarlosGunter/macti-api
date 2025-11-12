@@ -1,7 +1,8 @@
-from pydantic import BaseModel, EmailStr
-from pydantic import ConfigDict
-from typing import List
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 from app.modules.auth.models import AccountStatusEnum
+
+from .models import InstituteEnum
 
 
 class AccountRequestSchema(BaseModel):
@@ -9,6 +10,7 @@ class AccountRequestSchema(BaseModel):
     last_name: str
     email: EmailStr
     course_id: int
+    institute: InstituteEnum
 
 
 class AccountRequestResponse(BaseModel):
@@ -27,7 +29,7 @@ class AccountsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-ListAccountsResponse = List[AccountsResponse]
+ListAccountsResponse = list[AccountsResponse]
 
 
 class ConfirmAccountSchema(BaseModel):

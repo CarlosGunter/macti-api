@@ -1,3 +1,4 @@
+import contextlib
 import smtplib
 import sqlite3
 from datetime import datetime, timedelta
@@ -26,14 +27,36 @@ class EmailService:
         try:
             conn = sqlite3.connect("macti.db")
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM MCT_Validacion WHERE email = ?", (to_email,))
+            # cursor.execute("DELETE FROM MCT_Validacion WHERE email = ?", (to_email,))
+            # Primero lo que hago es buscar el id de la cuenta existennte por el email
             cursor.execute(
-                """
-                INSERT INTO MCT_Validacion (email, token, fecha_solicitud, fecha_expiracion, bandera)
-                VALUES (?, ?, ?, ?, 0)
-            """,
-                (to_email, token, fecha_solicitud, fecha_expiracion),
+                "SELECT id FROM account_requests WHERE email = ?", (to_email,)
             )
+            row = cursor.fetchone()
+            account_id = row[0] if row else None
+            cursor.execute("SELECT id FROM MCT_Validacion WHERE email = ?", (to_email,))
+            valid_row = cursor.fetchone()
+
+            if valid_row:
+                # Actualizar registro existente
+                cursor.execute(
+                    """
+                    UPDATE MCT_Validacion
+                    SET token = ?, fecha_solicitud = ?, fecha_expiracion = ?, account_id = ?
+                    WHERE email = ?
+                """,
+                    (token, fecha_solicitud, fecha_expiracion, account_id, to_email),
+                )
+            else:
+                # Insertar nuevo registro
+                cursor.execute(
+                    """
+                    INSERT INTO MCT_Validacion (account_id, email, token, fecha_solicitud, fecha_expiracion, bandera)
+                    VALUES (?, ?, ?, ?, ?, 0)
+                """,
+                    (account_id, to_email, token, fecha_solicitud, fecha_expiracion),
+                )
+
             conn.commit()
             return {"success": True, "token": token}
         except sqlite3.Error as e:
@@ -43,17 +66,22 @@ class EmailService:
             if conn_obj is not None:
                 close_method = getattr(conn_obj, "close", None)
                 if callable(close_method):
-                    try:
+                    with contextlib.suppress(Exception):
                         close_method()
-                    except Exception:
-                        # Ignorar errores al cerrar la conexión
-                        pass
+
+            conn_obj = locals().get("conn", None)
+            if conn_obj is not None:
+                close_method = getattr(conn_obj, "close", None)
+                if callable(close_method):
+                    with contextlib.suppress(Exception):
+                        close_method()
 
     @staticmethod
     def send_validation_email(
         to_email: str,
         subject: str | None = None,
         body: str | None = None,
+        *,
         generate_token: bool = True,
     ):
         token = None
@@ -100,8 +128,8 @@ class EmailService:
 
             cursor.execute(
                 """
-                SELECT email, fecha_expiracion, bandera 
-                FROM MCT_Validacion 
+                SELECT email, fecha_expiracion, bandera
+                FROM MCT_Validacion
                 WHERE token = ?
             """,
                 (token,),
@@ -145,10 +173,7 @@ class EmailService:
 
             user_id = user_row[0]
 
-            return {
-                "id": user_id,
-                "email": email,
-            }
+            return {"id": user_id, "email": email}
 
         except sqlite3.Error as e:
             raise HTTPException(
@@ -157,7 +182,7 @@ class EmailService:
                     "error_code": "DB_ERROR",
                     "message": f"Error de base de datos: {e}",
                 },
-            )
+            ) from e
 
         except HTTPException as httpe:
             raise httpe
@@ -167,8 +192,5 @@ class EmailService:
             if conn_obj is not None:
                 close_method = getattr(conn_obj, "close", None)
                 if callable(close_method):
-                    try:
+                    with contextlib.suppress(Exception):
                         close_method()
-                    except Exception:
-                        # Ignorar errores al cerrar la conexión
-                        pass
