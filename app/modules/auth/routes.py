@@ -7,6 +7,7 @@ from .controllers.change_status import ChangeStatusController
 from .controllers.create_account import CreateAccountController
 from .controllers.list_account_requests import ListAccountRequestsController
 from .controllers.request_account import RequestAccountController
+from .models import AccountStatusEnum, InstituteEnum
 from .schema import (
     AccountRequestResponse,
     AccountRequestSchema,
@@ -40,10 +41,19 @@ async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
 )
 async def list_accounts_requests(
     course_id: int = Query(description="Filtra las solicitudes por ID de curso"),
+    institute: InstituteEnum = Query(
+        ..., description="Filtra las solicitudes por instituto"
+    ),
+    status: AccountStatusEnum | None = Query(
+        None, description="Filtra las solicitudes por estatus"
+    ),
     db=Depends(get_db),
 ):
     return ListAccountRequestsController.list_accounts_requests(
-        db=db, course_id=course_id
+        db=db,
+        course_id=course_id,
+        institute=institute,
+        status=status,
     )
 
 
