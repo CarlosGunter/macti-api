@@ -39,7 +39,9 @@ class CreateAccountController:
         if str(account_request.kc_id):
             # Actualizar contraseña
             kc_result = await KeycloakService.update_user_password(
-                str(account_request.kc_id), data.new_password
+                str(account_request.kc_id),
+                data.new_password,
+                account_request.institute,  # <--- pasa institute
             )
             if not kc_result.get("success"):
                 raise HTTPException(
@@ -57,7 +59,8 @@ class CreateAccountController:
                     "last_name": account_request.last_name,
                     "email": account_request.email,
                     "password": data.new_password,
-                }
+                },
+                account_request.institute,  # <--- pasa el institute
             )
             if not kc_result.get("created"):
                 raise HTTPException(
