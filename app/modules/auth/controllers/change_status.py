@@ -31,7 +31,7 @@ class ChangeStatusController:
             db.commit()
             db.refresh(account_request)
 
-            if status == AccountStatusEnum.approved:
+            if status == AccountStatusEnum.APPROVED:
                 user_email = account_request.email
                 user_firstname = account_request.name
                 user_lastname = account_request.last_name

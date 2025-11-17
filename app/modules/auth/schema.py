@@ -1,8 +1,7 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.modules.auth.models import AccountStatusEnum
-
-from .models import InstituteEnum
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 
 class AccountRequestSchema(BaseModel):
@@ -10,7 +9,7 @@ class AccountRequestSchema(BaseModel):
     last_name: str
     email: EmailStr
     course_id: int
-    institute: InstituteEnum
+    institute: InstitutesEnum
 
 
 class AccountRequestResponse(BaseModel):

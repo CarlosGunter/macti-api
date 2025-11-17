@@ -1,4 +1,3 @@
-import enum
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
@@ -6,26 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-
-
-class AccountStatusEnum(enum.Enum):
-    pending = "pending"
-    approved = "approved"
-    rejected = "rejected"
-    created = "created"
-
-
-class InstituteEnum(enum.Enum):
-    principal = "principal"
-    cuantico = "cuantico"
-    ciencias = "ciencias"
-    ingenieria = "ingenieria"
-    encit = "encit"
-    ier = "ier"
-    enes_m = "enes_m"
-    hpc = "hpc"
-    igf = "igf"
-    ene = "ene"
+from app.modules.auth.enums import AccountStatusEnum
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 
 class AccountRequest(Base):
@@ -39,11 +20,11 @@ class AccountRequest(Base):
     #
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
-        default=AccountStatusEnum.pending,
+        default=AccountStatusEnum.PENDING,
         nullable=False,
     )
-    institute: Mapped[str] = mapped_column(
-        Enum(InstituteEnum, name="institute_enum"),
+    institute: Mapped[InstitutesEnum] = mapped_column(
+        Enum(InstitutesEnum, name="institutes_enum"),
         nullable=False,
     )
     kc_id: Mapped[str | None] = mapped_column(String, nullable=True)
