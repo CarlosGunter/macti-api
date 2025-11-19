@@ -1,9 +1,9 @@
-from app.core.database import Base, engine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# En esta nueva versión me pide instalar lo de abajo para poder resetar la bd e hice unos cambios
-# py -m pip install sqlalchemy
-
-Base.metadata.drop_all(bind=engine)
-Base.metadata.create_all(bind=engine)
-
-print("¡Base de datos reseteada correctamente!")
+SQLALCHEMY_DATABASE_URL = "sqlite:///./macti.db"
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
