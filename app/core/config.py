@@ -9,8 +9,10 @@ class Settings(BaseSettings):
     Ciencias_ADMIN_CLIENT_SECRET: str = ""
     Ingenieria_ADMIN_CLIENT_SECRET: str = ""
 
-    MOODLE_URL: str = "http://localhost/moodle"
-    MOODLE_TOKEN: str = ""
+    MOODLE_TOKEN_PRINCIPAL: str = ""
+    MOODLE_TOKEN_CUANTICO: str = ""
+    MOODLE_TOKEN_CIENCIAS: str = ""
+    MOODLE_TOKEN_INGENIERIA: str = ""
 
     SMTP_HOST: str = "smtp.titan.email"
     SMTP_PORT: int = 587
@@ -32,16 +34,23 @@ class Settings(BaseSettings):
             raise ValueError(
                 "KEYCLOAK_ADMIN_CLIENT_SECRET no definido en las variables de entorno"
             )
-        if len(v) < 32:
+        if len(v) != 32:
             raise ValueError("KEYCLOAK_ADMIN_CLIENT_SECRET debe tener 32 caracteres")
         return v
 
-    @field_validator("MOODLE_TOKEN")
+    @field_validator(
+        "MOODLE_TOKEN_PRINCIPAL",
+        "MOODLE_TOKEN_CUANTICO",
+        "MOODLE_TOKEN_CIENCIAS",
+        "MOODLE_TOKEN_INGENIERIA",
+    )
     @classmethod
     def check_moodle_token(cls, v):
         if not v:
-            raise ValueError("MOODLE_TOKEN no definido en las variables de entorno")
-        if len(v) < 32:
+            raise ValueError(
+                "Token(s) de Moodle no definido en las variables de entorno"
+            )
+        if len(v) != 32:
             raise ValueError("MOODLE_TOKEN debe tener 32 caracteres")
         return v
 
