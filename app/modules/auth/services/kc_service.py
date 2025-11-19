@@ -105,21 +105,35 @@ class KeycloakService:
 
     @classmethod
     async def update_user_password(
-        cls, user_id: str, new_password: str, institute: str
+        cls, user_id: str, new_password: str, institute
     ) -> dict:
         """Actualiza la contraseña de un usuario en Keycloak."""
         try:
-            config = keycloak_configs[institute.lower()]
-            token = await cls._get_admin_token(institute)
+            # Normalizar valor de institute (puede ser Enum, str o None)
+            if institute is None:
+                institute_key = "principal"
+            elif hasattr(institute, "value"):
+                institute_key = institute.value.lower()
+            elif isinstance(institute, str):
+                institute_key = institute.lower()
+            else:
+                raise ValueError(f"Tipo de instituto no válido: {type(institute)}")
+
+            config = keycloak_configs[institute_key]
+            token = await cls._get_admin_token(institute_key)
+
             url = f"{config['url']}/admin/realms/{config['realm']}/users/{user_id}/reset-password"
             payload = {"type": "password", "value": new_password, "temporary": False}
+
             async with httpx.AsyncClient() as client:
                 response = await client.put(
                     url, json=payload, headers={"Authorization": f"Bearer {token}"}
                 )
+
                 if response.status_code == 204:
                     return {"success": True}
                 else:
                     return {"success": False, "error": response.text}
+
         except Exception as e:
             return {"success": False, "error": str(e)}
