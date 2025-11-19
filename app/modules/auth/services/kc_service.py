@@ -114,15 +114,19 @@ class KeycloakService:
         try:
             config = keycloak_configs[institute]
             token = await cls._get_admin_token(institute)
+
             url = f"{config.url}/admin/realms/{config.realm}/users/{user_id}/reset-password"
             payload = {"type": "password", "value": new_password, "temporary": False}
+
             async with httpx.AsyncClient() as client:
                 response = await client.put(
                     url, json=payload, headers={"Authorization": f"Bearer {token}"}
                 )
+
                 if response.status_code == 204:
                     return {"success": True}
                 else:
                     return {"success": False, "error": response.text}
+
         except Exception as e:
             return {"success": False, "error": str(e)}
