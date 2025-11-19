@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import AccountRequest, AccountStatusEnum
+from app.modules.auth.models import AccountRequest, AccountStatusEnum, InstituteEnum
 from app.modules.auth.services.email_service import EmailService
 from app.modules.auth.services.kc_service import KeycloakService
 
@@ -34,12 +34,16 @@ async def ensure_user_in_keycloak(email):
         "last_name": "Prueba",
         "password": "temporal123",
     }
-    result = await KeycloakService.create_user(user_data)
+    result = await KeycloakService.create_user(
+        user_data, InstituteEnum.ingenieria.value
+    )
     if result.get("created"):
         print(f"Usuario creado en Keycloak: {email}")
         return result.get("user_id")
     else:
-        user = await KeycloakService.get_user_by_email(email)
+        user = await KeycloakService.get_user_by_email(
+            email, InstituteEnum.ingenieria.value
+        )
         print(f"Usuario ya existía en Keycloak: {email}")
         return user.get("id")
 
