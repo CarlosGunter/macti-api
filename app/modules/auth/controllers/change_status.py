@@ -93,7 +93,7 @@ class ChangeStatusController:
     def _generate_and_save_token(cls, account_id: int, db: Session):
         token = str(uuid4())
         fecha_solicitud = datetime.now()
-        fecha_expiracion = fecha_solicitud + timedelta(hours=12)
+        fecha_expiracion = fecha_solicitud + timedelta(days=7)
 
         try:
             # Get the account to retrieve email
