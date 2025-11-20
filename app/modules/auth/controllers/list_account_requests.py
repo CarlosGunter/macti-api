@@ -3,7 +3,10 @@ from sqlalchemy import case, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from ..models import AccountRequest, AccountStatusEnum, InstituteEnum
+from app.shared.enums.institutes_enum import InstitutesEnum
+
+from ..enums import AccountStatusEnum
+from ..models import AccountRequest
 
 
 class ListAccountRequestsController:
@@ -11,16 +14,16 @@ class ListAccountRequestsController:
     def list_accounts_requests(
         db: Session,
         course_id: int,
-        institute: InstituteEnum,
+        institute: InstitutesEnum,
         status: AccountStatusEnum | None = None,
     ):
         try:
             # Hacer una selección explícita y usar mappings() para obtener dicts
             status_order = case(
-                (AccountRequest.status == AccountStatusEnum.pending, 0),
-                (AccountRequest.status == AccountStatusEnum.approved, 1),
-                (AccountRequest.status == AccountStatusEnum.rejected, 2),
-                (AccountRequest.status == AccountStatusEnum.created, 3),
+                (AccountRequest.status == AccountStatusEnum.PENDING, 0),
+                (AccountRequest.status == AccountStatusEnum.APPROVED, 1),
+                (AccountRequest.status == AccountStatusEnum.REJECTED, 2),
+                (AccountRequest.status == AccountStatusEnum.CREATED, 3),
                 else_=4,
             )
 
