@@ -63,11 +63,15 @@ class CreateAccountController:
                 "last_name": account_request.last_name,
                 "email": account_request.email,
                 "course_id": account_request.course_id,
-                "password": data.new_password,
             },
             institute=account_request.institute,
         )
         if not moodle_result.get("created"):
+            await KeycloakService.delete_user(
+                user_id=str(account_request.kc_id),
+                institute=account_request.institute,
+            )
+
             raise HTTPException(
                 status_code=502,
                 detail={
