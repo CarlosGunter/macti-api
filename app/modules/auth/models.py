@@ -44,7 +44,7 @@ class MCTValidacion(Base):
     __tablename__ = "MCT_Validacion"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    account_id: Mapped[int] = mapped_column(
+    account_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("account_requests.id"), nullable=True
     )
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)

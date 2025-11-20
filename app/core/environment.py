@@ -2,12 +2,11 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
-class Settings(BaseSettings):
-    # Princioal
-    KEYCLOAK_ADMIN_CLIENT_SECRET: str = ""
-    Cuantico_ADMIN_CLIENT_SECRET: str = ""
-    Ciencias_ADMIN_CLIENT_SECRET: str = ""
-    Ingenieria_ADMIN_CLIENT_SECRET: str = ""
+class EnvironmentConfigs(BaseSettings):
+    PRINCIPAL_ADMIN_CLIENT_SECRET: str = ""
+    CUANTICO_ADMIN_CLIENT_SECRET: str = ""
+    CIENCIAS_ADMIN_CLIENT_SECRET: str = ""
+    INGENIERIA_ADMIN_CLIENT_SECRET: str = ""
 
     MOODLE_TOKEN_PRINCIPAL: str = ""
     MOODLE_TOKEN_CUANTICO: str = ""
@@ -23,10 +22,10 @@ class Settings(BaseSettings):
     # Agregamos al validaor de la llave secreta las variales de las otras 3
 
     @field_validator(
-        "KEYCLOAK_ADMIN_CLIENT_SECRET",
-        "Cuantico_ADMIN_CLIENT_SECRET",
-        "Ciencias_ADMIN_CLIENT_SECRET",
-        "Ingenieria_ADMIN_CLIENT_SECRET",
+        "PRINCIPAL_ADMIN_CLIENT_SECRET",
+        "CUANTICO_ADMIN_CLIENT_SECRET",
+        "CIENCIAS_ADMIN_CLIENT_SECRET",
+        "INGENIERIA_ADMIN_CLIENT_SECRET",
     )
     @classmethod
     def check_admin_client_secret(cls, v):
@@ -66,4 +65,4 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
-settings = Settings()
+environment = EnvironmentConfigs()
