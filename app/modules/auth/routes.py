@@ -35,7 +35,7 @@ async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
 
 # Listar solicitudes por curso
 @router.get(
-    "/list-accounts-requests",
+    "/list-account-requests",
     summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
     description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso",
     response_model=ListAccountsResponse,
@@ -58,18 +58,15 @@ async def list_accounts_requests(
     )
 
 
-# Aprobar o rechazar solicitud y enviar correo
 @router.patch(
-    "/confirm-account",
-    summary="Aprobar o rechazar solicitud y enviar correo",
+    "/change-status",
+    summary="Cambiar estado de solicitud de una cuenta",
     response_model=ConfirmAccountResponse,
 )
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     return await ChangeStatusController.change_status(data=body_info, db=db)
 
 
-# Crear cuenta en Keycloak y Moodle
-# es este dónde se recibe la pass nueva para actulizar el key
 @router.post(
     "/create-account",
     summary="Crear cuenta en Keycloak y Moodle",
@@ -79,10 +76,9 @@ async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     return await CreateAccountController.create_account(data=body_info, db=db)
 
 
-# Confirmar datos token
 @router.get(
-    "/confirmacion",
-    summary="Confirmar email con token",
+    "/user-info-by-token",
+    summary="Obtener información del usuario mediante token de email",
     response_model=EmailValidationResponse,
 )
 def confirm_email(
