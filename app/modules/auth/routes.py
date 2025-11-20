@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends, Query
+
 from app.core.database import get_db
-from .controllers.request_account import RequestAccountController
-from .controllers.list_account_requests import ListAccountRequestsController
+from app.modules.auth.controllers.get_user_info import GetUserInfoController
+from app.shared.enums.institutes_enum import InstitutesEnum
+
 from .controllers.change_status import ChangeStatusController
 from .controllers.create_account import CreateAccountController
+from .controllers.list_account_requests import ListAccountRequestsController
+from .controllers.request_account import RequestAccountController
+from .enums import AccountStatusEnum
 from .schema import (
     AccountRequestResponse,
     AccountRequestSchema,
@@ -11,10 +16,9 @@ from .schema import (
     ConfirmAccountSchema,
     CreateAccountResponse,
     CreateAccountSchema,
-    EmailValidationResponse,
     ListAccountsResponse,
+    UserInfoResponse,
 )
-from app.modules.auth.services.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -31,32 +35,52 @@ async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
 
 # Listar solicitudes por curso
 @router.get(
-    "/list-accounts-requests",
+    "/list-account-requests",
     summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
     description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso",
     response_model=ListAccountsResponse,
 )
 async def list_accounts_requests(
     course_id: int = Query(description="Filtra las solicitudes por ID de curso"),
+    institute: InstitutesEnum = Query(
+        ..., description="Filtra las solicitudes por instituto"
+    ),
+    status: AccountStatusEnum | None = Query(
+        None, description="Filtra las solicitudes por estatus"
+    ),
     db=Depends(get_db),
 ):
     return ListAccountRequestsController.list_accounts_requests(
-        db=db, course_id=course_id
+        db=db,
+        course_id=course_id,
+        institute=institute,
+        status=status,
     )
 
 
-# Aprobar o rechazar solicitud y enviar correo
 @router.patch(
-    "/confirm-account",
-    summary="Aprobar o rechazar solicitud y enviar correo",
+    "/change-status",
+    summary="Cambiar estado de solicitud de una cuenta",
     response_model=ConfirmAccountResponse,
 )
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     return await ChangeStatusController.change_status(data=body_info, db=db)
 
 
-# Crear cuenta en Keycloak y Moodle
-# es este dónde se recibe la pass nueva para actulizar el key
+@router.get(
+    "/user-info-by-token",
+    summary="Obtener información del usuario mediante token de email",
+    response_model=UserInfoResponse,
+)
+def confirm_email(
+    token: str = Query(
+        ..., description="Token de email para obtener datos del usuario"
+    ),
+    db=Depends(get_db),
+):
+    return GetUserInfoController.get_user_info(token=token, db=db)
+
+
 @router.post(
     "/create-account",
     summary="Crear cuenta en Keycloak y Moodle",
@@ -64,13 +88,3 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
 )
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     return await CreateAccountController.create_account(data=body_info, db=db)
-
-
-# Confirmar datos token
-@router.get(
-    "/confirmacion",
-    summary="Confirmar email con token",
-    response_model=EmailValidationResponse,
-)
-def confirm_email(token: str):
-    return EmailService.validate_token(token)

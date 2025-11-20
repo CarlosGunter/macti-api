@@ -1,37 +1,46 @@
+# app/modules/auth/services/kc_service.py
 import httpx
 
-from app.core.config import settings
+from app.shared.config.kc_configs import keycloak_configs
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 
 class KeycloakService:
-    BASE_URL = settings.KEYCLOAK_SERVER_URL
-    REALM = settings.KEYCLOAK_REALM
-    TOKEN_URL = f"{BASE_URL}/realms/{REALM}/protocol/openid-connect/token"
-    USERS_API_URL = f"{BASE_URL}/admin/realms/{REALM}/users"
+    """Servicio para interactuar con Keycloak en distintos institutos."""
 
     @classmethod
-    async def _get_admin_token(cls) -> str:
+    async def _get_admin_token(cls, institute: InstitutesEnum) -> str:
+        """Obtiene el token de administrador de un instituto específico."""
         try:
+            config = keycloak_configs[institute]
+            token_url = (
+                f"{config.url}/realms/{config.realm}/protocol/openid-connect/token"
+            )
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    cls.TOKEN_URL,
+                    token_url,
                     data={
-                        "client_id": settings.KEYCLOAK_ADMIN_CLIENT_ID,
-                        "client_secret": settings.KEYCLOAK_ADMIN_CLIENT_SECRET,
+                        "client_id": config.client_id,
+                        "client_secret": config.secret_pass,
                         "grant_type": "client_credentials",
                     },
                 )
                 response.raise_for_status()
                 return response.json()["access_token"]
         except Exception as e:
-            error_message = f"Fallo al autenticar con Keycloak Admin API: {e}"
+            error_message = f"Fallo al autenticar con Keycloak ({institute}): {e}"
             print(error_message)
-            raise Exception(error_message)
+            raise Exception(error_message) from e
 
     @classmethod
-    async def create_user(cls, user_data: dict) -> dict:
+    async def create_user(cls, user_data: dict, institute: InstitutesEnum) -> dict:
+        """Crea un usuario en el Keycloak del instituto especificado."""
+        print(f" KeycloakService.create_user called for institute={institute}")
         try:
-            token = await cls._get_admin_token()
+            config = keycloak_configs[institute]
+            token = await cls._get_admin_token(institute)
+            users_api_url = f"{config.url}/admin/realms/{config.realm}/users"
+
             payload = {
                 "username": user_data["email"],
                 "email": user_data["email"],
@@ -46,14 +55,18 @@ class KeycloakService:
                     }
                 ],
             }
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    cls.USERS_API_URL,
+                    users_api_url,
                     json=payload,
                     headers={"Authorization": f"Bearer {token}"},
                 )
+
                 if response.status_code in [201, 204]:
-                    created_user = await cls.get_user_by_email(user_data["email"])
+                    created_user = await cls.get_user_by_email(
+                        user_data["email"], institute
+                    )
                     return {"created": True, "user_id": created_user.get("id")}
                 else:
                     return {"created": False, "error": response.text}
@@ -61,11 +74,14 @@ class KeycloakService:
             return {"created": False, "error": str(e)}
 
     @classmethod
-    async def get_user_by_email(cls, email: str) -> dict:
-        token = await cls._get_admin_token()
+    async def get_user_by_email(cls, email: str, institute: InstitutesEnum) -> dict:
+        """Busca un usuario por correo electrónico."""
+        config = keycloak_configs[institute]
+        token = await cls._get_admin_token(institute)
+        users_api_url = f"{config.url}/admin/realms/{config.realm}/users"
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                cls.USERS_API_URL,
+                users_api_url,
                 params={"email": email},
                 headers={"Authorization": f"Bearer {token}"},
             )
@@ -73,11 +89,15 @@ class KeycloakService:
             return users[0] if users else {}
 
     @classmethod
-    async def delete_user(cls, user_id: str) -> bool:
+    async def delete_user(cls, user_id: str, institute: InstitutesEnum) -> bool:
+        """Elimina un usuario en Keycloak."""
         try:
-            token = await cls._get_admin_token()
+            config = keycloak_configs[institute]
+            token = await cls._get_admin_token(institute)
+            users_api_url = f"{config.url}/admin/realms/{config.realm}/users"
+
             async with httpx.AsyncClient() as client:
-                url = f"{cls.USERS_API_URL}/{user_id}"
+                url = f"{users_api_url}/{user_id}"
                 response = await client.delete(
                     url, headers={"Authorization": f"Bearer {token}"}
                 )
@@ -86,20 +106,27 @@ class KeycloakService:
             print(f"Error deleting Keycloak user {user_id}: {e}")
             return False
 
-    # Actualiza la contraseña de un usuario en Keycloak
     @classmethod
-    async def update_user_password(cls, user_id: str, new_password: str) -> dict:
+    async def update_user_password(
+        cls, user_id: str, new_password: str, institute: InstitutesEnum
+    ) -> dict:
+        """Actualiza la contraseña de un usuario en Keycloak."""
         try:
-            token = await cls._get_admin_token()
+            config = keycloak_configs[institute]
+            token = await cls._get_admin_token(institute)
+
+            url = f"{config.url}/admin/realms/{config.realm}/users/{user_id}/reset-password"
             payload = {"type": "password", "value": new_password, "temporary": False}
+
             async with httpx.AsyncClient() as client:
-                url = f"{cls.USERS_API_URL}/{user_id}/reset-password"
                 response = await client.put(
                     url, json=payload, headers={"Authorization": f"Bearer {token}"}
                 )
+
                 if response.status_code == 204:
                     return {"success": True}
                 else:
                     return {"success": False, "error": response.text}
+
         except Exception as e:
             return {"success": False, "error": str(e)}

@@ -3,21 +3,21 @@ Service for interacting with Moodle LMS API
 """
 
 import httpx
-from app.core.config import settings
+
+from app.shared.config.moodle_configs import MOODLE_CONFIG
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 
 class MoodleService:
-    MOODLE_URL = settings.MOODLE_URL
-    MOODLE_TOKEN = settings.MOODLE_TOKEN
-
     @staticmethod
-    async def create_user(user_data):
+    async def create_user(user_data, institute: InstitutesEnum):
         """
         Create a user in Moodle using the REST API.
         """
-        endpoint = MoodleService.MOODLE_URL
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
         params = {
-            "wstoken": MoodleService.MOODLE_TOKEN,
+            "wstoken": config.moodle_token,
             "wsfunction": "core_user_create_users",
             "moodlewsrestformat": "json",
         }
@@ -25,11 +25,11 @@ class MoodleService:
         print("DEBUG user_data sent to Moodle:", user_data)
 
         data = {
-            "users[0][username]": user_data["email"].split("@")[0],
-            "users[0][password]": user_data.get("password", "Password123!"),
+            "users[0][username]": user_data["email"],
             "users[0][firstname]": user_data.get("name", "User"),
             "users[0][lastname]": user_data.get("last_name", "NA"),
             "users[0][email]": user_data["email"],
+            "users[0][auth]": "oauth2",
         }
 
         async with httpx.AsyncClient() as client:
@@ -45,13 +45,14 @@ class MoodleService:
         return {**result[0], "created": True}
 
     @staticmethod
-    async def enroll_user(user_id, course_id):
+    async def enroll_user(user_id, course_id, institute: InstitutesEnum):
         """
         Enroll a user in a Moodle course using the REST API.
         """
-        endpoint = f"{MoodleService.MOODLE_URL}/webservice/rest/server.php"
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
         params = {
-            "wstoken": MoodleService.MOODLE_TOKEN,
+            "wstoken": config.moodle_token,
             "wsfunction": "enrol_manual_enrol_users",
             "moodlewsrestformat": "json",
         }
