@@ -25,7 +25,7 @@ class MoodleService:
         print("DEBUG user_data sent to Moodle:", user_data)
 
         data = {
-            "users[0][username]": user_data["email"].split("@")[0],
+            "users[0][username]": user_data["email"],
             "users[0][firstname]": user_data.get("name", "User"),
             "users[0][lastname]": user_data.get("last_name", "NA"),
             "users[0][email]": user_data["email"],
