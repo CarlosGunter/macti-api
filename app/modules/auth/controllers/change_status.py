@@ -5,7 +5,6 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
-from app.modules.auth.services.kc_service import KeycloakService
 
 from ..models import AccountRequest, AccountStatusEnum, MCTValidacion
 from ..schema import ConfirmAccountSchema
@@ -39,11 +38,6 @@ class ChangeStatusController:
                 token = token_data.get("token")
 
                 if not token:
-                    # Si falla, eliminamos Keycloak
-                    await KeycloakService.delete_user(
-                        user_id=str(account_request.kc_id),
-                        institute=account_request.institute,
-                    )
                     raise HTTPException(
                         status_code=502,
                         detail={
