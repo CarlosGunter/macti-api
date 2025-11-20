@@ -1,31 +1,12 @@
-import enum
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-
-
-class AccountStatusEnum(enum.Enum):
-    pending = "pending"
-    approved = "approved"
-    rejected = "rejected"
-    created = "created"
-
-
-class InstituteEnum(enum.Enum):
-    principal = "principal"
-    cuantico = "cuantico"
-    ciencias = "ciencias"
-    ingenieria = "ingenieria"
-    encit = "encit"
-    ier = "ier"
-    enes_m = "enes_m"
-    hpc = "hpc"
-    igf = "igf"
-    ene = "ene"
+from app.modules.auth.enums import AccountStatusEnum
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 
 class AccountRequest(Base):
@@ -39,11 +20,12 @@ class AccountRequest(Base):
     #
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
-        default=AccountStatusEnum.pending,
+        default=AccountStatusEnum.PENDING,
         nullable=False,
     )
-    institute: Mapped[InstituteEnum] = mapped_column(
-        Enum(InstituteEnum, name="institute_enum"), nullable=False
+    institute: Mapped[InstitutesEnum] = mapped_column(
+        Enum(InstitutesEnum, name="institutes_enum"),
+        nullable=False,
     )
     kc_id: Mapped[str | None] = mapped_column(String, nullable=True)
     moodle_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -62,7 +44,9 @@ class MCTValidacion(Base):
     __tablename__ = "MCT_Validacion"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    account_id = Column(Integer, ForeignKey("account_requests.id"), nullable=True)
+    account_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("account_requests.id"), nullable=True
+    )
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     token: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     fecha_solicitud: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

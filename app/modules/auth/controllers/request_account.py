@@ -35,7 +35,7 @@ class RequestAccountController:
                 email=data.email,
                 course_id=data.course_id,
                 institute=data.institute,
-                status=AccountStatusEnum.pending,
+                status=AccountStatusEnum.PENDING,
             )
             db.add(db_account_request)
             db.commit()

@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import AccountRequest, AccountStatusEnum
+from app.modules.auth.enums import AccountStatusEnum
+from app.modules.auth.models import AccountRequest
 from app.modules.auth.services.email_service import EmailService
 from app.modules.auth.services.kc_service import KeycloakService
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 TEST_EMAIL = "hola@correo.com"
 NEW_PASSWORD = "correpruebas!1"  # noqa: S105
@@ -18,7 +20,7 @@ def simulate_add_request(db: Session, email: str):
             last_name="Prueba",
             email=email,
             course_id=1,
-            status=AccountStatusEnum.pending,
+            status=AccountStatusEnum.PENDING,
         )
         db.add(account_request)
         db.commit()
@@ -34,12 +36,12 @@ async def ensure_user_in_keycloak(email):
         "last_name": "Prueba",
         "password": "temporal123",
     }
-    result = await KeycloakService.create_user(user_data)
+    result = await KeycloakService.create_user(user_data, InstitutesEnum.INGENIERIA)
     if result.get("created"):
         print(f"Usuario creado en Keycloak: {email}")
         return result.get("user_id")
     else:
-        user = await KeycloakService.get_user_by_email(email)
+        user = await KeycloakService.get_user_by_email(email, InstitutesEnum.INGENIERIA)
         print(f"Usuario ya existía en Keycloak: {email}")
         return user.get("id")
 
@@ -50,7 +52,7 @@ async def simulate_profesor_approves(db: Session, email: str):
     )
     if not account_request:
         raise Exception(f"No existe la solicitud para {email}")
-    account_request.status = AccountStatusEnum.approved
+    account_request.status = AccountStatusEnum.APPROVED
     db.commit()
     db.refresh(account_request)
 

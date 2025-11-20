@@ -26,7 +26,7 @@ class CreateAccountController:
                 },
             )
 
-        if account_request.status != AccountStatusEnum.approved:
+        if account_request.status != AccountStatusEnum.APPROVED:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -39,7 +39,9 @@ class CreateAccountController:
         if str(account_request.kc_id):
             # Actualizar contraseña
             kc_result = await KeycloakService.update_user_password(
-                str(account_request.kc_id), data.new_password
+                str(account_request.kc_id),
+                data.new_password,
+                institute=account_request.institute,
             )
             if not kc_result.get("success"):
                 raise HTTPException(
@@ -57,7 +59,8 @@ class CreateAccountController:
                     "last_name": account_request.last_name,
                     "email": account_request.email,
                     "password": data.new_password,
-                }
+                },
+                institute=account_request.institute,
             )
             if not kc_result.get("created"):
                 raise HTTPException(
@@ -71,13 +74,14 @@ class CreateAccountController:
 
         # Crear usuario en Moodle (puedes agregar lógica similar si ya existe)
         moodle_result = await MoodleService.create_user(
-            {
+            user_data={
                 "name": account_request.name,
                 "last_name": account_request.last_name,
                 "email": account_request.email,
                 "course_id": account_request.course_id,
                 "password": data.new_password,
-            }
+            },
+            institute=account_request.institute,
         )
         if not moodle_result.get("created"):
             raise HTTPException(
@@ -92,11 +96,13 @@ class CreateAccountController:
 
         # Matricular usuario en el curso
         await MoodleService.enroll_user(
-            user_id=moodle_result["id"], course_id=account_request.course_id
+            user_id=moodle_result["id"],
+            course_id=account_request.course_id,
+            institute=account_request.institute,
         )
 
         # Actualizar estado de la solicitud
-        account_request.status = AccountStatusEnum.created
+        account_request.status = AccountStatusEnum.CREATED
         token_record = (
             db.query(MCTValidacion)
             .filter(MCTValidacion.email == account_request.email)

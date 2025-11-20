@@ -1,9 +1,12 @@
 import httpx
 
-from app.core.config import settings
+from app.shared.config import moodle_configs
+from app.shared.enums.institutes_enum import InstitutesEnum
 
-url = settings.MOODLE_URL
-TOKEN = settings.MOODLE_TOKEN
+config = moodle_configs.MOODLE_CONFIG[InstitutesEnum.PRINCIPAL]
+url = config.moodle_url
+TOKEN = config.moodle_token
+
 nuevo_usuario = {
     "username": "nuevo.usuario",
     "password": "Pass123!",

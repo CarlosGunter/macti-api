@@ -31,7 +31,7 @@ class ChangeStatusController:
             db.commit()
             db.refresh(account_request)
 
-            if status == AccountStatusEnum.approved:
+            if status == AccountStatusEnum.APPROVED:
                 user_email = account_request.email
                 user_firstname = account_request.name
                 user_lastname = account_request.last_name
@@ -41,7 +41,10 @@ class ChangeStatusController:
                         "name": user_firstname,
                         "last_name": user_lastname,
                         "password": "temporal123",
-                    }
+                    },
+                    getattr(
+                        account_request.institute, "value", account_request.institute
+                    ),
                 )
                 if not keycloak_result.get("created"):
                     print(
@@ -60,7 +63,14 @@ class ChangeStatusController:
                 token_data = EmailService.generate_and_save_token(user_email)
                 if not token_data.get("success"):
                     # Si falla, eliminamos Keycloak
-                    await KeycloakService.delete_user(str(account_request.kc_id))
+                    await KeycloakService.delete_user(
+                        str(account_request.kc_id),
+                        getattr(
+                            account_request.institute,
+                            "value",
+                            account_request.institute,
+                        ),
+                    )
                     raise HTTPException(
                         status_code=502,
                         detail={
