@@ -16,8 +16,8 @@ from .schema import (
     ConfirmAccountSchema,
     CreateAccountResponse,
     CreateAccountSchema,
-    EmailValidationResponse,
     ListAccountsResponse,
+    UserInfoResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -67,19 +67,10 @@ async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     return await ChangeStatusController.change_status(data=body_info, db=db)
 
 
-@router.post(
-    "/create-account",
-    summary="Crear cuenta en Keycloak y Moodle",
-    response_model=CreateAccountResponse,
-)
-async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
-    return await CreateAccountController.create_account(data=body_info, db=db)
-
-
 @router.get(
     "/user-info-by-token",
     summary="Obtener información del usuario mediante token de email",
-    response_model=EmailValidationResponse,
+    response_model=UserInfoResponse,
 )
 def confirm_email(
     token: str = Query(
@@ -88,3 +79,12 @@ def confirm_email(
     db=Depends(get_db),
 ):
     return GetUserInfoController.get_user_info(token=token, db=db)
+
+
+@router.post(
+    "/create-account",
+    summary="Crear cuenta en Keycloak y Moodle",
+    response_model=CreateAccountResponse,
+)
+async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
+    return await CreateAccountController.create_account(data=body_info, db=db)
