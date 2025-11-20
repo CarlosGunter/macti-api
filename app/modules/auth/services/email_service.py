@@ -1,15 +1,15 @@
 import smtplib
 from email.message import EmailMessage
 
-from app.core.config import settings
+from app.core.environment import environment
 
 
 class EmailService:
-    SMTP_HOST = settings.SMTP_HOST
-    SMTP_PORT = settings.SMTP_PORT
-    SMTP_USER = settings.SMTP_USER
-    SMTP_PASS = settings.SMTP_PASS
-    FROM_ADDRESS = settings.FROM_ADDRESS
+    SMTP_HOST = environment.SMTP_HOST
+    SMTP_PORT = environment.SMTP_PORT
+    SMTP_USER = environment.SMTP_USER
+    SMTP_PASS = environment.SMTP_PASS
+    FROM_ADDRESS = environment.FROM_ADDRESS
     FROM_NAME = "MACTI Proto"
 
     @staticmethod
