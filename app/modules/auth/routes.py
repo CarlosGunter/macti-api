@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_db
-from app.modules.auth.services.email_service import EmailService
+from app.modules.auth.controllers.get_user_info import GetUserInfoController
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 from .controllers.change_status import ChangeStatusController
@@ -85,5 +85,10 @@ async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     summary="Confirmar email con token",
     response_model=EmailValidationResponse,
 )
-def confirm_email(token: str):
-    return EmailService.validate_token(token)
+def confirm_email(
+    token: str = Query(
+        ..., description="Token de email para obtener datos del usuario"
+    ),
+    db=Depends(get_db),
+):
+    return GetUserInfoController.get_user_info(token=token, db=db)

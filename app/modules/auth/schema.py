@@ -60,5 +60,8 @@ class EmailValidationSchema(BaseModel):
 class EmailValidationResponse(BaseModel):
     id: int
     email: EmailStr
+    name: str
+    last_name: str
+    institute: InstitutesEnum
     # Para ORM
     model_config = ConfigDict(from_attributes=True)

@@ -1,10 +1,13 @@
+from datetime import datetime, timedelta
+from uuid import uuid4
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
 from app.modules.auth.services.kc_service import KeycloakService
 
-from ..models import AccountRequest, AccountStatusEnum
+from ..models import AccountRequest, AccountStatusEnum, MCTValidacion
 from ..schema import ConfirmAccountSchema
 
 
@@ -26,10 +29,6 @@ class ChangeStatusController:
                         "message": "Solicitud de cuenta no encontrada",
                     },
                 )
-
-            account_request.status = status
-            db.commit()
-            db.refresh(account_request)
 
             if status == AccountStatusEnum.APPROVED:
                 user_email = account_request.email
@@ -58,8 +57,12 @@ class ChangeStatusController:
 
                 account_request.kc_id = keycloak_result.get("user_id")
 
-                token_data = EmailService.generate_and_save_token(user_email)
-                if not token_data.get("success"):
+                token_data = ChangeStatusController._generate_and_save_token(
+                    account_request.id, db
+                )
+                token = token_data.get("token")
+
+                if not token:
                     # Si falla, eliminamos Keycloak
                     await KeycloakService.delete_user(
                         user_id=str(account_request.kc_id),
@@ -73,7 +76,9 @@ class ChangeStatusController:
                         },
                     )
 
-                email_result = EmailService.send_validation_email(user_email)
+                email_result = EmailService.send_validation_email(
+                    to_email=user_email, token=token
+                )
                 if not email_result.get("success"):
                     print(
                         f"ALERTA: Falló el envío de correo para {user_email}: {email_result.get('error')}"
@@ -86,6 +91,7 @@ class ChangeStatusController:
                         },
                     )
 
+                account_request.status = status
                 db.commit()
                 db.refresh(account_request)
 
@@ -106,3 +112,53 @@ class ChangeStatusController:
                 status_code=400,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
             ) from e
+        finally:
+            db.close()
+
+    @classmethod
+    def _generate_and_save_token(cls, account_id: int, db: Session):
+        token = str(uuid4())
+        fecha_solicitud = datetime.now()
+        fecha_expiracion = fecha_solicitud + timedelta(hours=12)
+
+        try:
+            # Get the account to retrieve email
+            account = (
+                db.query(AccountRequest).filter(AccountRequest.id == account_id).first()
+            )
+            if not account:
+                return {"success": False, "error": "Account not found"}
+
+            email = account.email
+
+            # Query MCTValidacion by account_id
+            validation = (
+                db.query(MCTValidacion)
+                .filter(MCTValidacion.account_id == account_id)
+                .first()
+            )
+
+            if validation:
+                # Update existing record
+                validation.token = token
+                validation.fecha_solicitud = fecha_solicitud
+                validation.fecha_expiracion = fecha_expiracion
+            else:
+                # Create new record
+                new_validation = MCTValidacion(
+                    account_id=account_id,
+                    email=email,
+                    token=token,
+                    fecha_solicitud=fecha_solicitud,
+                    fecha_expiracion=fecha_expiracion,
+                    bandera=0,
+                )
+                db.add(new_validation)
+
+            db.commit()
+            return {"success": True, "token": token}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": f"Error en BD: {e}"}
+        finally:
+            db.close()
