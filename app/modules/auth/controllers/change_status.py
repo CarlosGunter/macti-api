@@ -36,15 +36,13 @@ class ChangeStatusController:
                 user_firstname = account_request.name
                 user_lastname = account_request.last_name
                 keycloak_result = await KeycloakService.create_user(
-                    {
+                    user_data={
                         "email": user_email,
                         "name": user_firstname,
                         "last_name": user_lastname,
                         "password": "temporal123",
                     },
-                    getattr(
-                        account_request.institute, "value", account_request.institute
-                    ),
+                    institute=account_request.institute,
                 )
                 if not keycloak_result.get("created"):
                     print(
@@ -64,12 +62,8 @@ class ChangeStatusController:
                 if not token_data.get("success"):
                     # Si falla, eliminamos Keycloak
                     await KeycloakService.delete_user(
-                        str(account_request.kc_id),
-                        getattr(
-                            account_request.institute,
-                            "value",
-                            account_request.institute,
-                        ),
+                        user_id=str(account_request.kc_id),
+                        institute=account_request.institute,
                     )
                     raise HTTPException(
                         status_code=502,
