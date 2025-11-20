@@ -32,30 +32,6 @@ class ChangeStatusController:
 
             if status == AccountStatusEnum.APPROVED:
                 user_email = account_request.email
-                user_firstname = account_request.name
-                user_lastname = account_request.last_name
-                keycloak_result = await KeycloakService.create_user(
-                    user_data={
-                        "email": user_email,
-                        "name": user_firstname,
-                        "last_name": user_lastname,
-                        "password": "temporal123",
-                    },
-                    institute=account_request.institute,
-                )
-                if not keycloak_result.get("created"):
-                    print(
-                        f"Error al crear usuario en Keycloak: {keycloak_result.get('error')}"
-                    )
-                    raise HTTPException(
-                        status_code=502,
-                        detail={
-                            "error_code": "KC_ERROR",
-                            "message": "Error al crear usuario en Keycloak",
-                        },
-                    )
-
-                account_request.kc_id = keycloak_result.get("user_id")
 
                 token_data = ChangeStatusController._generate_and_save_token(
                     account_request.id, db
@@ -112,8 +88,6 @@ class ChangeStatusController:
                 status_code=400,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
             ) from e
-        finally:
-            db.close()
 
     @classmethod
     def _generate_and_save_token(cls, account_id: int, db: Session):
@@ -160,5 +134,3 @@ class ChangeStatusController:
         except Exception as e:
             db.rollback()
             return {"success": False, "error": f"Error en BD: {e}"}
-        finally:
-            db.close()

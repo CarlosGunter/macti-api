@@ -35,42 +35,26 @@ class CreateAccountController:
                 },
             )
 
-        # Revisar si ya tiene kc_id (usuario existente en Keycloak)
-        if str(account_request.kc_id):
-            # Actualizar contraseña
-            kc_result = await KeycloakService.update_user_password(
-                str(account_request.kc_id),
-                data.new_password,
-                institute=account_request.institute,
-            )
-            if not kc_result.get("success"):
-                raise HTTPException(
-                    status_code=502,
-                    detail={
-                        "error_code": "KC_ERROR",
-                        "message": f"Error actualizando contraseña en Keycloak: {kc_result.get('error')}",
-                    },
-                )
-        else:
-            # Crear usuario en Keycloak
-            kc_result = await KeycloakService.create_user(
-                {
-                    "name": account_request.name,
-                    "last_name": account_request.last_name,
-                    "email": account_request.email,
-                    "password": data.new_password,
+        # Crear usuario en Keycloak
+        kc_result = await KeycloakService.create_user(
+            {
+                "name": account_request.name,
+                "last_name": account_request.last_name,
+                "email": account_request.email,
+                "password": data.new_password,
+            },
+            institute=account_request.institute,
+        )
+        if not kc_result.get("created"):
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error_code": "KC_ERROR",
+                    "message": f"Error creando usuario en Keycloak: {kc_result.get('error')}",
                 },
-                institute=account_request.institute,
             )
-            if not kc_result.get("created"):
-                raise HTTPException(
-                    status_code=502,
-                    detail={
-                        "error_code": "KC_ERROR",
-                        "message": f"Error creando usuario en Keycloak: {kc_result.get('error')}",
-                    },
-                )
-            account_request.kc_id = kc_result.get("user_id")
+
+        account_request.kc_id = kc_result.get("user_id")
 
         # Crear usuario en Moodle (puedes agregar lógica similar si ya existe)
         moodle_result = await MoodleService.create_user(
