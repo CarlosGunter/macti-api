@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+
 from app.modules.courses.services.moodle_service import MoodleService
 from app.shared.enums.institutes_enum import InstitutesEnum
 
@@ -10,4 +12,13 @@ class ListCoursesController:
         """
         courses = await MoodleService.get_courses(institute=institute)
 
-        return courses
+        if courses["error"]:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error_code": "MOODLE_COURSE_LIST_ERROR",
+                    "message": courses["error"],
+                },
+            )
+
+        return courses["courses"]

@@ -23,6 +23,12 @@ class MoodleService:
         )
 
         if not result["success"]:
-            raise ValueError(result["error_message"])
+            return {
+                "courses": [],
+                "error": result["error_message"],
+            }
 
-        return result["data"]
+        return {
+            "courses": result["data"],
+            "error": None,
+        }
