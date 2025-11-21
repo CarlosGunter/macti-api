@@ -2,10 +2,9 @@
 Service for interacting with Moodle LMS API
 """
 
-import httpx
-
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.services.moodle_client import make_moodle_request
 
 
 class MoodleService:
@@ -22,8 +21,6 @@ class MoodleService:
             "moodlewsrestformat": "json",
         }
 
-        print("DEBUG user_data sent to Moodle:", user_data)
-
         data = {
             "users[0][username]": user_data["email"],
             "users[0][firstname]": user_data.get("name", "User"),
@@ -32,15 +29,28 @@ class MoodleService:
             "users[0][auth]": "oauth2",
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, params=params, data=data)
-            response.raise_for_status()
-            result = response.json()
+        print("DEBUG user_data sent to Moodle:", user_data)
+
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            data=data,
+            institute=institute,
+            check_moodle_errors=False,
+        )
+
+        if not result_response["success"]:
+            return {
+                "created": False,
+                "error": f"Moodle Error de petición: {result_response['error_message']}",
+            }
+
+        result = result_response["data"]
 
         print("DEBUG Moodle response (create_user):", result)
 
         if isinstance(result, dict) and "exception" in result:
-            raise Exception(f"Error creating user in Moodle: {result}")
+            return {"created": False, "error": result}
 
         return {**result[0], "created": True}
 
@@ -66,10 +76,20 @@ class MoodleService:
             "enrolments[0][suspend]": 0,
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, params=params, data=data)
-            response.raise_for_status()
-            result = response.json()
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            data=data,
+            institute=institute,
+            check_moodle_errors=False,
+        )
+
+        if not result_response["success"]:
+            raise Exception(
+                f"Error en petición a Moodle: {result_response['error_message']}"
+            )
+
+        result = result_response["data"]
 
         print("DEBUG Moodle response (enroll_user):", result)
 
