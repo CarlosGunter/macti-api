@@ -36,23 +36,19 @@ class MoodleService:
             params=params,
             data=data,
             institute=institute,
-            check_moodle_errors=False,
         )
 
         if not result_response["success"]:
             return {
                 "created": False,
-                "error": f"Moodle Error de petición: {result_response['error_message']}",
+                "error": result_response["error_message"],
             }
 
         result = result_response["data"]
 
         print("DEBUG Moodle response (create_user):", result)
 
-        if isinstance(result, dict) and "exception" in result:
-            return {"created": False, "error": result}
-
-        return {**result[0], "created": True}
+        return {"created": True, "id": result[0]["id"]}
 
     @staticmethod
     async def enroll_user(user_id, course_id, institute: InstitutesEnum):
@@ -85,9 +81,10 @@ class MoodleService:
         )
 
         if not result_response["success"]:
-            raise Exception(
-                f"Error en petición a Moodle: {result_response['error_message']}"
-            )
+            return {
+                "enrolled": False,
+                "error": f"Moodle Error de petición: {result_response['error_message']}",
+            }
 
         result = result_response["data"]
 
@@ -102,6 +99,10 @@ class MoodleService:
                     "enrolled": True,
                     "warning": result,
                 }
-            raise Exception(f"Error enrolling user in Moodle: {result}")
+
+            return {
+                "enrolled": False,
+                "error": f"Error enrolling user in Moodle: {result}",
+            }
 
         return {"user_id": user_id, "course_id": course_id, "enrolled": True}
