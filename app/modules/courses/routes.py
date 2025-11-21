@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Query
 
 from app.modules.courses.controllers.list_courses import ListCoursesController
+from app.modules.courses.schemas import ListCoursesResponse
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 router = APIRouter(prefix="/courses", tags=["Cursos"])
 
 
-@router.get("/", summary="Listar cursos de Moodle para un instituto específico")
+@router.get(
+    "/",
+    summary="Listar cursos de Moodle para un instituto específico",
+    response_model=ListCoursesResponse,
+)
 async def list_courses(
     institute: InstitutesEnum = Query(..., description="Nombre del instituto"),
 ):
