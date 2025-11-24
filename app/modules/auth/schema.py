@@ -53,12 +53,15 @@ class CreateAccountResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class EmailValidationSchema(BaseModel):
+class UserInfoSchema(BaseModel):
     email: EmailStr
 
 
-class EmailValidationResponse(BaseModel):
+class UserInfoResponse(BaseModel):
     id: int
     email: EmailStr
+    name: str
+    last_name: str
+    institute: InstitutesEnum
     # Para ORM
     model_config = ConfigDict(from_attributes=True)

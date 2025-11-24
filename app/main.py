@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 from app.modules.auth.routes import router as auth_router
+from app.modules.temp.routes import router as temp_router
 
 # Create tables in the database
 Base.metadata.create_all(bind=engine)
@@ -25,3 +26,4 @@ async def read_root():
 
 # Include the auth router
 app.include_router(auth_router)
+app.include_router(temp_router)
