@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.database import get_db
 from app.modules.auth.models import AccountRequest
 from app.modules.auth.services.kc_service import KeycloakService
+from app.shared.dependecies.get_current_user import get_current_user
 
 router = APIRouter(prefix="/temp", tags=["temp"])
 
@@ -42,4 +43,15 @@ async def clear_user_data(
 
     return {
         "message": f"Datos del usuario con ID {user_id} eliminados correctamente de la BD y KC."
+    }
+
+
+@router.get(
+    "/bearer-test",
+    summary="Endpoint de prueba para verificar el token Bearer",
+)
+async def bearer_test(current_user: dict = Depends(get_current_user)):
+    return {
+        "message": "Token Bearer válido. Acceso concedido al endpoint de prueba.",
+        "user": current_user,
     }
