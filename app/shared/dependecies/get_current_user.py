@@ -132,7 +132,7 @@ async def get_current_user(
         raise HTTPException(
             status_code=401,
             detail={"error_code": "TOKEN_EXPIRADO", "message": "Token expirado"},
-        ) from None
+        ) from ExpiredSignatureError
 
     except JWTClaimsError:
         raise HTTPException(
@@ -141,7 +141,7 @@ async def get_current_user(
                 "error_code": "RECLAMACIONES_TOKEN_INVALIDAS",
                 "message": "Reclamaciones del token inválidas",
             },
-        ) from None
+        ) from JWTClaimsError
 
     except JWTError as e:
         raise HTTPException(
