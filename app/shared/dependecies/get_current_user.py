@@ -2,12 +2,10 @@ import httpx
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 
 from app.shared.config.kc_configs import keycloak_configs
 from app.shared.enums.institutes_enum import InstitutesEnum
-
-security = HTTPBearer()
-ALGORITHM = "RS256"
 
 security = HTTPBearer()
 ALGORITHM = "RS256"
@@ -30,7 +28,10 @@ async def get_jwks_for_institute(institute: InstitutesEnum) -> dict:
                 print("[ERROR] No se pudieron obtener JWKS:", resp.text)
                 raise HTTPException(
                     status_code=500,
-                    detail=f"No se pudieron obtener JWKS para {institute.value}",
+                    detail={
+                        "error_code": "KC_JWKS_ERROR",
+                        "message": f"No se pudieron obtener JWKS para {institute.value}",
+                    },
                 )
 
             JWKS_CACHE[institute] = resp.json()
@@ -70,14 +71,32 @@ async def get_current_user(
 
         if not kid:
             print("[ERROR] Token no contiene KID")
-            raise HTTPException(status_code=401, detail="Token header missing 'kid'")
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error_code": "FALTA_KID_TOKEN",
+                    "message": "Falta 'kid' en el encabezado del token",
+                },
+            )
     except Exception as e:
         print("[ERROR] Error leyendo encabezado del token:", str(e))
-        raise HTTPException(status_code=401, detail="Invalid token header") from e
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error_code": "ENCABEZADO_TOKEN_INVALIDO",
+                "message": "Encabezado del token inválido",
+            },
+        ) from e
 
     signing_key = find_signing_key(jwks, kid)
     if not signing_key:
-        raise HTTPException(status_code=401, detail="Invalid signing key")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error_code": "CLAVE_FIRMA_INVALIDA",
+                "message": "Clave de firma inválida",
+            },
+        )
 
     kc = keycloak_configs[institute]
     issuer = f"{kc.url}/realms/{kc.realm}"
@@ -101,16 +120,34 @@ async def get_current_user(
 
         if azp != kc.client_id:
             print("[ERROR] azp inválido")
-            raise HTTPException(status_code=401, detail="Invalid azp (client) in token")
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error_code": "CLIENTE_INVALIDO",
+                    "message": "Cliente (azp) inválido en el token",
+                },
+            )
 
-    # Si te marca algun error solo descomente los type o bórralos
-    except jwt.ExpiredSignatureError:  # type: ignore
-        print("[ERROR] Token expirado ")
-        raise HTTPException(status_code=401, detail="Token expired") from None
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail={"error_code": "TOKEN_EXPIRADO", "message": "Token expirado"},
+        ) from None
 
-    except jwt.JWTError as e:  # type: ignore
-        print("[ERROR] Error verificando token:", str(e))
-        raise HTTPException(status_code=401, detail="Invalid token") from e
+    except JWTClaimsError:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error_code": "RECLAMACIONES_TOKEN_INVALIDAS",
+                "message": "Reclamaciones del token inválidas",
+            },
+        ) from None
+
+    except JWTError as e:
+        raise HTTPException(
+            status_code=401,
+            detail={"error_code": "FIRMA_TOKEN_INVALIDA", "message": "Token inválido"},
+        ) from e
 
     print("[DEBUG] Usuario autenticado correctamente")
     return payload
