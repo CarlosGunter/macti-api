@@ -12,13 +12,13 @@ class ListCoursesController:
         """
         courses = await MoodleService.get_courses(institute=institute)
 
-        if courses["error"]:
+        if courses.error:
             raise HTTPException(
                 status_code=502,
                 detail={
                     "error_code": "MOODLE_COURSE_LIST_ERROR",
-                    "message": courses["error"],
+                    "message": courses.error,
                 },
             )
 
-        return courses["courses"]
+        return courses.courses
