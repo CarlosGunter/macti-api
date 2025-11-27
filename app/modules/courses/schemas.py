@@ -7,7 +7,7 @@ class CourseResponseSchema(BaseModel):
     fullname: str
     displayname: str
     summary: str
-    timecreated: int
+    courseimage: str | None = None
 
     # Para ORM
     model_config = ConfigDict(from_attributes=True)

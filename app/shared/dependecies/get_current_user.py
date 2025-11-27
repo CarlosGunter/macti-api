@@ -116,9 +116,9 @@ async def get_current_user(
         print("[DEBUG] Token decodificado correctamente ✔")
         print(f"[DEBUG] Payload recibido: {payload}")
         azp = payload.get("azp")
-        print(f"[DEBUG] azp: {azp} (debe coincidir con {kc.client_id})")
+        print(f"[DEBUG] azp: {azp} (debe coincidir con el cliente del frontend)")
 
-        if azp != kc.client_id:
+        if azp != "next-login":
             print("[ERROR] azp inválido")
             raise HTTPException(
                 status_code=401,

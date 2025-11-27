@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.core.database import get_db
 from app.modules.courses.controllers.list_courses import ListCoursesController
 from app.modules.courses.controllers.user_enrolled_courses import (
     UserEnrolledCoursesController,
 )
 from app.modules.courses.schemas import ListCoursesResponse
+from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 router = APIRouter(prefix="/courses", tags=["Cursos"])
@@ -24,11 +26,14 @@ async def list_courses(
 @router.get(
     "/enrolled",
     summary="Listar cursos en los que un usuario está inscrito",
+    response_model=ListCoursesResponse,
+    dependencies=[Depends(get_current_user), Depends(get_db)],
 )
 async def list_user_enrolled_courses(
     institute: InstitutesEnum = Query(..., description="Nombre del instituto"),
-    user_id: int = Query(..., description="ID del usuario en Moodle"),
+    user_info: dict = Depends(get_current_user),
+    db=Depends(get_db),
 ):
     return await UserEnrolledCoursesController.get_user_enrolled_courses(
-        institute=institute, user_id=user_id
+        institute=institute, user_info=user_info, db=db
     )
