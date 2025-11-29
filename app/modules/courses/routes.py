@@ -5,7 +5,10 @@ from app.modules.courses.controllers.list_courses import ListCoursesController
 from app.modules.courses.controllers.user_enrolled_courses import (
     UserEnrolledCoursesController,
 )
-from app.modules.courses.schemas import ListCoursesResponse
+from app.modules.courses.schemas import (
+    ListCoursesResponse,
+    UserEnrolledCoursesResponse,
+)
 from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 
@@ -26,7 +29,7 @@ async def list_courses(
 @router.get(
     "/enrolled",
     summary="Listar cursos en los que un usuario está inscrito",
-    response_model=ListCoursesResponse,
+    response_model=UserEnrolledCoursesResponse,
     dependencies=[Depends(get_current_user), Depends(get_db)],
 )
 async def list_user_enrolled_courses(

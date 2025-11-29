@@ -31,6 +31,14 @@ class UserEnrolledCoursesController:
                 },
             )
 
+        enrolled_courses_result.enrolled_courses = (
+            await UserEnrolledCoursesController._add_role_to_courses(
+                institute=institute,
+                courses=enrolled_courses_result.enrolled_courses,
+                user_id=user_id,
+            )
+        )
+
         return enrolled_courses_result.enrolled_courses
 
     @classmethod
@@ -67,3 +75,23 @@ class UserEnrolledCoursesController:
                     "message": "Múltiples usuarios encontrados, error interno.",
                 },
             ) from MultipleResultsFound
+
+    @classmethod
+    async def _add_role_to_courses(
+        cls, institute: InstitutesEnum, courses: list, user_id: int
+    ) -> list:
+        """Agrega el rol del usuario a cada curso en la lista."""
+        for course in courses:
+            get_user_profile = await MoodleService.get_user_profile(
+                institute=institute, user_id=user_id, course_id=course["id"]
+            )
+
+            course["role"] = (
+                get_user_profile.user_profile["roles"][0]["shortname"]
+                if get_user_profile.error is None
+                and get_user_profile.user_profile
+                and get_user_profile.user_profile.get("roles")
+                else "student"
+            )
+
+        return courses

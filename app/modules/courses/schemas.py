@@ -14,3 +14,10 @@ class CourseResponseSchema(BaseModel):
 
 
 ListCoursesResponse = list[CourseResponseSchema]
+
+
+class UserEnrolledCoursesResponseSchema(CourseResponseSchema):
+    role: str | None = None
+
+
+UserEnrolledCoursesResponse = list[UserEnrolledCoursesResponseSchema]
