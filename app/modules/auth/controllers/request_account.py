@@ -18,7 +18,6 @@ class RequestAccountController:
             .first()
         )
 
-        # Si ya existe una solicitud con el mismo email e instituto, devolver error.
         if existing_request is not None:
             raise HTTPException(
                 status_code=400,
@@ -35,15 +34,17 @@ class RequestAccountController:
                 email=data.email,
                 course_id=data.course_id,
                 institute=data.institute,
+                role=data.role,
                 status=AccountStatusEnum.PENDING,
             )
+
             db.add(db_account_request)
             db.commit()
             db.refresh(db_account_request)
 
             return {"message": "Solicitud de cuenta en proceso"}
 
-        except SQLAlchemyError:
+        except SQLAlchemyError as err:
             db.rollback()
             raise HTTPException(
                 status_code=500,
@@ -51,11 +52,14 @@ class RequestAccountController:
                     "error_code": "DB_ERROR",
                     "message": "Error al registrar la solicitud",
                 },
-            ) from SQLAlchemyError
+            ) from err
 
-        except Exception as e:
+        except Exception as err:
             db.rollback()
             raise HTTPException(
                 status_code=500,
-                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            ) from e
+                detail={
+                    "error_code": "ERROR_DESCONOCIDO",
+                    "message": str(err),
+                },
+            ) from err  # no sé porque, pero si pongo ero from err pasa
