@@ -28,7 +28,7 @@ class AccountRequest(Base):
         nullable=False,
     )
     kc_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    moodle_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    moodle_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
