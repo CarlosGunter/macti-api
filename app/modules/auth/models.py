@@ -1,7 +1,8 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import EmailStr
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -27,7 +28,7 @@ class AccountRequest(Base):
         Enum(InstitutesEnum, name="institutes_enum"),
         nullable=False,
     )
-    kc_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    kc_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     moodle_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
