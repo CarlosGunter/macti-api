@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from pydantic import EmailStr
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -15,9 +16,8 @@ class AccountRequest(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    course_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    #
+    email: Mapped[EmailStr] = mapped_column(String, nullable=False, index=True)
+    course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
         default=AccountStatusEnum.PENDING,
