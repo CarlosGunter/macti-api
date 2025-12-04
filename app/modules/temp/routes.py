@@ -5,6 +5,8 @@ from app.core.database import get_db
 from app.modules.auth.models import AccountRequest
 from app.modules.auth.services.kc_service import KeycloakService
 from app.shared.dependecies.get_current_user import get_current_user
+from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.services.moodle_service import MoodleService
 
 router = APIRouter(prefix="/temp", tags=["temp"])
 
@@ -56,3 +58,16 @@ async def bearer_test(current_user=Depends(get_current_user)):
         "message": "Token Bearer válido. Acceso concedido al endpoint de prueba.",
         "user": jsonable_encoder(current_user, by_alias=False),
     }
+
+
+@router.get(
+    "/user-moodle-info",
+    summary="Obtener información del usuario actual por su email",
+)
+async def get_user_info(
+    institute: InstitutesEnum = Query(..., description="Instituto del usuario"),
+    email: str = Query(..., description="Email del usuario"),
+):
+    return await MoodleService.get_user_profile_by_email(
+        institute=institute, user_email=email
+    )
