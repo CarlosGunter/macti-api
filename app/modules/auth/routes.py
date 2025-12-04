@@ -35,9 +35,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def request_account(
     role: AccountRoleEnum, body_info: AccountRequestSchema, db=Depends(get_db)
 ):
-    body_info.role = role
-
-    return RequestAccountController.request_account(data=body_info, db=db)
+    return RequestAccountController.request_account(role=role, data=body_info, db=db)
 
 
 # Listar solicitudes por curso
