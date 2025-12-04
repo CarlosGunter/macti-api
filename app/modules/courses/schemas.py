@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class CourseResponseSchema(BaseModel):
@@ -9,15 +9,6 @@ class CourseResponseSchema(BaseModel):
     summary: str
     courseimage: str | None = None
 
-    # Para ORM
-    model_config = ConfigDict(from_attributes=True)
-
-
-ListCoursesResponse = list[CourseResponseSchema]
-
 
 class UserEnrolledCoursesResponseSchema(CourseResponseSchema):
     role: str | None = None
-
-
-UserEnrolledCoursesResponse = list[UserEnrolledCoursesResponseSchema]

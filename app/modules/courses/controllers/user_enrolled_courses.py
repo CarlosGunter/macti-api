@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.models import AccountRequest
 from app.modules.courses.services.moodle_service import MoodleService
+from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 
@@ -12,7 +13,7 @@ class UserEnrolledCoursesController:
 
     @staticmethod
     async def get_user_enrolled_courses(
-        institute: InstitutesEnum, user_info: dict, db: Session
+        institute: InstitutesEnum, user_info: CurrentUser, db: Session
     ) -> list:
         user_id = await UserEnrolledCoursesController._get_moodle_id_from_user_info(
             user_info, db
@@ -42,9 +43,11 @@ class UserEnrolledCoursesController:
         return enrolled_courses_result.enrolled_courses
 
     @classmethod
-    async def _get_moodle_id_from_user_info(cls, user_info: dict, db: Session) -> int:
+    async def _get_moodle_id_from_user_info(
+        cls, user_info: CurrentUser, db: Session
+    ) -> int:
         """Extrae el ID de Moodle del usuario a partir de la información del token."""
-        kc_id = user_info["sub"]
+        kc_id = user_info.kc_id
 
         try:
             query = db.query(AccountRequest).filter(AccountRequest.kc_id == kc_id).one()
@@ -57,7 +60,7 @@ class UserEnrolledCoursesController:
                         "message": "El usuario no tiene un ID de Moodle asociado.",
                     },
                 )
-            return int(query.moodle_id)
+            return query.moodle_id
 
         except NoResultFound:
             raise HTTPException(
