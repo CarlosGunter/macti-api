@@ -10,6 +10,7 @@ from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.auth.enums import AccountStatusEnum
 from app.modules.auth.models import AccountRequest
 from app.shared.config.kc_configs import keycloak_configs
 from app.shared.enums.institutes_enum import InstitutesEnum
@@ -217,6 +218,7 @@ async def get_user_moodle_id(
             institute=institute,
             moodle_id=moodle_id,
             kc_id=kc_id,
+            status=AccountStatusEnum.CREATED,
         )
         db.add(sync_user)
         db.commit()
