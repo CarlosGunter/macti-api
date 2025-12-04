@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 
 from app.core.database import get_db
 from app.modules.auth.models import AccountRequest
@@ -50,8 +51,8 @@ async def clear_user_data(
     "/bearer-test",
     summary="Endpoint de prueba para verificar el token Bearer",
 )
-async def bearer_test(current_user: dict = Depends(get_current_user)):
+async def bearer_test(current_user=Depends(get_current_user)):
     return {
         "message": "Token Bearer válido. Acceso concedido al endpoint de prueba.",
-        "user": current_user,
+        "user": jsonable_encoder(current_user, by_alias=False),
     }
