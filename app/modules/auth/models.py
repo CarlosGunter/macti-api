@@ -5,7 +5,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.modules.auth.enums import AccountStatusEnum
+
+# Agregamos ya lo del rol zi zi zis
+from app.modules.auth.enums import AccountRoleEnum, AccountStatusEnum
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 
@@ -17,7 +19,11 @@ class AccountRequest(Base):
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     course_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    #
+    # Rol padre santo
+    role: Mapped[AccountRoleEnum] = mapped_column(
+        Enum(AccountRoleEnum, name="account_role_enum"), nullable=False
+    )
+
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
         default=AccountStatusEnum.PENDING,
@@ -37,7 +43,10 @@ class AccountRequest(Base):
     )
 
     def __repr__(self):
-        return f"<AccountRequest(email='{self.email}', status='{self.status.value}')>"
+        return (
+            f"<AccountRequest(email='{self.email}', role='{self.role.value}', "
+            f"status='{self.status.value}')>"
+        )
 
 
 class MCTValidacion(Base):

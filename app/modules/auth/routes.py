@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_db
 from app.modules.auth.controllers.get_user_info import GetUserInfoController
+from app.modules.auth.enums import AccountRoleEnum
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 from .controllers.change_status import ChangeStatusController
@@ -24,13 +25,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 # Crear solicitud de cuenta
+
+
 @router.post(
-    "/request-account",
-    summary="Crear una solicitud de cuenta",
+    "/request-account/{role}",
+    summary="Crear una solicitud de cuenta según el rol",
     response_model=AccountRequestResponse,
 )
-async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
-    return RequestAccountController.request_account(data=body_info, db=db)
+async def request_account(
+    role: AccountRoleEnum, body_info: AccountRequestSchema, db=Depends(get_db)
+):
+    return RequestAccountController.request_account(role=role, data=body_info, db=db)
 
 
 # Listar solicitudes por curso
