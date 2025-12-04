@@ -1,27 +1,50 @@
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from app.modules.auth.enums import AccountRoleEnum
-from app.modules.auth.models import AccountRequest
-from app.modules.auth.schema import AccountRequestSchema
+from app.modules.auth.enums import AccountRoleEnum  # <-- AGREGADO
+
+from ..models import AccountRequest, AccountStatusEnum
+from ..schema import AccountRequestSchema
 
 
 class RequestAccountController:
     @staticmethod
-    def request_account(role: AccountRoleEnum, data: AccountRequestSchema, db):
+    def request_account(role: AccountRoleEnum, data: AccountRequestSchema, db: Session):
+        existing_request = (
+            db.query(AccountRequest)
+            .filter(
+                AccountRequest.email == data.email,
+                AccountRequest.institute == data.institute,
+            )
+            .first()
+        )
+
+        # Si ya existe una solicitud con el mismo email e instituto, devolver error.
+        if existing_request is not None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "EMAIL_EXISTENTE",
+                    "message": "El correo ya tiene una solicitud.",
+                },
+            )
+
         try:
-            new_request = AccountRequest(
+            db_account_request = AccountRequest(
                 name=data.name,
                 last_name=data.last_name,
                 email=data.email,
                 course_id=data.course_id,
-                role=role,
                 institute=data.institute,
+                role=role,
+                status=AccountStatusEnum.PENDING,
             )
 
-            db.add(new_request)
+            db.add(db_account_request)
             db.commit()
-            db.refresh(new_request)
+            db.refresh(db_account_request)
+
             return {"message": "Solicitud de cuenta en proceso"}
 
         except SQLAlchemyError:
