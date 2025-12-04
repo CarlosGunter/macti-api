@@ -70,6 +70,10 @@ class CurrentUser(BaseModel):
     name: str = Field(..., alias="given_name")
     last_name: str = Field(..., alias="family_name")
 
+    model_config = {
+        "populate_by_name": True  # Permite exportar con los nombres internos
+    }
+
 
 class CurrentUserReturn(CurrentUser):
     moodle_id: int
@@ -141,9 +145,9 @@ async def get_current_user(
         user_kc_parsed = CurrentUser(**payload)
         moodle_id = await get_user_moodle_id(user_kc_parsed, db, institute)
 
-        alias_data = user_kc_parsed.model_dump(by_alias=True)
-        alias_data["moodle_id"] = moodle_id
-        user_parsed: CurrentUserReturn = CurrentUserReturn.model_validate(alias_data)
+        data = user_kc_parsed.model_dump()
+        data["moodle_id"] = moodle_id
+        user_parsed = CurrentUserReturn(**data)
 
         return user_parsed
 
