@@ -6,3 +6,12 @@ class AccountStatusEnum(Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     CREATED = "created"
+
+
+# Se agrego lo roles
+
+
+class AccountRoleEnum(str, Enum):
+    ALUMNO = "alumno"
+    DOCENTE = "docente"
+    ADMIN = "admin"
