@@ -6,6 +6,7 @@ from app.modules.auth.models import AccountRequest
 from app.modules.courses.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.services.moodle_service import MoodleService as SharedMoodleService
 
 
 class UserEnrolledCoursesController:
@@ -85,7 +86,7 @@ class UserEnrolledCoursesController:
     ) -> list:
         """Agrega el rol del usuario a cada curso en la lista."""
         for course in courses:
-            get_user_profile = await MoodleService.get_user_profile(
+            get_user_profile = await SharedMoodleService.get_user_profile(
                 institute=institute, user_id=user_id, course_id=course["id"]
             )
 
