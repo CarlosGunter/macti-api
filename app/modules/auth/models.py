@@ -22,8 +22,8 @@ class AccountRequest(Base):
     email: Mapped[EmailStr] = mapped_column(String, nullable=False, index=True)
     course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Rol padre santo
-    role: Mapped[AccountRoleEnum] = mapped_column(
-        Enum(AccountRoleEnum, name="account_role_enum"), nullable=False
+    role: Mapped[AccountRoleEnum | None] = mapped_column(
+        Enum(AccountRoleEnum, name="account_role_enum"), nullable=True
     )
 
     status: Mapped[AccountStatusEnum] = mapped_column(
@@ -45,8 +45,9 @@ class AccountRequest(Base):
     )
 
     def __repr__(self):
+        role_value = self.role.value if self.role else "None"
         return (
-            f"<AccountRequest(email='{self.email}', role='{self.role.value}', "
+            f"<AccountRequest(email='{self.email}', role='{role_value}', "
             f"status='{self.status.value}')>"
         )
 
