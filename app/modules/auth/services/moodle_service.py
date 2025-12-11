@@ -6,6 +6,7 @@ import httpx
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.modules.auth.enums import AccountRoleEnum
 
 
 class MoodleService:
@@ -45,10 +46,16 @@ class MoodleService:
         return {**result[0], "created": True}
 
     @staticmethod
-    async def enroll_user(user_id, course_id, institute: InstitutesEnum):
+    async def enroll_user(user_id, course_id, institute: InstitutesEnum, role: AccountRoleEnum):
         """
         Enroll a user in a Moodle course using the REST API.
         """
+
+        if role == AccountRoleEnum.ALUMNO:
+            moodle_role_id = 5   
+        elif role == AccountRoleEnum.DOCENTE:
+            moodle_role_id = 3
+
         config = MOODLE_CONFIG[institute]
         endpoint = config.moodle_url
         params = {
@@ -58,7 +65,7 @@ class MoodleService:
         }
 
         data = {
-            "enrolments[0][roleid]": 5,
+            "enrolments[0][roleid]": moodle_role_id,
             "enrolments[0][userid]": user_id,
             "enrolments[0][courseid]": course_id,
             "enrolments[0][timestart]": 0,

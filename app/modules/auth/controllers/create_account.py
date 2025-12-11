@@ -87,6 +87,7 @@ class CreateAccountController:
             user_id=moodle_result["id"],
             course_id=account_request.course_id,
             institute=account_request.institute,
+            role=account_request.role,
         )
 
         # Actualizar estado de la solicitud
