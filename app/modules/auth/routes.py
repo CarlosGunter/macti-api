@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from app.core.database import get_db
 from app.modules.auth.controllers.get_user_info import GetUserInfoController
 from app.modules.auth.enums import AccountRoleEnum
+from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 from .controllers.change_status import ChangeStatusController
@@ -54,12 +55,14 @@ async def list_accounts_requests(
         None, description="Filtra las solicitudes por estatus"
     ),
     db=Depends(get_db),
+    user_info=Depends(get_current_user),
 ):
-    return ListAccountRequestsController.list_accounts_requests(
+    return await ListAccountRequestsController.list_accounts_requests(
         db=db,
         course_id=course_id,
         institute=institute,
         status=status,
+        user_info=user_info,
     )
 
 

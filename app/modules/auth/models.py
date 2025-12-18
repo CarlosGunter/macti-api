@@ -1,6 +1,8 @@
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from pydantic import EmailStr
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -17,11 +19,11 @@ class AccountRequest(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    course_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    email: Mapped[EmailStr] = mapped_column(String, nullable=False, index=True)
+    course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Rol padre santo
-    role: Mapped[AccountRoleEnum] = mapped_column(
-        Enum(AccountRoleEnum, name="account_role_enum"), nullable=False
+    role: Mapped[AccountRoleEnum | None] = mapped_column(
+        Enum(AccountRoleEnum, name="account_role_enum"), nullable=True
     )
 
     status: Mapped[AccountStatusEnum] = mapped_column(
@@ -33,8 +35,8 @@ class AccountRequest(Base):
         Enum(InstitutesEnum, name="institutes_enum"),
         nullable=False,
     )
-    kc_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    moodle_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    kc_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    moodle_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -43,8 +45,9 @@ class AccountRequest(Base):
     )
 
     def __repr__(self):
+        role_value = self.role.value if self.role else "None"
         return (
-            f"<AccountRequest(email='{self.email}', role='{self.role.value}', "
+            f"<AccountRequest(email='{self.email}', role='{role_value}', "
             f"status='{self.status.value}')>"
         )
 

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -54,7 +56,7 @@ class CreateAccountController:
                 },
             )
 
-        account_request.kc_id = kc_result.get("user_id")
+        account_request.kc_id = UUID(kc_result.get("user_id"))
 
         # Crear usuario en Moodle (puedes agregar lógica similar si ya existe)
         moodle_result = await MoodleService.create_user(
