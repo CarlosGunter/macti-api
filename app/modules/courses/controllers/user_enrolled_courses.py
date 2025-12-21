@@ -2,10 +2,10 @@ from fastapi import HTTPException
 from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import AccountRequest
 from app.modules.courses.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.models.users_model import UserAccounts
 from app.shared.services.moodle_service import MoodleService as SharedMoodleService
 
 
@@ -51,7 +51,7 @@ class UserEnrolledCoursesController:
         kc_id = user_info.kc_id
 
         try:
-            query = db.query(AccountRequest).filter(AccountRequest.kc_id == kc_id).one()
+            query = db.query(UserAccounts).filter(UserAccounts.kc_id == kc_id).one()
 
             if not query.moodle_id:
                 raise HTTPException(

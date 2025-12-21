@@ -10,10 +10,10 @@ from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.enums import AccountStatusEnum
-from app.modules.auth.models import AccountRequest
 from app.shared.config.kc_configs import keycloak_configs
+from app.shared.enums.enums import AccountStatusEnum
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.models.users_model import UserAccounts
 from app.shared.services.moodle_service import MoodleService
 
 security = HTTPBearer()
@@ -195,7 +195,7 @@ async def get_user_moodle_id(
     user_email = user_info.email
 
     try:
-        query = db.query(AccountRequest).filter(AccountRequest.kc_id == kc_id).one()
+        query = db.query(UserAccounts).filter(UserAccounts.kc_id == kc_id).one()
         if not query.moodle_id:
             raise HTTPException(
                 status_code=404,
@@ -211,7 +211,7 @@ async def get_user_moodle_id(
             institute=institute, user_email=user_email
         )
 
-        sync_user = AccountRequest(
+        sync_user = UserAccounts(
             email=user_email,
             name=user_info.name,
             last_name=user_info.last_name,

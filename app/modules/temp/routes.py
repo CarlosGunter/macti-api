@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 
 from app.core.database import get_db
-from app.modules.auth.models import AccountRequest
 from app.modules.auth.services.kc_service import KeycloakService
 from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.models.users_model import UserAccounts
 from app.shared.services.moodle_service import MoodleService
 
 router = APIRouter(prefix="/temp", tags=["temp"])
@@ -21,7 +21,7 @@ async def clear_user_data(
     ),
     db=Depends(get_db),
 ):
-    user_data = db.query(AccountRequest).filter(AccountRequest.id == user_id).first()
+    user_data = db.query(UserAccounts).filter(UserAccounts.id == user_id).first()
     if not user_data:
         raise HTTPException(
             status_code=404, detail="Usuario no encontrado en la base de datos."

@@ -9,9 +9,6 @@ class AccountStatusEnum(Enum):
 
 
 # Se agrego lo roles
-
-
 class AccountRoleEnum(str, Enum):
     ALUMNO = "alumno"
     DOCENTE = "docente"
-    ADMIN = "admin"

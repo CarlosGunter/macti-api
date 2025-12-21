@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
+from app.shared.enums.enums import AccountStatusEnum
+from app.shared.models.users_model import UserAccounts
+from app.shared.models.verification_tokens_model import VerificationToken
 
-from ..models import AccountRequest, AccountStatusEnum, MCTValidacion
 from ..schema import CreateAccountSchema
 
 
@@ -17,7 +19,7 @@ class CreateAccountController:
         Crear o actualizar cuenta en Keycloak y Moodle usando user_id y new_password enviados desde el front.
         """
         account_request = (
-            db.query(AccountRequest).filter(AccountRequest.id == data.user_id).first()
+            db.query(UserAccounts).filter(UserAccounts.id == data.user_id).first()
         )
         if not account_request:
             raise HTTPException(
@@ -94,8 +96,8 @@ class CreateAccountController:
         # Actualizar estado de la solicitud
         account_request.status = AccountStatusEnum.CREATED
         token_record = (
-            db.query(MCTValidacion)
-            .filter(MCTValidacion.email == account_request.email)
+            db.query(VerificationToken)
+            .filter(VerificationToken.account_id == account_request.id)
             .first()
         )
         if token_record:

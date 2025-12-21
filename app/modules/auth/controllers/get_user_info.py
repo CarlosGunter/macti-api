@@ -3,7 +3,8 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import AccountRequest, MCTValidacion
+from app.shared.models.users_model import UserAccounts
+from app.shared.models.verification_tokens_model import VerificationToken
 
 
 class GetUserInfoController:
@@ -11,7 +12,9 @@ class GetUserInfoController:
     def get_user_info(token: str, db: Session):
         try:
             validation = (
-                db.query(MCTValidacion).filter(MCTValidacion.token == token).first()
+                db.query(VerificationToken)
+                .filter(VerificationToken.token == token)
+                .first()
             )
 
             if not validation:
@@ -23,8 +26,8 @@ class GetUserInfoController:
                     },
                 )
 
-            fecha_expiracion = validation.fecha_expiracion
-            if fecha_expiracion and datetime.now() > fecha_expiracion:
+            expires_at = validation.expires_at
+            if expires_at and datetime.now() > expires_at:
                 raise HTTPException(
                     status_code=403,
                     detail={
@@ -34,8 +37,8 @@ class GetUserInfoController:
                 )
 
             account_request = (
-                db.query(AccountRequest)
-                .filter(AccountRequest.id == validation.account_id)
+                db.query(UserAccounts)
+                .filter(UserAccounts.id == validation.account_id)
                 .first()
             )
 
