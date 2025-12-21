@@ -1,31 +1,32 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import EmailStr
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Uuid
+from sqlalchemy import DateTime, Enum, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-
-# Agregamos ya lo del rol zi zi zis
-from app.modules.auth.enums import AccountRoleEnum, AccountStatusEnum
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.status_enum import AccountStatusEnum
+
+if TYPE_CHECKING:
+    from app.shared.models.verification_tokens_model import VerificationToken
 
 
-class AccountRequest(Base):
-    __tablename__ = "account_requests"
+class UserAccounts(Base):
+    __tablename__ = "MCT_user_accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[EmailStr] = mapped_column(String, nullable=False, index=True)
     course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Rol padre santo
     role: Mapped[AccountRoleEnum | None] = mapped_column(
         Enum(AccountRoleEnum, name="account_role_enum"), nullable=True
     )
-
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
         default=AccountStatusEnum.PENDING,
@@ -40,8 +41,10 @@ class AccountRequest(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    validaciones: Mapped[list["MCTValidacion"]] = relationship(
-        "MCTValidacion", back_populates="account", cascade="all, delete-orphan"
+
+    # Relaciones
+    verification_tokens: Mapped[list["VerificationToken"]] = relationship(
+        "VerificationToken", back_populates="account", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -50,23 +53,3 @@ class AccountRequest(Base):
             f"<AccountRequest(email='{self.email}', role='{role_value}', "
             f"status='{self.status.value}')>"
         )
-
-
-class MCTValidacion(Base):
-    __tablename__ = "MCT_Validacion"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    account_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("account_requests.id"), nullable=True
-    )
-    email: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    token: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    fecha_solicitud: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    fecha_expiracion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    bandera: Mapped[int] = mapped_column(Integer, default=0)
-    account: Mapped["AccountRequest"] = relationship(
-        "AccountRequest", back_populates="validaciones"
-    )
-
-    def __repr__(self):
-        return f"<EmailValidation(email='{self.email}', is_used={self.bandera})>"

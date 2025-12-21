@@ -5,8 +5,10 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
+from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.models.users_model import UserAccounts
+from app.shared.models.verification_tokens_model import VerificationToken
 
-from ..models import AccountRequest, AccountStatusEnum, MCTValidacion
 from ..schema import ConfirmAccountSchema
 
 
@@ -18,7 +20,7 @@ class ChangeStatusController:
 
         try:
             account_request = (
-                db.query(AccountRequest).filter(AccountRequest.id == request_id).first()
+                db.query(UserAccounts).filter(UserAccounts.id == request_id).first()
             )
             if not account_request:
                 raise HTTPException(
@@ -92,34 +94,31 @@ class ChangeStatusController:
         try:
             # Get the account to retrieve email
             account = (
-                db.query(AccountRequest).filter(AccountRequest.id == account_id).first()
+                db.query(UserAccounts).filter(UserAccounts.id == account_id).first()
             )
             if not account:
                 return {"success": False, "error": "Account not found"}
 
-            email = account.email
-
-            # Query MCTValidacion by account_id
+            # Query VerificationToken by account_id
             validation = (
-                db.query(MCTValidacion)
-                .filter(MCTValidacion.account_id == account_id)
+                db.query(VerificationToken)
+                .filter(VerificationToken.account_id == account_id)
                 .first()
             )
 
             if validation:
                 # Update existing record
                 validation.token = token
-                validation.fecha_solicitud = fecha_solicitud
-                validation.fecha_expiracion = fecha_expiracion
+                validation.created_at = fecha_solicitud
+                validation.expires_at = fecha_expiracion
             else:
                 # Create new record
-                new_validation = MCTValidacion(
+                new_validation = VerificationToken(
                     account_id=account_id,
-                    email=email,
                     token=token,
-                    fecha_solicitud=fecha_solicitud,
-                    fecha_expiracion=fecha_expiracion,
-                    bandera=0,
+                    created_at=fecha_solicitud,
+                    expires_at=fecha_expiracion,
+                    is_used=0,
                 )
                 db.add(new_validation)
 

@@ -5,11 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.enums.role_enum import RoleEnum
+from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.services.moodle_service import MoodleService
 
-from ..enums import AccountStatusEnum
-from ..models import AccountRequest
+from ....shared.enums.status_enum import AccountStatusEnum
+from ....shared.models.users_model import UserAccounts
 
 
 class ListAccountRequestsController:
@@ -41,31 +41,31 @@ class ListAccountRequestsController:
         try:
             # Hacer una selección explícita y usar mappings() para obtener dicts
             status_order = case(
-                (AccountRequest.status == AccountStatusEnum.PENDING, 0),
-                (AccountRequest.status == AccountStatusEnum.APPROVED, 1),
-                (AccountRequest.status == AccountStatusEnum.REJECTED, 2),
-                (AccountRequest.status == AccountStatusEnum.CREATED, 3),
+                (UserAccounts.status == AccountStatusEnum.PENDING, 0),
+                (UserAccounts.status == AccountStatusEnum.APPROVED, 1),
+                (UserAccounts.status == AccountStatusEnum.REJECTED, 2),
+                (UserAccounts.status == AccountStatusEnum.CREATED, 3),
                 else_=4,
             )
 
             filters = [
-                AccountRequest.course_id == course_id,
-                AccountRequest.institute == institute,
+                UserAccounts.course_id == course_id,
+                UserAccounts.institute == institute,
             ]
 
             if status is not None:
-                filters.append(AccountRequest.status == status)
+                filters.append(UserAccounts.status == status)
 
             stmt = (
                 select(
-                    AccountRequest.id,
-                    AccountRequest.name,
-                    AccountRequest.last_name,
-                    AccountRequest.email,
-                    AccountRequest.status,
+                    UserAccounts.id,
+                    UserAccounts.name,
+                    UserAccounts.last_name,
+                    UserAccounts.email,
+                    UserAccounts.status,
                 )
                 .where(*filters)
-                .order_by(status_order, AccountRequest.status)
+                .order_by(status_order, UserAccounts.status)
             )
 
             result = db.execute(stmt)

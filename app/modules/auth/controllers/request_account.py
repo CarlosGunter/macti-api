@@ -2,9 +2,9 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.modules.auth.enums import AccountRoleEnum  # <-- AGREGADO
+from app.shared.enums.role_enum import AccountRoleEnum
 
-from ..models import AccountRequest, AccountStatusEnum
+from ....shared.models.users_model import AccountStatusEnum, UserAccounts
 from ..schema import AccountRequestSchema
 
 
@@ -12,10 +12,10 @@ class RequestAccountController:
     @staticmethod
     def request_account(role: AccountRoleEnum, data: AccountRequestSchema, db: Session):
         existing_request = (
-            db.query(AccountRequest)
+            db.query(UserAccounts)
             .filter(
-                AccountRequest.email == data.email,
-                AccountRequest.institute == data.institute,
+                UserAccounts.email == data.email,
+                UserAccounts.institute == data.institute,
             )
             .first()
         )
@@ -31,7 +31,7 @@ class RequestAccountController:
             )
 
         try:
-            db_account_request = AccountRequest(
+            db_account_request = UserAccounts(
                 name=data.name,
                 last_name=data.last_name,
                 email=data.email,
