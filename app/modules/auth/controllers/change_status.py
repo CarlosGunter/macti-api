@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
-from app.shared.enums.enums import AccountStatusEnum
+from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
 

@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.shared.enums.enums import AccountRoleEnum  # <-- AGREGADO
+from app.shared.enums.role_enum import AccountRoleEnum
 
 from ....shared.models.users_model import AccountStatusEnum, UserAccounts
 from ..schema import AccountRequestSchema

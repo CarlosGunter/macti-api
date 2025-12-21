@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.enums.role_enum import RoleEnum
+from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.services.moodle_service import MoodleService
 
-from ....shared.enums.enums import AccountStatusEnum
+from ....shared.enums.status_enum import AccountStatusEnum
 from ....shared.models.users_model import UserAccounts
 
 

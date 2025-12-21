@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
-from app.shared.enums.enums import AccountStatusEnum
+from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
 

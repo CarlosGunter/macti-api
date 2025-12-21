@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.shared.config.kc_configs import keycloak_configs
-from app.shared.enums.enums import AccountStatusEnum
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.users_model import UserAccounts
 from app.shared.services.moodle_service import MoodleService
 

@@ -8,8 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.shared.enums.enums import AccountRoleEnum, AccountStatusEnum
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.status_enum import AccountStatusEnum
 
 if TYPE_CHECKING:
     from app.shared.models.verification_tokens_model import VerificationToken
