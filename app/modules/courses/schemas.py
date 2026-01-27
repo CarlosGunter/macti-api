@@ -11,4 +11,4 @@ class CourseResponseSchema(BaseModel):
 
 
 class UserEnrolledCoursesResponseSchema(CourseResponseSchema):
-    role: str | None = None
+    role: list[str] | None = None
