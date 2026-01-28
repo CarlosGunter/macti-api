@@ -91,11 +91,11 @@ class UserEnrolledCoursesController:
             )
 
             course["role"] = (
-                get_user_profile.user_profile["roles"][0]["shortname"]
+                [role["shortname"] for role in get_user_profile.user_profile["roles"]]
                 if get_user_profile.error is None
                 and get_user_profile.user_profile
                 and get_user_profile.user_profile.get("roles")
-                else "student"
+                else ["student"]
             )
 
         return courses
