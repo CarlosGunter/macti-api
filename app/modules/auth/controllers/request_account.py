@@ -2,18 +2,20 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from ..models import AccountRequest, AccountStatusEnum
+from app.shared.enums.role_enum import AccountRoleEnum
+
+from ....shared.models.users_model import AccountStatusEnum, UserAccounts
 from ..schema import AccountRequestSchema
 
 
 class RequestAccountController:
     @staticmethod
-    def request_account(data: AccountRequestSchema, db: Session):
+    def request_account(role: AccountRoleEnum, data: AccountRequestSchema, db: Session):
         existing_request = (
-            db.query(AccountRequest)
+            db.query(UserAccounts)
             .filter(
-                AccountRequest.email == data.email,
-                AccountRequest.institute == data.institute,
+                UserAccounts.email == data.email,
+                UserAccounts.institute == data.institute,
             )
             .first()
         )
@@ -29,14 +31,16 @@ class RequestAccountController:
             )
 
         try:
-            db_account_request = AccountRequest(
+            db_account_request = UserAccounts(
                 name=data.name,
                 last_name=data.last_name,
                 email=data.email,
                 course_id=data.course_id,
                 institute=data.institute,
+                role=role,
                 status=AccountStatusEnum.PENDING,
             )
+
             db.add(db_account_request)
             db.commit()
             db.refresh(db_account_request)
@@ -51,11 +55,14 @@ class RequestAccountController:
                     "error_code": "DB_ERROR",
                     "message": "Error al registrar la solicitud",
                 },
-            ) from SQLAlchemyError
+            ) from None
 
-        except Exception as e:
+        except Exception:
             db.rollback()
             raise HTTPException(
                 status_code=500,
-                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            ) from e
+                detail={
+                    "error_code": "ERROR_DESCONOCIDO",
+                    "message": "Ocurrió un error inesperado",
+                },
+            ) from None

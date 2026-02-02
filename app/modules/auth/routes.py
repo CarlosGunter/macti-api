@@ -2,13 +2,15 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_db
 from app.modules.auth.controllers.get_user_info import GetUserInfoController
+from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
 
+from ...shared.enums.status_enum import AccountStatusEnum
 from .controllers.change_status import ChangeStatusController
 from .controllers.create_account import CreateAccountController
 from .controllers.list_account_requests import ListAccountRequestsController
 from .controllers.request_account import RequestAccountController
-from .enums import AccountStatusEnum
 from .schema import (
     AccountRequestResponse,
     AccountRequestSchema,
@@ -25,12 +27,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Crear solicitud de cuenta
 @router.post(
-    "/request-account",
-    summary="Crear una solicitud de cuenta",
+    "/request-account/{role}",
+    summary="Crear una solicitud de cuenta según el rol",
     response_model=AccountRequestResponse,
 )
-async def request_account(body_info: AccountRequestSchema, db=Depends(get_db)):
-    return RequestAccountController.request_account(data=body_info, db=db)
+async def request_account(
+    role: AccountRoleEnum, body_info: AccountRequestSchema, db=Depends(get_db)
+):
+    return RequestAccountController.request_account(role=role, data=body_info, db=db)
 
 
 # Listar solicitudes por curso
@@ -49,12 +53,14 @@ async def list_accounts_requests(
         None, description="Filtra las solicitudes por estatus"
     ),
     db=Depends(get_db),
+    user_info=Depends(get_current_user),
 ):
-    return ListAccountRequestsController.list_accounts_requests(
+    return await ListAccountRequestsController.list_accounts_requests(
         db=db,
         course_id=course_id,
         institute=institute,
         status=status,
+        user_info=user_info,
     )
 
 
