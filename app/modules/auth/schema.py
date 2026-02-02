@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.models.users_model import AccountStatusEnum
@@ -12,14 +12,18 @@ class AccountBaseSchema(BaseModel):
 
 
 class StudentRequestSchema(AccountBaseSchema):
-    course_id: int
+    course_id: int = Field(
+        ..., gt=0, description="El curso es obligatorio para alumnos"
+    )
 
 
 class TeacherRequestSchema(AccountBaseSchema):
     course_full_name: str
     course_key: str
     groups: str | None = None
-    course_id: int | None = None
+    course_id: int | None = Field(
+        None, gt=0, description="Si es 0 solicita curso el docente"
+    )
 
 
 class AccountRequestResponse(BaseModel):
