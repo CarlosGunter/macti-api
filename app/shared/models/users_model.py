@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import EmailStr
 from sqlalchemy import DateTime, Enum, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -22,8 +21,12 @@ class UserAccounts(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[EmailStr] = mapped_column(String, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    course_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    groups: Mapped[str | None] = mapped_column(String, nullable=True)
+
     role: Mapped[AccountRoleEnum | None] = mapped_column(
         Enum(AccountRoleEnum, name="account_role_enum"), nullable=True
     )
@@ -36,6 +39,7 @@ class UserAccounts(Base):
         Enum(InstitutesEnum, name="institutes_enum"),
         nullable=False,
     )
+
     kc_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     moodle_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

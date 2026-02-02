@@ -1,22 +1,29 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.shared.enums.institutes_enum import InstitutesEnum
-
-# si si si roles
 from app.shared.models.users_model import AccountStatusEnum
 
 
-class AccountRequestSchema(BaseModel):
+class AccountBaseSchema(BaseModel):
     name: str
     last_name: str
     email: EmailStr
-    course_id: int
     institute: InstitutesEnum
+
+
+class StudentRequestSchema(AccountBaseSchema):
+    course_id: int
+
+
+class TeacherRequestSchema(AccountBaseSchema):
+    course_full_name: str
+    course_key: str
+    groups: str | None = None
+    course_id: int | None = None
 
 
 class AccountRequestResponse(BaseModel):
     message: str
-    # Para ORM
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -26,7 +33,6 @@ class AccountsResponse(BaseModel):
     last_name: str
     email: EmailStr
     status: AccountStatusEnum
-    # Para ORM
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -40,7 +46,6 @@ class ConfirmAccountSchema(BaseModel):
 
 class ConfirmAccountResponse(BaseModel):
     message: str
-    # Para ORM
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -51,12 +56,7 @@ class CreateAccountSchema(BaseModel):
 
 class CreateAccountResponse(BaseModel):
     message: str
-    # Para ORM
     model_config = ConfigDict(from_attributes=True)
-
-
-class UserInfoSchema(BaseModel):
-    email: EmailStr
 
 
 class UserInfoResponse(BaseModel):
@@ -65,5 +65,4 @@ class UserInfoResponse(BaseModel):
     name: str
     last_name: str
     institute: InstitutesEnum
-    # Para ORM
     model_config = ConfigDict(from_attributes=True)

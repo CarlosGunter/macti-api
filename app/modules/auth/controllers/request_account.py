@@ -5,12 +5,16 @@ from sqlalchemy.orm import Session
 from app.shared.enums.role_enum import AccountRoleEnum
 
 from ....shared.models.users_model import AccountStatusEnum, UserAccounts
-from ..schema import AccountRequestSchema
+from ..schema import StudentRequestSchema, TeacherRequestSchema
 
 
 class RequestAccountController:
     @staticmethod
-    def request_account(role: AccountRoleEnum, data: AccountRequestSchema, db: Session):
+    def request_account(
+        role: AccountRoleEnum,
+        data: StudentRequestSchema | TeacherRequestSchema,
+        db: Session,
+    ):
         existing_request = (
             db.query(UserAccounts)
             .filter(
@@ -20,7 +24,6 @@ class RequestAccountController:
             .first()
         )
 
-        # Si ya existe una solicitud con el mismo email e instituto, devolver error.
         if existing_request is not None:
             raise HTTPException(
                 status_code=400,
@@ -39,6 +42,9 @@ class RequestAccountController:
                 institute=data.institute,
                 role=role,
                 status=AccountStatusEnum.PENDING,
+                course_full_name=getattr(data, "course_full_name", None),
+                course_key=getattr(data, "course_key", None),
+                groups=getattr(data, "groups", None),
             )
 
             db.add(db_account_request)
@@ -56,7 +62,6 @@ class RequestAccountController:
                     "message": "Error al registrar la solicitud",
                 },
             ) from None
-
         except Exception:
             db.rollback()
             raise HTTPException(

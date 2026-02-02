@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.modules.auth.controllers.get_user_info import GetUserInfoController
@@ -13,45 +14,56 @@ from .controllers.list_account_requests import ListAccountRequestsController
 from .controllers.request_account import RequestAccountController
 from .schema import (
     AccountRequestResponse,
-    AccountRequestSchema,
     ConfirmAccountResponse,
     ConfirmAccountSchema,
     CreateAccountResponse,
     CreateAccountSchema,
     ListAccountsResponse,
+    StudentRequestSchema,
+    TeacherRequestSchema,
     UserInfoResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# Crear solicitud de cuenta
 @router.post(
-    "/request-account/{role}",
-    summary="Crear una solicitud de cuenta según el rol",
+    "/request-student-account",
+    summary="Crear una solicitud de cuenta para ALUMNO",
     response_model=AccountRequestResponse,
+    status_code=status.HTTP_201_CREATED,
 )
-async def request_account(
-    role: AccountRoleEnum, body_info: AccountRequestSchema, db=Depends(get_db)
+async def request_student_account(
+    body_info: StudentRequestSchema, db: Session = Depends(get_db)
 ):
-    return RequestAccountController.request_account(role=role, data=body_info, db=db)
+    return RequestAccountController.request_account(
+        role=AccountRoleEnum.ALUMNO, data=body_info, db=db
+    )
 
 
-# Listar solicitudes por curso
+@router.post(
+    "/request-teacher-account",
+    summary="Crear una solicitud de cuenta para DOCENTE",
+    response_model=AccountRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def request_teacher_account(
+    body_info: TeacherRequestSchema, db: Session = Depends(get_db)
+):
+    return RequestAccountController.request_account(
+        role=AccountRoleEnum.DOCENTE, data=body_info, db=db
+    )
+
+
 @router.get(
     "/list-account-requests",
-    summary="Endpoint que se encarga de listar todas las solicitudes de cuenta de acurdo a un curso",
-    description="Las solicitudes de cuenta se listan desde el perfil del profesor de un curso",
+    summary="Listar solicitudes de cuenta por curso",
     response_model=ListAccountsResponse,
 )
 async def list_accounts_requests(
-    course_id: int = Query(description="Filtra las solicitudes por ID de curso"),
-    institute: InstitutesEnum = Query(
-        ..., description="Filtra las solicitudes por instituto"
-    ),
-    status: AccountStatusEnum | None = Query(
-        None, description="Filtra las solicitudes por estatus"
-    ),
+    course_id: int = Query(..., description="ID del curso"),
+    institute: InstitutesEnum = Query(..., description="Instituto"),
+    status: AccountStatusEnum | None = Query(None),
     db=Depends(get_db),
     user_info=Depends(get_current_user),
 ):
@@ -64,33 +76,16 @@ async def list_accounts_requests(
     )
 
 
-@router.patch(
-    "/change-status",
-    summary="Cambiar estado de solicitud de una cuenta",
-    response_model=ConfirmAccountResponse,
-)
+@router.patch("/change-status", response_model=ConfirmAccountResponse)
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
     return await ChangeStatusController.change_status(data=body_info, db=db)
 
 
-@router.get(
-    "/user-info-by-token",
-    summary="Obtener información del usuario mediante token de email",
-    response_model=UserInfoResponse,
-)
-def confirm_email(
-    token: str = Query(
-        ..., description="Token de email para obtener datos del usuario"
-    ),
-    db=Depends(get_db),
-):
+@router.get("/user-info-by-token", response_model=UserInfoResponse)
+def confirm_email(token: str = Query(...), db=Depends(get_db)):
     return GetUserInfoController.get_user_info(token=token, db=db)
 
 
-@router.post(
-    "/create-account",
-    summary="Crear cuenta en Keycloak y Moodle",
-    response_model=CreateAccountResponse,
-)
+@router.post("/create-account", response_model=CreateAccountResponse)
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
     return await CreateAccountController.create_account(data=body_info, db=db)
