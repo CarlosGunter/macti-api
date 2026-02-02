@@ -23,8 +23,11 @@ router = APIRouter(prefix="/courses", tags=["Cursos"])
 )
 async def list_courses(
     institute: InstitutesEnum = Query(..., description="Nombre del instituto"),
+    ids: list[int] | None = Query(
+        None, description="Lista de IDs de cursos para filtrar"
+    ),
 ) -> list[CourseResponseSchema]:
-    return await ListCoursesController.list_courses(institute=institute)
+    return await ListCoursesController.list_courses(institute=institute, ids=ids)
 
 
 @router.get(

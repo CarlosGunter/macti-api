@@ -7,7 +7,7 @@ from app.shared.services.moodle_client import make_moodle_request
 
 class MoodleService:
     @staticmethod
-    async def get_courses(institute: InstitutesEnum):
+    async def get_courses(institute: InstitutesEnum, ids: list[int] | None = None):
         """
         Obtener la lista de cursos desde Moodle según el instituto.
         """
@@ -18,10 +18,16 @@ class MoodleService:
             "moodlewsrestformat": "json",
         }
 
+        data = {} if ids else None
+        for i, course_id in enumerate(ids or []):
+            if data is not None:
+                data[f"options[ids][{i}]"] = course_id
+
         result = await make_moodle_request(
             url=config.moodle_url,
             params=params,
             institute=institute,
+            data=data,
         )
 
         if not result["success"]:

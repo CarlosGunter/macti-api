@@ -6,11 +6,13 @@ from app.shared.enums.institutes_enum import InstitutesEnum
 
 class ListCoursesController:
     @staticmethod
-    async def list_courses(institute: InstitutesEnum):
+    async def list_courses(
+        institute: InstitutesEnum, ids: list[int] | None = None
+    ) -> list:
         """
         Lista todos los cursos disponibles en la plataforma Moodle para un instituto específico.
         """
-        courses = await MoodleService.get_courses(institute=institute)
+        courses = await MoodleService.get_courses(institute=institute, ids=ids)
 
         if courses.error:
             raise HTTPException(
