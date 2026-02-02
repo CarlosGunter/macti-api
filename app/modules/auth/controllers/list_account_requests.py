@@ -85,6 +85,7 @@ class ListAccountRequestsController:
                     UserAccounts.last_name,
                     UserAccounts.email,
                     UserAccounts.status,
+                    UserAccounts.role,
                 )
                 .where(*filters)
                 .order_by(status_order, UserAccounts.status)
@@ -93,8 +94,19 @@ class ListAccountRequestsController:
             result = db.execute(stmt)
             rows = result.mappings().all()
 
-            # Para que coincida exactamente con el response_model
-            return [dict(r) for r in rows]
+            # Agrupar las solicitudes por rol
+            grouped_by_role: dict[str, list[dict]] = {}
+            for row in rows:
+                row_dict = dict(row)
+                role = row_dict.pop("role")  # Extraer el rol y removerlo del dict
+                role_key = role.value if role else "SIN_ROL"
+
+                if role_key not in grouped_by_role:
+                    grouped_by_role[role_key] = []
+
+                grouped_by_role[role_key].append(row_dict)
+
+            return grouped_by_role
 
         except SQLAlchemyError as exc:
             raise HTTPException(
