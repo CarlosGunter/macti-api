@@ -14,6 +14,11 @@ class ListCoursesController:
         """
         courses = await MoodleService.get_courses(institute=institute, ids=ids)
 
+        # Cuando se recuperan todos los cursos, Moodle retorna en su primer elemento
+        # la misma instancia, se elimina para evitar mostrarla en la lista.
+        if ids is None and courses.courses:
+            courses.courses = courses.courses[1:]
+
         if courses.error:
             raise HTTPException(
                 status_code=502,
