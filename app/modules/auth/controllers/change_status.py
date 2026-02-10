@@ -90,9 +90,7 @@ class ChangeStatusController:
                     "message": f"Solicitud aprobada. Correo de validación enviado a {account_request.email}"
                 }
 
-                return {
-                    "message": f"Estado actualizado correctamente a {new_status.value}"
-                }
+            return {"message": f"Estado actualizado correctamente a {new_status.value}"}
 
         except HTTPException as httpe:
             db.rollback()
