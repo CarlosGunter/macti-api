@@ -1,3 +1,12 @@
+"""
+Módulo ListAccountRequestsController - Gestión de Visibilidad de Solicitudes
+
+Este controlador se encarga de filtrar y listar las solicitudes de cuenta
+basándose en los privilegios que el usuario tiene dentro de un curso de Moodle.
+Implementa un sistema de mapeo de roles (Moodle -> MACTI) y una lógica de
+ordenamiento jerárquico por estatus de solicitud.
+"""
+
 from fastapi import HTTPException
 from sqlalchemy import case, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,6 +23,12 @@ from ....shared.models.users_model import UserAccounts
 
 
 class ListAccountRequestsController:
+    """
+    Controlador para la consulta y filtrado de solicitudes de creación de cuenta.
+    Asegura que solo usuarios con roles de gestión (Manager/Teacher) puedan visualizar
+    solicitudes de niveles inferiores.
+    """
+
     @staticmethod
     async def list_accounts_requests(
         db: Session,
@@ -22,14 +37,24 @@ class ListAccountRequestsController:
         user_info: CurrentUserReturn,
         status: AccountStatusEnum | None = None,
     ):
-        # Diccionario para mapear los roles de Moodle a los roles internos
+        """
+        Obtiene la lista de solicitudes de cuenta filtradas por curso e instituto.
+
+        Lógica de Negocio:
+        1. Consulta los roles del usuario actual directamente en la API de Moodle.
+        2. Mapea roles de Moodle a roles internos (ej. MANAGER puede ver DOCENTES).
+        3. Aplica filtros de seguridad para que el usuario no vea datos fuera de su alcance.
+        4. Ordena los resultados priorizando las solicitudes PENDING.
+        """
+
+        # Mapeo de visibilidad: Define qué solicitudes puede ver cada rol de Moodle.
         role_mapping: dict[RoleEnum, AccountRoleEnum] = {
             RoleEnum.MANAGER: AccountRoleEnum.DOCENTE,
             RoleEnum.TEACHER: AccountRoleEnum.ALUMNO,
             RoleEnum.EDITING_TEACHER: AccountRoleEnum.ALUMNO,
         }
 
-        # Obtener los roles del usuario en el curso
+        # Validación de identidad externa: Consulta roles en tiempo real en Moodle.
         user_roles = await get_user_roles(
             institute=institute,
             course_id=course_id,
@@ -45,7 +70,7 @@ class ListAccountRequestsController:
                 },
             )
 
-        # Mapear los roles de Moodle del usuario a roles internos
+        # Determinar qué roles internos puede listar el usuario actual.
         internal_roles = [
             role_mapping[role] for role in user_roles if role in role_mapping
         ]
@@ -60,7 +85,7 @@ class ListAccountRequestsController:
             )
 
         try:
-            # Hacer una selección explícita y usar mappings() para obtener dicts
+            # Lógica de ordenamiento: PENDING siempre aparece al principio (prioridad 0).
             status_order = case(
                 (UserAccounts.status == AccountStatusEnum.PENDING, 0),
                 (UserAccounts.status == AccountStatusEnum.APPROVED, 1),
@@ -69,6 +94,7 @@ class ListAccountRequestsController:
                 else_=4,
             )
 
+            # Construcción dinámica de filtros de consulta.
             filters = [
                 UserAccounts.course_id == course_id,
                 UserAccounts.institute == institute,
@@ -78,6 +104,7 @@ class ListAccountRequestsController:
             if status is not None:
                 filters.append(UserAccounts.status == status)
 
+            # Ejecución de la consulta optimizada.
             stmt = (
                 select(
                     UserAccounts.id,
@@ -93,7 +120,6 @@ class ListAccountRequestsController:
             result = db.execute(stmt)
             rows = result.mappings().all()
 
-            # Para que coincida exactamente con el response_model
             return [dict(r) for r in rows]
 
         except SQLAlchemyError as exc:
@@ -101,7 +127,7 @@ class ListAccountRequestsController:
                 status_code=500,
                 detail={
                     "error_code": "DB_ERROR",
-                    "message": "Error al obtener solicitudes",
+                    "message": "Error al obtener solicitudes de la base de datos",
                 },
             ) from exc
 
@@ -118,7 +144,8 @@ async def get_user_roles(
     moodle_id: int,
 ) -> list[RoleEnum]:
     """
-    Dependencia que obtiene los roles de un usuario en un curso dado.
+    Función auxiliar que consume el servicio de Moodle para recuperar el perfil
+    del usuario y extraer sus roles asignados en un curso específico.
     """
 
     get_user_profile_result = await MoodleService.get_user_profile(
@@ -129,6 +156,7 @@ async def get_user_roles(
         return []
 
     user_roles = get_user_profile_result.user_profile.get("roles", [])
+    # Conversión de IDs numéricos de Moodle al Enum RoleEnum para tipado fuerte.
     list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
 
     return list_roles

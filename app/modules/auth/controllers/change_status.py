@@ -1,3 +1,12 @@
+"""
+Módulo ChangeStatusController - Gestión del Ciclo de Vida de Solicitudes
+
+Este controlador maneja la transición de estados de las solicitudes de cuenta.
+Su función principal es validar la aprobación de una cuenta, generar tokens de
+verificación únicos y coordinar el envío de correos electrónicos de validación
+para asegurar que el usuario sea quien dice ser antes de activar su acceso.
+"""
+
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -13,15 +22,30 @@ from ..schema import ConfirmAccountSchema
 
 
 class ChangeStatusController:
+    """
+    Controlador encargado de actualizar el estado de las solicitudes de cuenta
+    y gestionar la lógica de negocio asociada a la aprobación.
+    """
+
     @staticmethod
     async def change_status(data: ConfirmAccountSchema, db: Session):
+        """
+        Cambia el estatus de una solicitud de cuenta específica.
+
+        Si el estatus es 'APPROVED', inicia el flujo de verificación:
+        1. Genera un token UUID único.
+        2. Guarda el token en la base de datos relacionado con la cuenta.
+        3. Envía un correo electrónico al usuario con el enlace de validación.
+        """
         request_id = data.id
         status = data.status
 
         try:
+            # Búsqueda de la solicitud por ID único
             account_request = (
                 db.query(UserAccounts).filter(UserAccounts.id == request_id).first()
             )
+
             if not account_request:
                 raise HTTPException(
                     status_code=404,
@@ -31,9 +55,11 @@ class ChangeStatusController:
                     },
                 )
 
+            # Lógica específica cuando el Administrador aprueba la solicitud
             if status == AccountStatusEnum.APPROVED:
                 user_email = account_request.email
 
+                # Generación de token de seguridad
                 token_data = ChangeStatusController._generate_and_save_token(
                     account_request.id, db
                 )
@@ -48,10 +74,16 @@ class ChangeStatusController:
                         },
                     )
 
+                # Envío de correo electrónico vía SMTP
                 email_result = EmailService.send_validation_email(
                     to_email=user_email, token=token
                 )
+
                 if not email_result.get("success"):
+                    """
+                    Si el correo falla, se lanza una excepción para evitar que el 
+                    estatus cambie a APPROVED sin que el usuario reciba su acceso.
+                    """
                     print(
                         f"ALERTA: Falló el envío de correo para {user_email}: {email_result.get('error')}"
                     )
@@ -59,25 +91,26 @@ class ChangeStatusController:
                         status_code=502,
                         detail={
                             "error_code": "EMAIL_ERROR",
-                            "message": "Cuenta creada, pero falló el envío del correo de validación.",
+                            "message": "Cuenta aprobada, pero falló el envío del correo de validación.",
                         },
                     )
 
+                # Persistencia del cambio de estado
                 account_request.status = status
                 db.commit()
                 db.refresh(account_request)
 
                 return {
-                    "message": f"Cuenta creada en Keycloak y correo de validación enviado a {user_email}"
+                    "message": f"Solicitud aprobada y correo de validación enviado a {user_email}"
                 }
 
-        # Re-lanzamos las HTTPException controladas para que lleguen tal cual al endpoint
         except HTTPException as httpe:
+            """Manejo de errores controlados para mantener la integridad de la respuesta API."""
             db.rollback()
             raise httpe
 
-        # Solo aquí atrapamos excepciones inesperadas y las convertimos a 500
         except Exception as e:
+            """Captura de errores inesperados para evitar caídas del servicio."""
             db.rollback()
             print(f"Error en confirm_account: {e}")
             raise HTTPException(
@@ -87,19 +120,24 @@ class ChangeStatusController:
 
     @classmethod
     def _generate_and_save_token(cls, account_id: int, db: Session):
+        """
+        Método interno para la gestión de tokens de verificación.
+
+        Genera un identificador único (UUID4) con una vigencia de 7 días.
+        Si ya existe un token previo para la cuenta, lo actualiza (UPSERT).
+        """
         token = str(uuid4())
         fecha_solicitud = datetime.now()
         fecha_expiracion = fecha_solicitud + timedelta(days=7)
 
         try:
-            # Get the account to retrieve email
             account = (
                 db.query(UserAccounts).filter(UserAccounts.id == account_id).first()
             )
             if not account:
                 return {"success": False, "error": "Account not found"}
 
-            # Query VerificationToken by account_id
+            # Verificación de existencia previa de token para evitar duplicados
             validation = (
                 db.query(VerificationToken)
                 .filter(VerificationToken.account_id == account_id)
@@ -107,12 +145,13 @@ class ChangeStatusController:
             )
 
             if validation:
-                # Update existing record
+                # Actualización de token existente (Renovación)
                 validation.token = token
                 validation.created_at = fecha_solicitud
                 validation.expires_at = fecha_expiracion
+                validation.is_used = 0
             else:
-                # Create new record
+                # Creación de nuevo registro de verificación
                 new_validation = VerificationToken(
                     account_id=account_id,
                     token=token,
@@ -124,6 +163,7 @@ class ChangeStatusController:
 
             db.commit()
             return {"success": True, "token": token}
+
         except Exception as e:
             db.rollback()
             return {"success": False, "error": f"Error en BD: {e}"}

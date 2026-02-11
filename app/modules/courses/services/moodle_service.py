@@ -1,3 +1,11 @@
+"""
+Módulo MoodleService - Consultas Académicas
+
+Este servicio se especializa en la recuperación de información desde las instancias
+de Moodle. Proporciona métodos para listar el catálogo global de cursos y para
+consultar la relación específica de cursos asociados a un usuario (inscripciones).
+"""
+
 from types import SimpleNamespace
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
@@ -6,10 +14,20 @@ from app.shared.services.moodle_client import make_moodle_request
 
 
 class MoodleService:
+    """
+    Clase encargada de la comunicación de lectura con los Web Services de Moodle.
+    """
+
     @staticmethod
     async def get_courses(institute: InstitutesEnum):
         """
-        Obtener la lista de cursos desde Moodle según el instituto.
+        Recupera la lista completa de cursos disponibles en un instituto.
+
+        Utiliza la función 'core_course_get_courses' de Moodle para traer
+        metadatos como nombres, categorías e IDs de todos los cursos visibles.
+
+        Retorna:
+            SimpleNamespace: Con los atributos .courses (lista) y .error (str o None).
         """
         config = MOODLE_CONFIG[institute]
         params = {
@@ -18,6 +36,7 @@ class MoodleService:
             "moodlewsrestformat": "json",
         }
 
+        # Ejecución de la petición a través del cliente asíncrono compartido
         result = await make_moodle_request(
             url=config.moodle_url,
             params=params,
@@ -38,7 +57,13 @@ class MoodleService:
     @staticmethod
     async def get_enrolled_courses(institute: InstitutesEnum, user_id: int):
         """
-        Obtener los cursos en los que un usuario está inscrito en Moodle.
+        Consulta los cursos en los que un usuario específico está inscrito.
+
+        A diferencia del listado global, esta consulta ('core_enrol_get_users_courses')
+        requiere un 'userid' y retorna únicamente los cursos vinculados a ese perfil.
+
+        Retorna:
+            SimpleNamespace: Con los atributos .enrolled_courses (lista) y .error (str o None).
         """
         config = MOODLE_CONFIG[institute]
         params = {

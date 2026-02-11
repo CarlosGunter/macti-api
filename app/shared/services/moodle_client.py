@@ -1,3 +1,12 @@
+"""
+Módulo MoodleClient - Cliente HTTP Asíncrono Especializado
+
+Este módulo proporciona una capa de abstracción sobre httpx para interactuar
+con la API de Moodle. Su principal ventaja es el manejo robusto de excepciones
+específicas del protocolo de Web Services de Moodle, transformando respuestas
+inconsistentes en un formato de resultado estandarizado (success/data/error).
+"""
+
 import httpx
 
 from app.shared.enums.institutes_enum import InstitutesEnum
@@ -15,23 +24,16 @@ async def make_moodle_request(
     check_moodle_errors: bool = True,
 ) -> dict:
     """
-    Realiza una petición HTTP a Moodle con manejo de errores legible.
+    Realiza una petición HTTP a Moodle con gestión de errores centralizada.
 
-    Args:
-        url: URL del endpoint de Moodle
-        method: Método HTTP ('GET', 'POST', etc.)
-        params: Parámetros de query string
-        data: Datos para el body (form-encoded)
-        json: Datos JSON para el body
-        institute: Instituto para contexto en errores
-        timeout: Timeout en segundos
-        check_moodle_errors: Si verificar errores específicos de Moodle en la respuesta
+    Lógica de validación:
+    1. Ejecuta la petición asíncrona mediante httpx.
+    2. Valida errores de protocolo HTTP (4xx, 5xx).
+    3. Analiza el cuerpo JSON en busca de la clave 'exception', la cual Moodle
+       usa para reportar errores lógicos incluso en respuestas exitosas (200 OK).
 
     Returns:
-        Dict con:
-        - success: bool indicando si la petición fue exitosa
-        - data: dict con la respuesta JSON si success=True, None si no
-        - error_message: str con mensaje de error si success=False, None si success=True
+        Dict: Contiene 'success' (bool), 'data' (respuesta útil) y 'error_message'.
     """
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -41,7 +43,7 @@ async def make_moodle_request(
             response.raise_for_status()
             response_data = response.json()
 
-        # Verificar errores específicos de Moodle en la respuesta si está habilitado
+        # Validación de 'Lógica Moodle': Detecta fallos internos del LMS
         if (
             check_moodle_errors
             and isinstance(response_data, dict)
@@ -56,28 +58,28 @@ async def make_moodle_request(
         return {"success": True, "data": response_data, "error_message": None}
 
     except httpx.HTTPStatusError as e:
-        institute_str = f" ({institute})" if institute else ""
+        institute_str = f" ({institute.value})" if institute else ""
         return {
             "success": False,
             "data": None,
-            "error_message": f"Error HTTP en Moodle{institute_str}: {e.response.status_code} - {e.response.text}",
+            "error_message": f"Error HTTP en Moodle{institute_str}: {e.response.status_code}",
         }
     except httpx.TimeoutException:
-        institute_str = f" ({institute})" if institute else ""
+        institute_str = f" ({institute.value})" if institute else ""
         return {
             "success": False,
             "data": None,
             "error_message": f"Timeout conectando a Moodle{institute_str}",
         }
     except httpx.RequestError as e:
-        institute_str = f" ({institute})" if institute else ""
+        institute_str = f" ({institute.value})" if institute else ""
         return {
             "success": False,
             "data": None,
             "error_message": f"Error de conexión con Moodle{institute_str}: {str(e)}",
         }
     except Exception as e:
-        institute_str = f" ({institute})" if institute else ""
+        institute_str = f" ({institute.value})" if institute else ""
         return {
             "success": False,
             "data": None,

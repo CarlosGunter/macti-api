@@ -1,3 +1,13 @@
+"""
+Módulo de Seguridad y Autenticación - Proyecto MACTI
+
+Este módulo implementa el flujo de validación de tokens JWT (JSON Web Tokens)
+emitidos por Keycloak. Se encarga de:
+1. Recuperar y cachear las llaves públicas (JWKS) de cada instituto.
+2. Validar la firma, vigencia y audiencia de los tokens Bearer.
+3. Sincronizar la identidad de Keycloak con la base de datos local y Moodle.
+"""
+
 from uuid import UUID
 
 import httpx
@@ -6,7 +16,7 @@ from fastapi.security import HTTPBearer
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -16,25 +26,28 @@ from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.users_model import UserAccounts
 from app.shared.services.moodle_service import MoodleService
 
+# Configuración de seguridad estándar de FastAPI
 security = HTTPBearer()
 ALGORITHM = "RS256"
 
+# Caché global para las llaves públicas de Keycloak para optimizar el rendimiento
 JWKS_CACHE: dict[InstitutesEnum, dict] = {}
 
 
 async def get_jwks_for_institute(institute: InstitutesEnum) -> dict:
-    if institute not in JWKS_CACHE:
-        print(f"[DEBUG] JWKS para {institute.value} NO está en cache. Obteniendo...")
+    """
+    Recupera el conjunto de llaves públicas (JWKS) desde el servidor de Keycloak.
 
+    Implementa un mecanismo de caché para evitar peticiones redundantes al
+    proveedor de identidad en cada validación de token.
+    """
+    if institute not in JWKS_CACHE:
         kc = keycloak_configs[institute]
         url = f"{kc.url}/realms/{kc.realm}/protocol/openid-connect/certs"
 
         async with httpx.AsyncClient() as client:
             resp = await client.get(url)
-            print(f"[DEBUG] GET {url} -> status {resp.status_code}")
-
             if resp.status_code != 200:
-                print("[ERROR] No se pudieron obtener JWKS:", resp.text)
                 raise HTTPException(
                     status_code=500,
                     detail={
@@ -42,41 +55,38 @@ async def get_jwks_for_institute(institute: InstitutesEnum) -> dict:
                         "message": f"No se pudieron obtener JWKS para {institute.value}",
                     },
                 )
-
             JWKS_CACHE[institute] = resp.json()
-            print(f"[DEBUG] JWKS guardado en cache para {institute.value}")
-
-    else:
-        print(f"[DEBUG] JWKS para {institute.value} tomado de cache")
-
     return JWKS_CACHE[institute]
 
 
 def find_signing_key(jwks: dict, kid: str) -> dict | None:
-    print(f"[DEBUG] Buscando 'kid' {kid} dentro de JWKS...")
-
+    """
+    Busca la clave de firma específica dentro del JWKS utilizando el 'kid'
+    (Key ID) presente en el encabezado del token.
+    """
     for key in jwks.get("keys", []):
-        print(f"[DEBUG] Revisando key con kid={key.get('kid')}")
         if key.get("kid") == kid:
-            print("[DEBUG] Clave encontrada ✔")
             return key
-
-    print("[ERROR] No se encontró la clave con ese kid ")
     return None
 
 
 class CurrentUser(BaseModel):
+    """
+    Representación del usuario extraída del Payload del JWT.
+    Utiliza alias para mapear los reclamos estándar de OpenID Connect (sub, given_name, etc.).
+    """
+
     kc_id: UUID = Field(..., alias="sub")
     email: str = Field(..., alias="email")
     name: str = Field(..., alias="given_name")
     last_name: str = Field(..., alias="family_name")
 
-    model_config = {
-        "populate_by_name": True  # Permite exportar con los nombres internos
-    }
+    model_config = {"populate_by_name": True}
 
 
 class CurrentUserReturn(CurrentUser):
+    """Extensión del modelo de usuario que incluye su vinculación con Moodle."""
+
     moodle_id: int
 
 
@@ -85,11 +95,20 @@ async def get_current_user(
     db: Session = Depends(get_db),
     credentials=Depends(security),
 ) -> CurrentUserReturn:
+    """
+    Dependencia de FastAPI que valida el token Bearer y retorna el usuario autenticado.
+
+    Proceso:
+    1. Extrae el token y recupera el encabezado.
+    2. Valida la firma usando la llave pública del instituto correspondiente.
+    3. Verifica que el cliente (azp) sea el autorizado ('next-login').
+    4. Resuelve el moodle_id del usuario mediante la base de datos local.
+    """
     token = credentials.credentials
     jwks = await get_jwks_for_institute(institute)
+
     try:
         unverified_header = jwt.get_unverified_header(token)
-
         kid = unverified_header.get("kid")
 
         if not kid:
@@ -97,33 +116,24 @@ async def get_current_user(
                 status_code=401,
                 detail={
                     "error_code": "FALTA_KID_TOKEN",
-                    "message": "Falta 'kid' en el encabezado del token",
+                    "message": "Falta 'kid' en el token",
                 },
             )
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error_code": "ENCABEZADO_TOKEN_INVALIDO",
-                "message": "Encabezado del token inválido",
-            },
-        ) from e
+        signing_key = find_signing_key(jwks, kid)
+        if not signing_key:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error_code": "CLAVE_FIRMA_INVALIDA",
+                    "message": "Clave de firma inválida",
+                },
+            )
 
-    signing_key = find_signing_key(jwks, kid)
-    if not signing_key:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error_code": "CLAVE_FIRMA_INVALIDA",
-                "message": "Clave de firma inválida",
-            },
-        )
+        kc = keycloak_configs[institute]
+        issuer = f"{kc.url}/realms/{kc.realm}"
 
-    kc = keycloak_configs[institute]
-    issuer = f"{kc.url}/realms/{kc.realm}"
-
-    try:
+        # Validación integral del token (Expiración, Firma, Audiencia y Emisor)
         payload = jwt.decode(
             token,
             signing_key,
@@ -132,84 +142,56 @@ async def get_current_user(
             issuer=issuer,
         )
 
-        azp = payload.get("azp")
-
-        if azp != "next-login":
+        # Validación estricta del cliente originario
+        if payload.get("azp") != "next-login":
             raise HTTPException(
                 status_code=401,
                 detail={
                     "error_code": "CLIENTE_INVALIDO",
-                    "message": "Cliente (azp) inválido en el token",
+                    "message": "Cliente no autorizado",
                 },
             )
 
         user_kc_parsed = CurrentUser(**payload)
         moodle_id = await get_user_moodle_id(user_kc_parsed, db, institute)
 
+        # Retorna el objeto unificado con IDs de Keycloak y Moodle
         data = user_kc_parsed.model_dump()
         data["moodle_id"] = moodle_id
-        user_parsed = CurrentUserReturn(**data)
-
-        return user_parsed
+        return CurrentUserReturn(**data)
 
     except ExpiredSignatureError:
         raise HTTPException(
             status_code=401,
             detail={"error_code": "TOKEN_EXPIRADO", "message": "Token expirado"},
-        ) from ExpiredSignatureError
-
-    except JWTClaimsError:
+        )
+    except (JWTClaimsError, JWTError, ValidationError) as e:
         raise HTTPException(
-            status_code=401,
-            detail={
-                "error_code": "RECLAMACIONES_TOKEN_INVALIDAS",
-                "message": "Reclamaciones del token inválidas",
-            },
-        ) from JWTClaimsError
-
-    except JWTError as e:
-        raise HTTPException(
-            status_code=401,
-            detail={"error_code": "FIRMA_TOKEN_INVALIDA", "message": "Token inválido"},
-        ) from e
-
-    except ValidationError as e:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error_code": "VALIDACION_FALLIDA",
-                "message": "Respuesta de información de usuario inválida",
-            },
-        ) from e
+            status_code=401, detail={"error_code": "TOKEN_INVALIDO", "message": str(e)}
+        )
 
 
 async def get_user_moodle_id(
     user_info: CurrentUser, db: Session, institute: InstitutesEnum
 ) -> int:
     """
-    Obtiene el ID de Moodle del usuario a partir de la información del token.
-
-    Verifica en la base de datos u obtiene desde Moodle si es necesario.
+    Obtiene el ID de Moodle asociado al usuario.
+    Si el usuario existe en Keycloak pero no en la BD local de MACTI,
+    realiza una sincronización automática ('Just-In-Time Provisioning').
     """
     kc_id = user_info.kc_id
     user_email = user_info.email
 
     try:
         query = db.query(UserAccounts).filter(UserAccounts.kc_id == kc_id).one()
-        if not query.moodle_id:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error_code": "MOODLE_NO_ENCONTRADO",
-                    "message": "El usuario no tiene un ID de Moodle asociado.",
-                },
-            )
         return query.moodle_id
 
     except NoResultFound:
-        moodle_id = await get_moodle_id_from_web_service(
-            institute=institute, user_email=user_email
-        )
+        """
+        Caso de sincronización: El usuario existe en Moodle/Keycloak pero no en MACTI.
+        Se recupera su perfil de Moodle y se crea el registro local.
+        """
+        moodle_id = await get_moodle_id_from_web_service(institute, user_email)
 
         sync_user = UserAccounts(
             email=user_email,
@@ -222,49 +204,27 @@ async def get_user_moodle_id(
         )
         db.add(sync_user)
         db.commit()
-        db.refresh(sync_user)
-
         return moodle_id
-
-    except MultipleResultsFound:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error_code": "MULTIPLES_RESULTADOS",
-                "message": "Múltiples usuarios encontrados, error interno.",
-            },
-        ) from MultipleResultsFound
 
 
 async def get_moodle_id_from_web_service(
     institute: InstitutesEnum, user_email: str
 ) -> int:
     """
-    Sincroniza la información del usuario en la base de datos local
-    obteniendo su ID de Moodle desde el servicio de Moodle.
+    Consulta directa al Web Service de Moodle para obtener el ID interno
+    a partir del correo electrónico.
     """
     user_profile_result = await MoodleService.get_user_profile_by_email(
         institute=institute, user_email=user_email
     )
 
-    if user_profile_result.error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error_code": "MOODLE_SYNC_ERROR",
-                "message": f"Error al obtener perfil de usuario desde Moodle: {user_profile_result.error}",
-            },
-        )
-
-    user_moodle_id = user_profile_result.user_profile.get("id")
-
-    if not user_moodle_id:
+    if user_profile_result.error or not user_profile_result.user_profile.get("id"):
         raise HTTPException(
             status_code=404,
             detail={
-                "error_code": "MOODLE_USER_NOT_FOUND",
-                "message": f"Usuario con email {user_email} no encontrado en Moodle.",
+                "error_code": "MOODLE_SYNC_ERROR",
+                "message": "Usuario no encontrado en Moodle",
             },
         )
 
-    return user_moodle_id
+    return user_profile_result.user_profile.get("id")

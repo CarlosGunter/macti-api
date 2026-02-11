@@ -1,3 +1,14 @@
+"""
+Módulo CreateAccountController - Orquestador de Identidades
+
+Este controlador es responsable del aprovisionamiento final de los usuarios.
+Realiza una operación distribuida que:
+1. Sincroniza la identidad en Keycloak (IAM).
+2. Crea el perfil del usuario en Moodle (LMS).
+3. Gestiona la inscripción (enrollment) al curso solicitado.
+4. Mantiene la integridad de la base de datos local y limpia tokens temporales.
+"""
+
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -13,14 +24,35 @@ from ..schema import CreateAccountSchema
 
 
 class CreateAccountController:
+    """
+    Controlador encargado de la creación física de cuentas en servicios externos.
+    Asegura que la cuenta solo se cree si el proceso de aprobación y validación
+    de correo fue exitoso.
+    """
+
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
         """
-        Crear o actualizar cuenta en Keycloak y Moodle usando user_id y new_password enviados desde el front.
+        Orquesta la creación de cuenta en Keycloak y Moodle.
+
+        Parámetros:
+            data: Contiene el user_id de la solicitud y la nueva contraseña.
+            db: Sesión activa de la base de datos.
+
+        Flujo:
+            1. Verifica existencia y estatus 'APPROVED' de la solicitud.
+            2. Crea el usuario en Keycloak (IDM).
+            3. Crea el usuario en Moodle (LMS).
+            4. Realiza el 'rollback' en Keycloak si Moodle falla (Integridad).
+            5. Inscribe al usuario en el curso.
+            6. Limpia tokens de verificación usados.
         """
+
+        # 1. Validación de la solicitud en base de datos local
         account_request = (
             db.query(UserAccounts).filter(UserAccounts.id == data.user_id).first()
         )
+
         if not account_request:
             raise HTTPException(
                 status_code=404,
@@ -30,6 +62,7 @@ class CreateAccountController:
                 },
             )
 
+        # Seguridad: Solo solicitudes validadas por el Admin y el usuario pueden proceder
         if account_request.status != AccountStatusEnum.APPROVED:
             raise HTTPException(
                 status_code=400,
@@ -39,7 +72,7 @@ class CreateAccountController:
                 },
             )
 
-        # Crear usuario en Keycloak
+        # 2. Aprovisionamiento en Keycloak (Identidad y Credenciales)
         kc_result = await KeycloakService.create_user(
             {
                 "name": account_request.name,
@@ -49,6 +82,7 @@ class CreateAccountController:
             },
             institute=account_request.institute,
         )
+
         if not kc_result.get("created"):
             raise HTTPException(
                 status_code=502,
@@ -58,9 +92,10 @@ class CreateAccountController:
                 },
             )
 
+        # Guardamos el UUID generado por Keycloak para futuras referencias
         account_request.kc_id = UUID(kc_result.get("user_id"))
 
-        # Crear usuario en Moodle (puedes agregar lógica similar si ya existe)
+        # 3. Aprovisionamiento en Moodle (Perfil de Estudiante/Docente)
         moodle_result = await MoodleService.create_user(
             user_data={
                 "name": account_request.name,
@@ -70,7 +105,13 @@ class CreateAccountController:
             },
             institute=account_request.institute,
         )
+
+        # Manejo de fallos en cascada (Circuit Breaker manual)
         if not moodle_result.get("created"):
+            """
+            Si Moodle falla, debemos eliminar al usuario recién creado en Keycloak
+            para mantener los sistemas sincronizados y permitir un re-intento limpio.
+            """
             await KeycloakService.delete_user(
                 user_id=str(account_request.kc_id),
                 institute=account_request.institute,
@@ -80,21 +121,25 @@ class CreateAccountController:
                 status_code=502,
                 detail={
                     "error_code": "MOODLE_ERROR",
-                    "message": "Error creando usuario en Moodle",
+                    "message": "Error creando usuario en Moodle. Se revirtieron cambios en Keycloak.",
                 },
             )
 
+        # Guardamos el ID interno de Moodle para el usuario
         account_request.moodle_id = moodle_result.get("id")
 
-        # Matricular usuario en el curso
+        # 4. Inscripción Automática al curso solicitado
         await MoodleService.enroll_user(
             user_id=moodle_result["id"],
             course_id=account_request.course_id,
             institute=account_request.institute,
         )
 
-        # Actualizar estado de la solicitud
+        # 5. Finalización y Limpieza
+        # Marcamos la solicitud como 'CREATED' (Proceso finalizado)
         account_request.status = AccountStatusEnum.CREATED
+
+        # Eliminamos el token de verificación ya que no es más necesario
         token_record = (
             db.query(VerificationToken)
             .filter(VerificationToken.account_id == account_request.id)
@@ -105,6 +150,9 @@ class CreateAccountController:
 
         db.commit()
         db.refresh(account_request)
+
         return {
-            "message": "Cuenta creada/actualizada exitosamente en Keycloak y Moodle",
+            "message": "Cuenta creada y vinculada exitosamente en Keycloak y Moodle",
+            "kc_id": str(account_request.kc_id),
+            "moodle_id": account_request.moodle_id,
         }
