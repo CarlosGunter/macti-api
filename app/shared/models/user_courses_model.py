@@ -21,7 +21,6 @@ class UserCourses(Base):
 
     moodle_course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    course_key: Mapped[str | None] = mapped_column(String, nullable=True)
     groups: Mapped[str | None] = mapped_column(String, nullable=True)
 
     status: Mapped[AccountStatusEnum] = mapped_column(

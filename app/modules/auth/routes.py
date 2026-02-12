@@ -1,11 +1,5 @@
 """
 Módulo APIRouter de Autenticación y Registro - Proyecto MACTI
-
-Este router centraliza los endpoints del flujo de vida de una cuenta de usuario:
-1. Solicitud inicial (Alumno/Docente).
-2. Gestión administrativa (Listado y Cambio de estatus).
-3. Validación de identidad (Tokens de correo).
-4. Aprovisionamiento final (Keycloak y Moodle).
 """
 
 from fastapi import APIRouter, Depends, Query, status
@@ -39,36 +33,30 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post(
-    "/request-student-account",
+    "/request-account/student",
     summary="Crear una solicitud de cuenta para ALUMNO",
+    description="Endpoint para que un alumno solicite su acceso. Requiere vinculación inmediata a un course_id de Moodle.",
     response_model=AccountRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def request_student_account(
     body_info: StudentRequestSchema, db: Session = Depends(get_db)
 ):
-    """
-    Endpoint para que un alumno solicite su acceso.
-    Requiere vinculación inmediata a un course_id de Moodle.
-    """
     return RequestAccountController.request_account(
         role=AccountRoleEnum.ALUMNO, data=body_info, db=db
     )
 
 
 @router.post(
-    "/request-teacher-account",
+    "/request-account/teacher",
     summary="Crear una solicitud de cuenta para DOCENTE",
+    description="Endpoint para que un docente solicite acceso y, opcionalmente, la creación de un nuevo espacio académico (curso) en Moodle.",
     response_model=AccountRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def request_teacher_account(
     body_info: TeacherRequestSchema, db: Session = Depends(get_db)
 ):
-    """
-    Endpoint para que un docente solicite acceso y, opcionalmente,
-    la creación de un nuevo espacio académico (curso) en Moodle.
-    """
     return RequestAccountController.request_account(
         role=AccountRoleEnum.DOCENTE, data=body_info, db=db
     )
@@ -77,6 +65,7 @@ async def request_teacher_account(
 @router.get(
     "/list-account-requests",
     summary="Listar solicitudes de cuenta por curso",
+    description="Endpoint administrativo que permite a los gestores visualizar solicitudes pendientes de aprobación, filtradas por curso y estatus.",
     response_model=ListAccountsResponse,
 )
 async def list_accounts_requests(
@@ -90,10 +79,6 @@ async def list_accounts_requests(
     db=Depends(get_db),
     user_info=Depends(get_current_user),
 ):
-    """
-    Endpoint administrativo que permite a los gestores visualizar solicitudes
-    pendientes de aprobación, filtradas por curso y estatus.
-    """
     return await ListAccountRequestsController.list_accounts_requests(
         db=db,
         course_id=course_id,
@@ -103,28 +88,31 @@ async def list_accounts_requests(
     )
 
 
-@router.patch("/change-status", response_model=ConfirmAccountResponse)
+@router.patch(
+    "/change-status",
+    summary="Cambiar estatus de una cuenta",
+    description="Permite al administrador aprobar o rechazar una solicitud. Si se aprueba, dispara automáticamente la generación de tokens y envío de email.",
+    response_model=ConfirmAccountResponse,
+)
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
-    """
-    Permite al administrador aprobar o rechazar una solicitud.
-    Si se aprueba, dispara automáticamente la generación de tokens y envío de email.
-    """
     return await ChangeStatusController.change_status(data=body_info, db=db)
 
 
-@router.get("/user-info-by-token", response_model=UserInfoResponse)
+@router.get(
+    "/user-info-by-token",
+    summary="Obtener info de usuario por token",
+    description="Endpoint de validación de enlace. Resuelve la identidad del usuario a partir del token UUID enviado por correo.",
+    response_model=UserInfoResponse,
+)
 def confirm_email(token: str = Query(...), db=Depends(get_db)):
-    """
-    Endpoint de validación de enlace.
-    Resuelve la identidad del usuario a partir del token UUID enviado por correo.
-    """
     return GetUserInfoController.get_user_info(token=token, db=db)
 
 
-@router.post("/create-account", response_model=CreateAccountResponse)
+@router.post(
+    "/create-account",
+    summary="Finalizar creación de cuenta",
+    description="Paso final del flujo. Aprovisiona al usuario en Keycloak y Moodle una vez que ha definido su contraseña.",
+    response_model=CreateAccountResponse,
+)
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
-    """
-    Paso final del flujo.
-    Aprovisiona al usuario en Keycloak y Moodle una vez que ha definido su contraseña.
-    """
     return await CreateAccountController.create_account(data=body_info, db=db)
