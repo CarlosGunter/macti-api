@@ -72,14 +72,9 @@ class RequestAccountController:
                 name=data.name,
                 last_name=data.last_name,
                 email=data.email,
-                course_id=data.course_id,
                 institute=data.institute,
                 role=role,
                 status=AccountStatusEnum.PENDING,
-                # Campos dinámicos según el esquema de entrada
-                course_full_name=getattr(data, "course_full_name", None),
-                course_key=getattr(data, "course_key", None),
-                groups=getattr(data, "groups", None),
             )
 
             db.add(db_account_request)
