@@ -184,6 +184,18 @@ async def get_user_moodle_id(
 
     try:
         query = db.query(UserAccounts).filter(UserAccounts.kc_id == kc_id).one()
+
+        # FIX PYRIGHT: Validamos que moodle_id no sea None antes de retornar.
+        # Esto elimina el error "Type int | None is not assignable to return type int"
+        if query.moodle_id is None:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "DATA_INCONSISTENCY",
+                    "message": "El usuario existe pero no tiene un ID de Moodle asignado.",
+                },
+            )
+
         return query.moodle_id
 
     except NoResultFound:

@@ -12,18 +12,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
 
-from ....shared.models.users_model import AccountStatusEnum
 from ..schema import StudentRequestSchema, TeacherRequestSchema
 
 
 class RequestAccountController:
     """
     Controlador encargado de procesar las peticiones iniciales de registro de cuenta.
-    Incluye lógica de validación de correo único por instituto y generación de logs
-    para el seguimiento de solicitudes académicas.
+    Incluye lógica de validación de correo único por instituto y generación de logs.
     """
 
     @staticmethod
@@ -34,15 +33,12 @@ class RequestAccountController:
     ):
         """
         Punto de entrada principal para registrar una solicitud de cuenta.
-
-        Flujo de ejecución:
-        1. Si es Docente, genera un preview del código de curso en logs.
-        2. Verifica que el email no tenga una solicitud activa en el mismo instituto.
-        3. Persiste la información en la tabla UserAccounts con estatus PENDING.
         """
+        # Validación de tipo para Docentes (Fix Pyright)
         if role == AccountRoleEnum.DOCENTE and isinstance(data, TeacherRequestSchema):
             RequestAccountController._print_teacher_subject_request(data)
 
+        # 1. Verificar si ya existe una solicitud para este correo e instituto
         existing_request = (
             db.query(UserAccounts)
             .filter(
@@ -62,7 +58,7 @@ class RequestAccountController:
             )
 
         try:
-            # Creación del registro base de la cuenta
+            # 2. Crear el registro base de la cuenta
             db_account_request = UserAccounts(
                 name=data.name,
                 last_name=data.last_name,
@@ -73,7 +69,11 @@ class RequestAccountController:
                 course_id=data.course_id,
             )
 
-            # Manejo seguro de campos específicos según el rol
+            # Usamos flush() para obtener el ID sin cerrar la transacción (evita ROLLBACK)
+            db.add(db_account_request)
+            db.flush()
+
+            # 3. Manejo seguro de campos específicos según el rol
             if isinstance(data, TeacherRequestSchema):
                 course_name = data.course_full_name
                 group_info = data.groups
@@ -82,21 +82,23 @@ class RequestAccountController:
                 course_name = "Curso solicitado (Alumno)"
                 group_info = "N/A"
 
+            # 4. Crear el detalle del curso vinculado al ID de la cuenta recién generada
             detalles_curso = UserCourses(
+                user_id=db_account_request.id,
                 course_full_name=course_name,
                 groups=group_info,
                 status=AccountStatusEnum.PENDING,
             )
 
-            db_account_request.assigned_courses.append(detalles_curso)
-            db.add(db_account_request)
+            db.add(detalles_curso)
             db.commit()
             db.refresh(db_account_request)
 
             return {"message": "Solicitud de cuenta procesada exitosamente"}
 
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             db.rollback()
+            print(f"DATABASE ERROR: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail={
@@ -120,7 +122,6 @@ class RequestAccountController:
     def _print_teacher_subject_request(data: TeacherRequestSchema):
         """
         Genera una representación visual en consola del curso solicitado.
-        Formato: [INST_PREFIJO]-[INICIALES_CURSO]-[GRUPO]
         """
         try:
             inst_prefix = str(data.institute.value)[:3].upper()
