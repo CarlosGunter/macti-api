@@ -40,12 +40,9 @@ class RequestAccountController:
         2. Verifica que el email no tenga una solicitud activa en el mismo instituto.
         3. Persiste la información en la tabla UserAccounts con estatus PENDING.
         """
-
-        # Lógica visual para seguimiento en consola si es una solicitud académica
         if role == AccountRoleEnum.DOCENTE:
             RequestAccountController._print_teacher_subject_request(data)
 
-        # Validación de duplicidad: Un correo no puede pedir dos cuentas en el mismo instituto
         existing_request = (
             db.query(UserAccounts)
             .filter(
