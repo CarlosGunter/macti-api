@@ -12,8 +12,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.models.user_courses_model import UserCourses
+from app.shared.models.users_model import UserAccounts
 
-from ....shared.models.users_model import AccountStatusEnum, UserAccounts
+from ....shared.models.users_model import AccountStatusEnum
 from ..schema import StudentRequestSchema, TeacherRequestSchema
 
 
@@ -75,8 +77,15 @@ class RequestAccountController:
                 institute=data.institute,
                 role=role,
                 status=AccountStatusEnum.PENDING,
+                course_id=data.course_id,
+            )
+            detalles_curso = UserCourses(
+                course_full_name=data.course_full_name,
+                groups=data.groups,
+                status=AccountStatusEnum.PENDING,
             )
 
+            db_account_request.assigned_courses.append(detalles_curso)
             db.add(db_account_request)
             db.commit()
             db.refresh(db_account_request)

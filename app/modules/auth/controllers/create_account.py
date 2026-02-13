@@ -1,14 +1,3 @@
-"""
-Módulo CreateAccountController - Orquestador de Identidades
-
-Este controlador es responsable del aprovisionamiento final de los usuarios.
-Realiza una operación distribuida que:
-1. Sincroniza la identidad en Keycloak (IAM).
-2. Crea el perfil del usuario en Moodle (LMS).
-3. Gestiona la inscripción (enrollment) al curso solicitado.
-4. Mantiene la integridad de la base de datos local y limpia tokens temporales.
-"""
-
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -24,12 +13,6 @@ from ..schema import CreateAccountSchema
 
 
 class CreateAccountController:
-    """
-    Controlador encargado de la creación física de cuentas en servicios externos.
-    Asegura que la cuenta solo se cree si el proceso de aprobación y validación
-    de correo fue exitoso.
-    """
-
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
         """
