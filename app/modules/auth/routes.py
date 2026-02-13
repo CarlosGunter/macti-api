@@ -35,13 +35,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post(
     "/request-account/student",
     summary="Crear una solicitud de cuenta para ALUMNO",
-    description="Endpoint para que un alumno solicite su acceso. Requiere vinculación inmediata a un course_id de Moodle.",
+    description="Endpoint para que un alumno solicite su acceso.",
     response_model=AccountRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def request_student_account(
     body_info: StudentRequestSchema, db: Session = Depends(get_db)
 ):
+    # El controlador es síncrono (sin await)
     return RequestAccountController.request_account(
         role=AccountRoleEnum.ALUMNO, data=body_info, db=db
     )
@@ -50,13 +51,14 @@ async def request_student_account(
 @router.post(
     "/request-account/teacher",
     summary="Crear una solicitud de cuenta para DOCENTE",
-    description="Endpoint para que un docente solicite acceso y, opcionalmente, la creación de un nuevo espacio académico (curso) en Moodle.",
+    description="Endpoint para que un docente solicite acceso.",
     response_model=AccountRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def request_teacher_account(
     body_info: TeacherRequestSchema, db: Session = Depends(get_db)
 ):
+    # El controlador es síncrono (sin await)
     return RequestAccountController.request_account(
         role=AccountRoleEnum.DOCENTE, data=body_info, db=db
     )
@@ -65,17 +67,12 @@ async def request_teacher_account(
 @router.get(
     "/list-account-requests",
     summary="Listar solicitudes de cuenta por curso",
-    description="Endpoint administrativo que permite a los gestores visualizar solicitudes pendientes de aprobación, filtradas por curso y estatus.",
     response_model=ListAccountsResponse,
 )
 async def list_accounts_requests(
     course_id: int = Query(..., description="ID del curso en Moodle"),
-    institute: InstitutesEnum = Query(
-        ..., description="Instituto al que pertenece el curso"
-    ),
-    status: AccountStatusEnum | None = Query(
-        None, description="Filtro opcional por estatus"
-    ),
+    institute: InstitutesEnum = Query(..., description="Instituto"),
+    status: AccountStatusEnum | None = Query(None),
     db=Depends(get_db),
     user_info=Depends(get_current_user),
 ):
@@ -91,17 +88,15 @@ async def list_accounts_requests(
 @router.patch(
     "/change-status",
     summary="Cambiar estatus de una cuenta",
-    description="Permite al administrador aprobar o rechazar una solicitud. Si se aprueba, dispara automáticamente la generación de tokens y envío de email.",
     response_model=ConfirmAccountResponse,
 )
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
-    return await ChangeStatusController.change_status(data=body_info, db=db)
+    return ChangeStatusController.change_status(data=body_info, db=db)
 
 
 @router.get(
     "/user-info-by-token",
     summary="Obtener info de usuario por token",
-    description="Endpoint de validación de enlace. Resuelve la identidad del usuario a partir del token UUID enviado por correo.",
     response_model=UserInfoResponse,
 )
 def confirm_email(token: str = Query(...), db=Depends(get_db)):
@@ -111,8 +106,8 @@ def confirm_email(token: str = Query(...), db=Depends(get_db)):
 @router.post(
     "/create-account",
     summary="Finalizar creación de cuenta",
-    description="Paso final del flujo. Aprovisiona al usuario en Keycloak y Moodle una vez que ha definido su contraseña.",
     response_model=CreateAccountResponse,
 )
 async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
+    # El controlador es asíncrono (usa await)
     return await CreateAccountController.create_account(data=body_info, db=db)

@@ -15,23 +15,7 @@ from ..schema import CreateAccountSchema
 class CreateAccountController:
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
-        """
-        Orquesta la creación de cuenta en Keycloak y Moodle.
-
-        Parámetros:
-            data: Contiene el user_id de la solicitud y la nueva contraseña.
-            db: Sesión activa de la base de datos.
-
-        Flujo:
-            1. Verifica existencia y estatus 'APPROVED' de la solicitud.
-            2. Crea el usuario en Keycloak (IDM).
-            3. Crea el usuario en Moodle (LMS).
-            4. Realiza el 'rollback' en Keycloak si Moodle falla (Integridad).
-            5. Inscribe al usuario en el curso.
-            6. Limpia tokens de verificación usados.
-        """
-
-        # 1. Validación de la solicitud en base de datos local
+        # 1. Validación de la solicitud
         account_request = (
             db.query(UserAccounts).filter(UserAccounts.id == data.user_id).first()
         )
@@ -45,17 +29,17 @@ class CreateAccountController:
                 },
             )
 
-        # Seguridad: Solo solicitudes validadas por el Admin y el usuario pueden proceder
+        # Validación de estatus
         if account_request.status != AccountStatusEnum.APPROVED:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "error_code": "STATUS_INVALIDO",
-                    "message": "La solicitud debe estar aprobada antes de crear la cuenta",
+                    "message": "La solicitud debe estar aprobada",
                 },
             )
 
-        # 2. Aprovisionamiento en Keycloak (Identidad y Credenciales)
+        # 2. Keycloak (Aprovisionamiento)
         kc_result = await KeycloakService.create_user(
             {
                 "name": account_request.name,
@@ -71,58 +55,61 @@ class CreateAccountController:
                 status_code=502,
                 detail={
                     "error_code": "KC_ERROR",
-                    "message": f"Error creando usuario en Keycloak: {kc_result.get('error')}",
+                    "message": f"Error en Keycloak: {kc_result.get('error')}",
                 },
             )
 
-        # Guardamos el UUID generado por Keycloak para futuras referencias
-        account_request.kc_id = UUID(kc_result.get("user_id"))
+        # Convertimos a UUID de forma segura
+        kc_user_id = kc_result.get("user_id")
+        if kc_user_id:
+            account_request.kc_id = UUID(str(kc_user_id))
 
-        # 3. Aprovisionamiento en Moodle (Perfil de Estudiante/Docente)
+        # 3. Moodle (Aprovisionamiento)
+        # Type Guard para course_id (Pyright fix)
+        current_course_id = account_request.course_id
+        if current_course_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail={"error_code": "DATA_INCOMPLETE", "message": "ID de curso nulo"},
+            )
+
         moodle_result = await MoodleService.create_user(
             user_data={
                 "name": account_request.name,
                 "last_name": account_request.last_name,
                 "email": account_request.email,
-                "course_id": account_request.course_id,
+                "course_id": current_course_id,
             },
             institute=account_request.institute,
         )
 
-        # Manejo de fallos en cascada (Circuit Breaker manual)
         if not moodle_result.get("created"):
-            """
-            Si Moodle falla, debemos eliminar al usuario recién creado en Keycloak
-            para mantener los sistemas sincronizados y permitir un re-intento limpio.
-            """
-            await KeycloakService.delete_user(
-                user_id=str(account_request.kc_id),
+            if account_request.kc_id:
+                await KeycloakService.delete_user(
+                    user_id=str(account_request.kc_id),
+                    institute=account_request.institute,
+                )
+            raise HTTPException(
+                status_code=502,
+                detail={"error_code": "MOODLE_ERROR", "message": "Error en Moodle"},
+            )
+
+        # Asignamos el ID de Moodle
+        account_request.user_id = moodle_result.get("id")
+
+        # 4. Inscripción Automática
+        # Type Guard para user_id y course_id (Pyright fix)
+        m_user_id = account_request.user_id
+        if m_user_id is not None and current_course_id is not None:
+            await MoodleService.enroll_user(
+                user_id=m_user_id,
+                course_id=current_course_id,
                 institute=account_request.institute,
             )
 
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "error_code": "MOODLE_ERROR",
-                    "message": "Error creando usuario en Moodle. Se revirtieron cambios en Keycloak.",
-                },
-            )
-
-        # Guardamos el ID interno de Moodle para el usuario
-        account_request.moodle_id = moodle_result.get("id")
-
-        # 4. Inscripción Automática al curso solicitado
-        await MoodleService.enroll_user(
-            user_id=moodle_result["id"],
-            course_id=account_request.course_id,
-            institute=account_request.institute,
-        )
-
-        # 5. Finalización y Limpieza
-        # Marcamos la solicitud como 'CREATED' (Proceso finalizado)
+        # 5. Finalización
         account_request.status = AccountStatusEnum.CREATED
 
-        # Eliminamos el token de verificación ya que no es más necesario
         token_record = (
             db.query(VerificationToken)
             .filter(VerificationToken.account_id == account_request.id)
@@ -135,7 +122,7 @@ class CreateAccountController:
         db.refresh(account_request)
 
         return {
-            "message": "Cuenta creada y vinculada exitosamente en Keycloak y Moodle",
+            "message": "Cuenta creada exitosamente",
             "kc_id": str(account_request.kc_id),
-            "moodle_id": account_request.moodle_id,
+            "moodle_id": account_request.user_id,
         }

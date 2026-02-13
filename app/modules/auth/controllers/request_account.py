@@ -40,7 +40,7 @@ class RequestAccountController:
         2. Verifica que el email no tenga una solicitud activa en el mismo instituto.
         3. Persiste la información en la tabla UserAccounts con estatus PENDING.
         """
-        if role == AccountRoleEnum.DOCENTE:
+        if role == AccountRoleEnum.DOCENTE and isinstance(data, TeacherRequestSchema):
             RequestAccountController._print_teacher_subject_request(data)
 
         existing_request = (
@@ -62,11 +62,7 @@ class RequestAccountController:
             )
 
         try:
-            """
-            Creación del registro de cuenta. 
-            Se utiliza getattr para manejar de forma segura los campos que solo
-            vienen en la solicitud de Docente (course_full_name, course_key, groups).
-            """
+            # Creación del registro base de la cuenta
             db_account_request = UserAccounts(
                 name=data.name,
                 last_name=data.last_name,
@@ -76,9 +72,19 @@ class RequestAccountController:
                 status=AccountStatusEnum.PENDING,
                 course_id=data.course_id,
             )
+
+            # Manejo seguro de campos específicos según el rol
+            if isinstance(data, TeacherRequestSchema):
+                course_name = data.course_full_name
+                group_info = data.groups
+            else:
+                # Caso para Alumnos (StudentRequestSchema)
+                course_name = "Curso solicitado (Alumno)"
+                group_info = "N/A"
+
             detalles_curso = UserCourses(
-                course_full_name=data.course_full_name,
-                groups=data.groups,
+                course_full_name=course_name,
+                groups=group_info,
                 status=AccountStatusEnum.PENDING,
             )
 
@@ -90,7 +96,6 @@ class RequestAccountController:
             return {"message": "Solicitud de cuenta procesada exitosamente"}
 
         except SQLAlchemyError:
-            """Manejo de errores a nivel de capa de persistencia."""
             db.rollback()
             raise HTTPException(
                 status_code=500,
@@ -101,7 +106,6 @@ class RequestAccountController:
             ) from None
 
         except Exception as e:
-            """Captura de errores críticos no previstos."""
             db.rollback()
             print(f"CRITICAL ERROR: {str(e)}")
             raise HTTPException(
@@ -115,17 +119,12 @@ class RequestAccountController:
     @staticmethod
     def _print_teacher_subject_request(data: TeacherRequestSchema):
         """
-        Método de soporte para depuración (Logging).
-
-        Genera una representación visual en consola del curso que se está intentando
-        solicitar, creando un código 'Subject' basado en el instituto y las iniciales.
+        Genera una representación visual en consola del curso solicitado.
         Formato: [INST_PREFIJO]-[INICIALES_CURSO]-[GRUPO]
         """
         try:
-            # Prefijo del instituto (Ej: ING para Ingeniería)
             inst_prefix = str(data.institute.value)[:3].upper()
 
-            # Generación de iniciales del nombre del curso
             words = data.course_full_name.split()
             if len(words) >= 2:
                 course_initials = "".join([word[0] for word in words[:3]]).upper()

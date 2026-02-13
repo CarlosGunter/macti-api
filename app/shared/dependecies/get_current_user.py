@@ -160,15 +160,15 @@ async def get_current_user(
         data["moodle_id"] = moodle_id
         return CurrentUserReturn(**data)
 
-    except ExpiredSignatureError:
+    except ExpiredSignatureError as e:
         raise HTTPException(
             status_code=401,
             detail={"error_code": "TOKEN_EXPIRADO", "message": "Token expirado"},
-        )
+        ) from e
     except (JWTClaimsError, JWTError, ValidationError) as e:
         raise HTTPException(
             status_code=401, detail={"error_code": "TOKEN_INVALIDO", "message": str(e)}
-        )
+        ) from e
 
 
 async def get_user_moodle_id(

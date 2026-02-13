@@ -52,7 +52,7 @@ class ListCoursesController:
             )
 
         """
-        Retorna el listado de cursos directamente. 
+        Retorna el listado de cursos directamente.
         Moodle suele retornar: id, shortname, fullname, displayname e idnumber.
         """
         return courses.courses

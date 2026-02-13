@@ -125,8 +125,8 @@ class MoodleService:
 
         """
         Manejo de Excepciones de Moodle:
-        Moodle puede retornar un 200 OK pero con un cuerpo de 'exception'. 
-        Un caso común es cuando el usuario se matricula pero el servidor de correo 
+        Moodle puede retornar un 200 OK pero con un cuerpo de 'exception'.
+        Un caso común es cuando el usuario se matricula pero el servidor de correo
         de Moodle falla al enviar la notificación; en este caso, la matrícula sí es válida.
         """
         if isinstance(result, dict) and "exception" in result:

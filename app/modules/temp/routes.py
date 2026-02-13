@@ -66,7 +66,7 @@ async def clear_user_data(
 
     if not del_kc:
         """
-        Si falla Keycloak pero no la BD, se notifica para limpieza manual, 
+        Si falla Keycloak pero no la BD, se notifica para limpieza manual,
         evitando inconsistencias de identidad.
         """
         raise HTTPException(

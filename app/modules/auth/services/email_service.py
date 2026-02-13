@@ -63,9 +63,9 @@ class EmailService:
             or f"""
             Hola, tu solicitud de cuenta ha sido aprobada.
             Para finalizar el proceso y establecer tu contraseña, haz click en el siguiente enlace:
-            
+
             {confirm_link}
-            
+
             Este enlace es personal y tiene una vigencia limitada.
             """,
             subtype="plain",
@@ -74,7 +74,7 @@ class EmailService:
         try:
             """
             Inicia la conexión SMTP con cifrado TLS (Transport Layer Security).
-            El uso del bloque 'with' asegura que la conexión se cierre correctamente 
+            El uso del bloque 'with' asegura que la conexión se cierre correctamente
             incluso si ocurre un error durante el envío.
             """
             with smtplib.SMTP(EmailService.SMTP_HOST, EmailService.SMTP_PORT) as smtp:

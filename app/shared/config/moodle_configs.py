@@ -31,9 +31,9 @@ class DCMoodleConfig:
 """
 Diccionario Maestro de Configuraciones de Moodle (LMS).
 
-Permite que el sistema MACTI sea agnóstico respecto a la ubicación física de 
-los servidores de Moodle. Al recibir un 'institute', el servicio de Moodle 
-conecta dinámicamente con la IP y el puerto correspondientes, permitiendo una 
+Permite que el sistema MACTI sea agnóstico respecto a la ubicación física de
+los servidores de Moodle. Al recibir un 'institute', el servicio de Moodle
+conecta dinámicamente con la IP y el puerto correspondientes, permitiendo una
 administración multi-instancia desde un solo backend.
 """
 MOODLE_CONFIG: dict[InstitutesEnum, DCMoodleConfig] = {

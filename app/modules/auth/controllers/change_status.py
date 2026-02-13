@@ -3,8 +3,7 @@ Módulo ChangeStatusController - Gestión del Ciclo de Vida de Solicitudes
 
 Este controlador maneja la transición de estados de las solicitudes de cuenta.
 Su función principal es validar la aprobación de una cuenta, generar tokens de
-verificación únicos y coordinar el envío de correos electrónicos de validación
-para asegurar que el usuario sea quien dice ser antes de activar su acceso.
+verificación únicos y coordinar el envío de correos electrónicos de validación.
 """
 
 from datetime import datetime, timedelta
@@ -28,7 +27,7 @@ class ChangeStatusController:
     """
 
     @staticmethod
-    async def change_status(data: ConfirmAccountSchema, db: Session):
+    def change_status(data: ConfirmAccountSchema, db: Session):
         """
         Cambia el estatus de una solicitud de cuenta específica.
 
@@ -81,7 +80,7 @@ class ChangeStatusController:
 
                 if not email_result.get("success"):
                     """
-                    Si el correo falla, se lanza una excepción para evitar que el 
+                    Si el correo falla, se lanza una excepción para evitar que el
                     estatus cambie a APPROVED sin que el usuario reciba su acceso.
                     """
                     print(
@@ -105,12 +104,10 @@ class ChangeStatusController:
                 }
 
         except HTTPException as httpe:
-            """Manejo de errores controlados para mantener la integridad de la respuesta API."""
             db.rollback()
             raise httpe
 
         except Exception as e:
-            """Captura de errores inesperados para evitar caídas del servicio."""
             db.rollback()
             print(f"Error en confirm_account: {e}")
             raise HTTPException(
@@ -137,7 +134,7 @@ class ChangeStatusController:
             if not account:
                 return {"success": False, "error": "Account not found"}
 
-            # Verificación de existencia previa de token para evitar duplicados
+            # Verificación de existencia previa de token
             validation = (
                 db.query(VerificationToken)
                 .filter(VerificationToken.account_id == account_id)

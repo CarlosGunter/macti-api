@@ -34,8 +34,8 @@ class DCKeycloakConfig:
 """
 Diccionario maestro de configuraciones de Keycloak.
 
-Vincula cada valor del Enum 'InstitutesEnum' con sus credenciales y endpoints 
-específicos. Esto permite que el servicio de Keycloak cambie de contexto 
+Vincula cada valor del Enum 'InstitutesEnum' con sus credenciales y endpoints
+específicos. Esto permite que el servicio de Keycloak cambie de contexto
 de forma dinámica según la procedencia del usuario.
 """
 keycloak_configs: dict[InstitutesEnum, DCKeycloakConfig] = {
