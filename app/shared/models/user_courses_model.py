@@ -19,7 +19,6 @@ class UserCourses(Base):
         Integer, ForeignKey("MCT_user_accounts.id"), nullable=False
     )
 
-    moodle_course_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
     groups: Mapped[str | None] = mapped_column(String, nullable=True)
 
