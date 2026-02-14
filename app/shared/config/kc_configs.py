@@ -1,11 +1,9 @@
-"""
-Módulo de Configuración de Keycloak - Proyecto MACTI
-
-Este módulo define la estructura de datos y el mapeo centralizado para la
-conexión con las diferentes instancias de Keycloak. Implementa una arquitectura
-Multitenant basada en el instituto del usuario, permitiendo que una sola
-instancia de la API gestione múltiples reinos (Realms) y servidores de autenticación.
-"""
+# Módulo de Configuración de Keycloak - Proyecto MACTI
+#
+# Este módulo define la estructura de datos y el mapeo centralizado para la
+# conexión con las diferentes instancias de Keycloak. Implementa una arquitectura
+# Multitenant basada en el instituto del usuario, permitiendo que una sola
+# instancia de la API gestione múltiples reinos (Realms) y servidores de autenticación.
 
 from dataclasses import dataclass
 
@@ -31,13 +29,12 @@ class DCKeycloakConfig:
     secret_pass: str
 
 
-"""
-Diccionario maestro de configuraciones de Keycloak.
+# Diccionario maestro de configuraciones de Keycloak.
+#
+# Vincula cada valor del Enum 'InstitutesEnum' con sus credenciales y endpoints
+# específicos. Esto permite que el servicio de Keycloak cambie de contexto
+# de forma dinámica según la procedencia del usuario.
 
-Vincula cada valor del Enum 'InstitutesEnum' con sus credenciales y endpoints
-específicos. Esto permite que el servicio de Keycloak cambie de contexto
-de forma dinámica según la procedencia del usuario.
-"""
 keycloak_configs: dict[InstitutesEnum, DCKeycloakConfig] = {
     InstitutesEnum.PRINCIPAL: DCKeycloakConfig(
         url="https://sso.lamod.unam.mx/auth",

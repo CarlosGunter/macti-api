@@ -1,10 +1,8 @@
-"""
-Módulo MoodleService - Consultas Académicas
-
-Este servicio se especializa en la recuperación de información desde las instancias
-de Moodle. Proporciona métodos para listar el catálogo global de cursos y para
-consultar la relación específica de cursos asociados a un usuario (inscripciones).
-"""
+# Módulo MoodleService - Consultas Académicas
+#
+# Este servicio se especializa en la recuperación de información desde las instancias
+# de Moodle. Proporciona métodos para listar el catálogo global de cursos y para
+# consultar la relación específica de cursos asociados a un usuario (inscripciones).
 
 from types import SimpleNamespace
 

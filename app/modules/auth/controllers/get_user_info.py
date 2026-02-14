@@ -1,11 +1,6 @@
-"""
-Módulo GetUserInfoController - Recuperación de Contexto de Validación
-
-Este controlador se encarga de resolver la identidad de un usuario a partir de un
-token de verificación. Es fundamental para el flujo de 'onboarding', ya que permite
-que el front-end recupere de forma segura los datos del usuario (email, nombre, instituto)
-sin necesidad de una sesión activa, basándose únicamente en la validez del token UUID.
-"""
+# Módulo GetUserInfoController - Recuperación de Contexto de Validación
+# Este controlador resuelve la identidad de un usuario a partir de un token.
+# Permite que el front-end recupere datos de forma segura durante el onboarding.
 
 from datetime import datetime
 
@@ -29,11 +24,8 @@ class GetUserInfoController:
 
         Flujo de validación:
         1. Busca el token en la tabla VerificationToken.
-        2. Verifica que el token no haya expirado comparándolo con la fecha actual.
-        3. Localiza la cuenta de usuario (UserAccounts) vinculada al token.
-
-        Retorna:
-            Un diccionario con id, email, name, last_name e institute si el token es válido.
+        2. Verifica la expiración.
+        3. Localiza la cuenta de usuario vinculada.
         """
         try:
             # 1. Búsqueda del token en la base de datos
@@ -81,10 +73,8 @@ class GetUserInfoController:
                     },
                 )
 
-            """
-            Retorno de datos para el Front-end:
-            Permite pre-llenar los campos de registro en la interfaz de usuario.
-            """
+            # Retorno de datos para el Front-end:
+            # Permite pre-llenar los campos de registro en la interfaz de usuario.
             return {
                 "id": account_request.id,
                 "email": account_request.email,
@@ -94,11 +84,11 @@ class GetUserInfoController:
             }
 
         except HTTPException as httpe:
-            """Propagación de excepciones controladas para la API."""
+            # Propagación de excepciones controladas para la API
             raise httpe
 
         except Exception as e:
-            """Manejo de errores a nivel de infraestructura o base de datos."""
+            # Manejo de errores a nivel de infraestructura o base de datos
             raise HTTPException(
                 status_code=503,
                 detail={

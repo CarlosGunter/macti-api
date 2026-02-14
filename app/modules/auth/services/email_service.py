@@ -1,11 +1,6 @@
-"""
-Módulo EmailService - Gestión de Notificaciones Salientes
-
-Este servicio centraliza el envío de correos electrónicos mediante el protocolo SMTP.
-Se encarga de construir y despachar mensajes de validación que permiten a los usuarios
-finalizar su registro mediante un enlace seguro con token UUID. Utiliza TLS para
-garantizar que la comunicación con el servidor de correo sea cifrada.
-"""
+# Módulo EmailService - Gestión de Notificaciones Salientes
+# Este servicio centraliza el envío de correos electrónicos mediante el protocolo SMTP.
+# Utiliza TLS para garantizar que la comunicación con el servidor de correo sea cifrada.
 
 import smtplib
 from email.message import EmailMessage
@@ -38,12 +33,6 @@ class EmailService:
         """
         Envía un correo electrónico de validación con un enlace de confirmación.
 
-        Parámetros:
-            to_email: Dirección del destinatario.
-            token: Identificador único (UUID) para la validación en el front-end.
-            subject: Asunto opcional del correo.
-            body: Cuerpo opcional del mensaje en texto plano.
-
         Retorna:
             Un diccionario con el estatus del envío ('success' o 'error').
         """
@@ -57,7 +46,7 @@ class EmailService:
         msg["From"] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
         msg["To"] = to_email
 
-        # Construcción del cuerpo del mensaje
+        # Construcción del cuerpo del mensaje (Uso de string multilínea para el correo)
         msg.set_content(
             body
             or f"""
@@ -72,11 +61,8 @@ class EmailService:
         )
 
         try:
-            """
-            Inicia la conexión SMTP con cifrado TLS (Transport Layer Security).
-            El uso del bloque 'with' asegura que la conexión se cierre correctamente
-            incluso si ocurre un error durante el envío.
-            """
+            # Inicia la conexión SMTP con cifrado TLS (Transport Layer Security).
+            # El uso del bloque 'with' asegura que la conexión se cierre correctamente.
             with smtplib.SMTP(EmailService.SMTP_HOST, EmailService.SMTP_PORT) as smtp:
                 smtp.starttls()  # Asegura la conexión usando TLS
                 smtp.login(EmailService.SMTP_USER, EmailService.SMTP_PASS)
@@ -89,7 +75,7 @@ class EmailService:
             }
 
         except Exception as e:
-            """Captura errores de autenticación, red o rechazo del servidor SMTP."""
+            # Captura errores de autenticación, red o rechazo del servidor SMTP.
             return {
                 "success": False,
                 "error": f"Error en el servidor de correo: {str(e)}",

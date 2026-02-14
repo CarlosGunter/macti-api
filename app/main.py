@@ -1,10 +1,8 @@
-"""
-MACTI API - Punto de Entrada Principal
-
-Este módulo inicializa la aplicación FastAPI, configura los middlewares de
-seguridad (CORS), gestiona la creación automática del esquema de base de datos
-y orquesta la inclusión de los diferentes módulos de negocio (Auth, Courses, Temp).
-"""
+# MACTI API - Punto de Entrada Principal
+#
+# Este módulo inicializa la aplicación FastAPI, configura los middlewares de
+# seguridad (CORS), gestiona la creación automática del esquema de base de datos
+# y orquesta la inclusión de los diferentes módulos de negocio (Auth, Courses, Temp).
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +21,7 @@ app = FastAPI(
     description="Backend para la gestión de identidades y recursos académicos UNAM",
     version="1.0.0",
 )
+
 
 # Configuración de CORS (Cross-Origin Resource Sharing)
 # Permite la comunicación con el Front-end de Next.js

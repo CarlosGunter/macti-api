@@ -1,11 +1,9 @@
-"""
-Módulo UserEnrolledCoursesController - Gestión de Dashboard Académico
-
-Este controlador es responsable de recuperar y enriquecer la lista de cursos
-en los que un usuario está matriculado activamente. Su función principal es
-servir de puente entre la identidad de Keycloak (kc_id) y el ecosistema de
-Moodle, añadiendo metadatos de roles por cada curso obtenido.
-"""
+# Módulo UserEnrolledCoursesController - Gestión de Dashboard Académico
+#
+# Este controlador es responsable de recuperar y enriquecer la lista de cursos
+# en los que un usuario está matriculado activamente. Su función principal es
+# servir de puente entre la identidad de Keycloak (kc_id) y el ecosistema de
+# Moodle, añadiendo metadatos de roles por cada curso obtenido.
 
 from fastapi import HTTPException
 from sqlalchemy.exc import MultipleResultsFound, NoResultFound

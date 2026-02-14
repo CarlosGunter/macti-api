@@ -1,11 +1,9 @@
-"""
-Módulo ListCoursesController - Consulta de Oferta Académica
-
-Este controlador actúa como un puente de consulta directa hacia las instancias de
-Moodle. Su propósito es recuperar el catálogo completo de cursos configurados
-en un instituto específico, permitiendo que la interfaz de MACTI presente la
-oferta académica actualizada en tiempo real.
-"""
+# Módulo ListCoursesController - Consulta de Oferta Académica
+#
+# Este controlador actúa como un puente de consulta directa hacia las instancias de
+# Moodle. Su propósito es recuperar el catálogo completo de cursos configurados
+# en un instituto específico, permitiendo que la interfaz de MACTI presente la
+# oferta académica actualizada en tiempo real.
 
 from fastapi import HTTPException
 
@@ -39,10 +37,8 @@ class ListCoursesController:
 
         # Manejo de errores provenientes del Web Service
         if courses.error:
-            """
-            Si el servicio retorna un error, se propaga al cliente con un código
-            estandarizado para que el front-end pueda mostrar una alerta adecuada.
-            """
+            # Si el servicio retorna un error, se propaga al cliente con un código
+            # estandarizado para que el front-end pueda mostrar una alerta adecuada.
             raise HTTPException(
                 status_code=502,
                 detail={
@@ -51,8 +47,6 @@ class ListCoursesController:
                 },
             )
 
-        """
-        Retorna el listado de cursos directamente.
-        Moodle suele retornar: id, shortname, fullname, displayname e idnumber.
-        """
+        # Retorna el listado de cursos directamente.
+        # Moodle suele retornar: id, shortname, fullname, displayname e idnumber.
         return courses.courses

@@ -1,6 +1,6 @@
-"""
-Módulo APIRouter de Autenticación y Registro - Proyecto MACTI
-"""
+# Módulo APIRouter de Autenticación y Registro - Proyecto MACTI
+# Este archivo define las rutas para el flujo de solicitudes, aprobación y
+# creación definitiva de cuentas de usuario.
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session

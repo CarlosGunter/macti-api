@@ -1,11 +1,6 @@
-"""
-Módulo ListAccountRequestsController - Gestión de Visibilidad de Solicitudes
-
-Este controlador se encarga de filtrar y listar las solicitudes de cuenta
-basándose en los privilegios que el usuario tiene dentro de un curso de Moodle.
-Implementa un sistema de mapeo de roles (Moodle -> MACTI) y una lógica de
-ordenamiento jerárquico por estatus de solicitud.
-"""
+# Módulo ListAccountRequestsController - Gestión de Visibilidad de Solicitudes
+# Este controlador filtra y lista las solicitudes de cuenta según los privilegios
+# del usuario en Moodle, aplicando un mapeo de roles y ordenamiento por estatus.
 
 from fastapi import HTTPException
 from sqlalchemy import case, select
@@ -41,20 +36,19 @@ class ListAccountRequestsController:
         Obtiene la lista de solicitudes de cuenta filtradas por curso e instituto.
 
         Lógica de Negocio:
-        1. Consulta los roles del usuario actual directamente en la API de Moodle.
-        2. Mapea roles de Moodle a roles internos (ej. MANAGER puede ver DOCENTES).
-        3. Aplica filtros de seguridad para que el usuario no vea datos fuera de su alcance.
-        4. Ordena los resultados priorizando las solicitudes PENDING.
+        1. Consulta roles en Moodle.
+        2. Mapea roles a la jerarquía interna.
+        3. Filtra y ordena resultados por prioridad de estatus.
         """
 
-        # Mapeo de visibilidad: Define qué solicitudes puede ver cada rol de Moodle.
+        # Mapeo de visibilidad: Define qué solicitudes puede ver cada rol de Moodle
         role_mapping: dict[RoleEnum, AccountRoleEnum] = {
             RoleEnum.MANAGER: AccountRoleEnum.DOCENTE,
             RoleEnum.TEACHER: AccountRoleEnum.ALUMNO,
             RoleEnum.EDITING_TEACHER: AccountRoleEnum.ALUMNO,
         }
 
-        # Validación de identidad externa: Consulta roles en tiempo real en Moodle.
+        # Validación de identidad externa: Consulta roles en tiempo real en Moodle
         user_roles = await get_user_roles(
             institute=institute,
             course_id=course_id,
@@ -70,7 +64,7 @@ class ListAccountRequestsController:
                 },
             )
 
-        # Determinar qué roles internos puede listar el usuario actual.
+        # Determinar qué roles internos puede listar el usuario actual
         internal_roles = [
             role_mapping[role] for role in user_roles if role in role_mapping
         ]
@@ -85,7 +79,7 @@ class ListAccountRequestsController:
             )
 
         try:
-            # Lógica de ordenamiento: PENDING siempre aparece al principio (prioridad 0).
+            # Lógica de ordenamiento: PENDING siempre aparece al principio (prioridad 0)
             status_order = case(
                 (UserAccounts.status == AccountStatusEnum.PENDING, 0),
                 (UserAccounts.status == AccountStatusEnum.APPROVED, 1),
@@ -94,7 +88,7 @@ class ListAccountRequestsController:
                 else_=4,
             )
 
-            # Construcción dinámica de filtros de consulta.
+            # Construcción dinámica de filtros de consulta
             filters = [
                 UserAccounts.course_id == course_id,
                 UserAccounts.institute == institute,
@@ -104,7 +98,7 @@ class ListAccountRequestsController:
             if status is not None:
                 filters.append(UserAccounts.status == status)
 
-            # Ejecución de la consulta optimizada.
+            # Ejecución de la consulta optimizada
             stmt = (
                 select(
                     UserAccounts.id,
@@ -144,8 +138,7 @@ async def get_user_roles(
     moodle_id: int,
 ) -> list[RoleEnum]:
     """
-    Función auxiliar que consume el servicio de Moodle para recuperar el perfil
-    del usuario y extraer sus roles asignados en un curso específico.
+    Función auxiliar para recuperar roles asignados en un curso de Moodle.
     """
 
     get_user_profile_result = await MoodleService.get_user_profile(
@@ -156,7 +149,8 @@ async def get_user_roles(
         return []
 
     user_roles = get_user_profile_result.user_profile.get("roles", [])
-    # Conversión de IDs numéricos de Moodle al Enum RoleEnum para tipado fuerte.
+
+    # Conversión de IDs numéricos de Moodle al Enum RoleEnum para tipado fuerte
     list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
 
     return list_roles

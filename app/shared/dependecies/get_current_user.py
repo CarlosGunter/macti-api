@@ -1,12 +1,10 @@
-"""
-Módulo de Seguridad y Autenticación - Proyecto MACTI
-
-Este módulo implementa el flujo de validación de tokens JWT (JSON Web Tokens)
-emitidos por Keycloak. Se encarga de:
-1. Recuperar y cachear las llaves públicas (JWKS) de cada instituto.
-2. Validar la firma, vigencia y audiencia de los tokens Bearer.
-3. Sincronizar la identidad de Keycloak con la base de datos local y Moodle.
-"""
+# Módulo de Seguridad y Autenticación - Proyecto MACTI
+#
+# Este módulo implementa el flujo de validación de tokens JWT (JSON Web Tokens)
+# emitidos por Keycloak. Se encarga de:
+# 1. Recuperar y cachear las llaves públicas (JWKS) de cada instituto.
+# 2. Validar la firma, vigencia y audiencia de los tokens Bearer.
+# 3. Sincronizar la identidad de Keycloak con la base de datos local y Moodle.
 
 from uuid import UUID
 
@@ -199,10 +197,8 @@ async def get_user_moodle_id(
         return query.moodle_id
 
     except NoResultFound:
-        """
-        Caso de sincronización: El usuario existe en Moodle/Keycloak pero no en MACTI.
-        Se recupera su perfil de Moodle y se crea el registro local.
-        """
+        # Caso de sincronización: El usuario existe en Moodle/Keycloak pero no en MACTI.
+        # Se recupera su perfil de Moodle y se crea el registro local.
         moodle_id = await get_moodle_id_from_web_service(institute, user_email)
 
         sync_user = UserAccounts(

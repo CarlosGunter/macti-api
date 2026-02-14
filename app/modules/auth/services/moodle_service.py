@@ -49,10 +49,8 @@ class MoodleService:
 
         result = result_response["data"]
 
-        """
-        Moodle retorna una lista de diccionarios con los IDs de los usuarios creados.
-        Se extrae el 'id' del primer elemento (index 0).
-        """
+        # Moodle retorna una lista de diccionarios con los IDs de los usuarios creados.
+        # Se extrae el 'id' del primer elemento (index 0).
         return {"created": True, "id": result[0]["id"]}
 
     @staticmethod
@@ -84,6 +82,7 @@ class MoodleService:
             params=params,
             data=data,
             institute=institute,
+            # Se desactiva la verificación automática para manejar excepciones manualmente abajo
             check_moodle_errors=False,
         )
 
@@ -95,10 +94,8 @@ class MoodleService:
 
         result = result_response["data"]
 
-        """
-        Manejo de Excepciones de Moodle:
-        Moodle puede retornar un 200 OK pero con un cuerpo de 'exception'.
-        """
+        # Manejo de Excepciones de Moodle:
+        # Moodle puede retornar un 200 OK pero con un cuerpo de 'exception'.
         if isinstance(result, dict) and "exception" in result:
             if result.get("message") == "error/Message was not sent.":
                 print(

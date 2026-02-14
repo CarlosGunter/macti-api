@@ -1,11 +1,7 @@
-"""
-Módulo RequestAccountController - Captura y Validación de Solicitudes
-
-Este controlador es la puerta de entrada para los nuevos usuarios en el sistema.
-Maneja la lógica inicial de registro para Alumnos y Docentes, validando que no
-existan solicitudes duplicadas y generando códigos de identificación interna
-(Subjects) para los cursos solicitados por el personal académico.
-"""
+# Módulo RequestAccountController - Captura y Validación de Solicitudes
+# Este controlador es la puerta de entrada para los nuevos usuarios en el sistema.
+# Maneja la lógica inicial de registro para Alumnos y Docentes, validando duplicados
+# y generando códigos de identificación interna (Subjects) para personal académico.
 
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
@@ -70,6 +66,8 @@ class RequestAccountController:
 
             db.add(db_account_request)
             db.flush()
+
+            # 3. Registro de detalles adicionales si es docente
             if role == AccountRoleEnum.DOCENTE and isinstance(
                 data, TeacherRequestSchema
             ):

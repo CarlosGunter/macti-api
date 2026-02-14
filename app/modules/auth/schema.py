@@ -1,11 +1,9 @@
-"""
-Módulo de Esquemas Pydantic - Proyecto MACTI
-
-Este módulo define las estructuras de datos (Modelos de Validación) para la
-comunicación entre el Front-end y el Backend. Utiliza Pydantic para asegurar
-que los datos de entrada cumplan con los tipos requeridos y para formatear
-las respuestas JSON de salida de manera consistente.
-"""
+# Módulo de Esquemas Pydantic - Proyecto MACTI
+#
+# Este módulo define las estructuras de datos (Modelos de Validación) para la
+# comunicación entre el Front-end y el Backend. Utiliza Pydantic para asegurar
+# que los datos de entrada cumplan con los tipos requeridos y para formatear
+# las respuestas JSON de salida de manera consistente.
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -89,7 +87,7 @@ class AccountsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-"""Alias para tipado de respuestas que contienen múltiples registros de cuentas."""
+# Alias para tipado de respuestas que contienen múltiples registros de cuentas.
 ListAccountsResponse = list[AccountsResponse]
 
 

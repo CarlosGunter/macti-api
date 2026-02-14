@@ -1,11 +1,9 @@
-"""
-Módulo TempRouter - Utilidades de Depuración y Pruebas
-
-Este router agrupa endpoints temporales diseñados para facilitar el ciclo de
-desarrollo. Incluye herramientas para la limpieza profunda de datos (Hard Delete),
-verificación de integridad de tokens JWT y consultas directas a servicios externos.
-Nota: Este módulo debería ser deshabilitado o protegido en entornos de producción.
-"""
+# Módulo TempRouter - Utilidades de Depuración y Pruebas
+#
+# Este router agrupa endpoints temporales diseñados para facilitar el ciclo de
+# desarrollo. Incluye herramientas para la limpieza profunda de datos (Hard Delete),
+# verificación de integridad de tokens JWT y consultas directas a servicios externos.
+# Nota: Este módulo debería ser deshabilitado o protegido en entornos de producción.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
@@ -65,10 +63,8 @@ async def clear_user_data(
         ) from e
 
     if not del_kc:
-        """
-        Si falla Keycloak pero no la BD, se notifica para limpieza manual,
-        evitando inconsistencias de identidad.
-        """
+        # Si falla Keycloak pero no la BD, se notifica para limpieza manual,
+        # evitando inconsistencias de identidad.
         raise HTTPException(
             status_code=500,
             detail="Datos locales borrados, pero falló la eliminación en Keycloak.",

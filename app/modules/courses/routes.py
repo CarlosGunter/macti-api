@@ -1,11 +1,9 @@
-"""
-Módulo APIRouter de Cursos - Proyecto MACTI
-
-Este módulo define los puntos de entrada (endpoints) para la gestión y consulta
-de la oferta académica. Centraliza las rutas relacionadas con el catálogo global
-de Moodle y la vista personalizada de cursos para usuarios autenticados,
-aplicando validaciones de esquema y filtros por instituto.
-"""
+# Módulo APIRouter de Cursos - Proyecto MACTI
+#
+# Este módulo define los puntos de entrada (endpoints) para la gestión y consulta
+# de la oferta académica. Centraliza las rutas relacionadas con el catálogo global
+# de Moodle y la vista personalizada de cursos para usuarios autenticados,
+# aplicando validaciones de esquema y filtros por instituto.
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session

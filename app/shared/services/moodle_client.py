@@ -1,11 +1,9 @@
-"""
-Módulo MoodleClient - Cliente HTTP Asíncrono Especializado
-
-Este módulo proporciona una capa de abstracción sobre httpx para interactuar
-con la API de Moodle. Su principal ventaja es el manejo robusto de excepciones
-específicas del protocolo de Web Services de Moodle, transformando respuestas
-inconsistentes en un formato de resultado estandarizado (success/data/error).
-"""
+# Módulo MoodleClient - Cliente HTTP Asíncrono Especializado
+#
+# Este módulo proporciona una capa de abstracción sobre httpx para interactuar
+# con la API de Moodle. Su principal ventaja es el manejo robusto de excepciones
+# específicas del protocolo de Web Services de Moodle, transformando respuestas
+# inconsistentes en un formato de resultado estandarizado (success/data/error).
 
 import httpx
 
@@ -30,7 +28,7 @@ async def make_moodle_request(
     1. Ejecuta la petición asíncrona mediante httpx.
     2. Valida errores de protocolo HTTP (4xx, 5xx).
     3. Analiza el cuerpo JSON en busca de la clave 'exception', la cual Moodle
-       usa para reportar errores lógicos incluso en respuestas exitosas (200 OK).
+        usa para reportar errores lógicos incluso en respuestas exitosas (200 OK).
 
     Returns:
         Dict: Contiene 'success' (bool), 'data' (respuesta útil) y 'error_message'.

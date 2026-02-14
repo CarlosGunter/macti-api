@@ -1,10 +1,8 @@
-"""
-Módulo VerificationToken - Persistencia de Tokens de Seguridad
-
-Este modelo gestiona la creación y el estado de los tokens UUID enviados por
-correo electrónico. Actúa como el puente de seguridad entre la aprobación
-administrativa de una cuenta y el aprovisionamiento final en Keycloak y Moodle.
-"""
+# Módulo VerificationToken - Persistencia de Tokens de Seguridad
+#
+# Este modelo gestiona la creación y el estado de los tokens UUID enviados por
+# correo electrónico. Actúa como el puente de seguridad entre la aprobación
+# administrativa de una cuenta y el aprovisionamiento final en Keycloak y Moodle.
 
 from datetime import datetime
 
@@ -25,6 +23,7 @@ class VerificationToken(Base):
 
     __tablename__ = "MCT_verification_tokens"
 
+    # Identificador único del token en base de datos
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     # Vinculación con la solicitud de cuenta pendiente

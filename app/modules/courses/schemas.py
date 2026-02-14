@@ -1,11 +1,9 @@
-"""
-Módulo de Esquemas de Cursos - Proyecto MACTI
-
-Define las estructuras de datos para la serialización de respuestas
-relacionadas con la oferta académica. Estos esquemas aseguran que el
-Front-end reciba únicamente los campos necesarios y validados provenientes
-de las APIs externas de Moodle.
-"""
+# Módulo de Esquemas de Cursos - Proyecto MACTI
+#
+# Define las estructuras de datos para la serialización de respuestas
+# relacionadas con la oferta académica. Estos esquemas aseguran que el
+# Front-end reciba únicamente los campos necesarios y validados provenientes
+# de las APIs externas de Moodle.
 
 from pydantic import BaseModel
 
@@ -24,7 +22,7 @@ class CourseResponseSchema(BaseModel):
     displayname: str
     summary: str
 
-    """URL de la imagen representativa del curso, puede ser nula si no se ha configurado."""
+    # URL de la imagen representativa del curso, puede ser nula si no se ha configurado.
     courseimage: str | None = None
 
 
@@ -36,5 +34,5 @@ class UserEnrolledCoursesResponseSchema(CourseResponseSchema):
     acceso que el usuario autenticado posee dentro de este curso específico.
     """
 
-    """Lista de nombres de roles (ej. ['student'], ['editingteacher'])."""
+    # Lista de nombres de roles (ej. ['student'], ['editingteacher']).
     role: list[str] | None = None

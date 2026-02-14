@@ -1,10 +1,6 @@
-"""
-Módulo ChangeStatusController - Gestión del Ciclo de Vida de Solicitudes
-
-Este controlador maneja la transición de estados de las solicitudes de cuenta.
-Su función principal es validar la aprobación de una cuenta, generar tokens de
-verificación únicos y coordinar el envío de correos electrónicos de validación.
-"""
+# Módulo ChangeStatusController - Gestión del Ciclo de Vida de Solicitudes
+# Este controlador maneja la transición de estados de las solicitudes de cuenta.
+# Su función principal es validar la aprobación de una cuenta y coordinar el envío de correos.
 
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -79,10 +75,8 @@ class ChangeStatusController:
                 )
 
                 if not email_result.get("success"):
-                    """
-                    Si el correo falla, se lanza una excepción para evitar que el
-                    estatus cambie a APPROVED sin que el usuario reciba su acceso.
-                    """
+                    # Si el correo falla, se lanza una excepción para evitar que el
+                    # estatus cambie a APPROVED sin que el usuario reciba su acceso.
                     print(
                         f"ALERTA: Falló el envío de correo para {user_email}: {email_result.get('error')}"
                     )

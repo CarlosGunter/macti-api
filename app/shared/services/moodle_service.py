@@ -1,10 +1,8 @@
-"""
-Módulo MoodleService - Gestión de Perfiles y Creación Académica
-
-Este servicio centraliza las consultas de perfiles de usuario y la automatización
-de creación de espacios (cursos) en Moodle. Es fundamental para el aprovisionamiento
-'Just-In-Time' y la gestión de permisos basada en roles de curso.
-"""
+# Módulo MoodleService - Gestión de Perfiles y Creación Académica
+#
+# Este servicio centraliza las consultas de perfiles de usuario y la automatización
+# de creación de espacios (cursos) en Moodle. Es fundamental para el aprovisionamiento
+# 'Just-In-Time' y la gestión de permisos basada en roles de curso.
 
 from types import SimpleNamespace
 

@@ -1,11 +1,8 @@
-"""
-Módulo KeycloakService - Gestión de Identidades y Acceso (IAM)
-
-Este servicio encapsula toda la interacción con la API de Administración de Keycloak.
-Soporta una arquitectura multi-instituto, permitiendo gestionar usuarios en
-diferentes Realms de forma dinámica. Se encarga de la autenticación administrativa,
-creación, eliminación y actualización de credenciales de los usuarios.
-"""
+# Módulo KeycloakService - Gestión de Identidades y Acceso (IAM)
+# Este servicio encapsula toda la interacción con la API de Administración de Keycloak.
+# Soporta una arquitectura multi-instituto, permitiendo gestionar usuarios en
+# diferentes Realms de forma dinámica. Se encarga de la autenticación administrativa,
+# creación, eliminación y actualización de credenciales de los usuarios.
 
 import httpx
 
@@ -48,6 +45,7 @@ class KeycloakService:
         except Exception as e:
             error_message = f"Fallo al autenticar con Keycloak ({institute.value}): {e}"
             print(error_message)
+            # Mantenemos la propagación del error original
             raise Exception(error_message) from e
 
     @classmethod
