@@ -1,3 +1,7 @@
+# Módulo ChangeStatusController - Gestión del Ciclo de Vida de Solicitudes
+# Este controlador maneja la transición de estados de las solicitudes de cuenta.
+# Su función principal es validar la aprobación de una cuenta y coordinar el envío de correos.
+
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -15,15 +19,30 @@ from ..schema import ConfirmAccountSchema
 
 
 class ChangeStatusController:
+    """
+    Controlador encargado de actualizar el estado de las solicitudes de cuenta
+    y gestionar la lógica de negocio asociada a la aprobación.
+    """
+
     @staticmethod
     async def change_status(data: ConfirmAccountSchema, db: Session):
+        """
+        Cambia el estatus de una solicitud de cuenta específica.
+
+        Si el estatus es 'APPROVED', inicia el flujo de verificación:
+        1. Genera un token UUID único.
+        2. Guarda el token en la base de datos relacionado con la cuenta.
+        3. Envía un correo electrónico al usuario con el enlace de validación.
+        """
         request_id = data.id
         new_status = data.status
 
         try:
+            # Búsqueda de la solicitud por ID único
             account_request = (
                 db.query(UserAccounts).filter(UserAccounts.id == request_id).first()
             )
+
             if not account_request:
                 raise HTTPException(
                     status_code=404,
@@ -173,19 +192,24 @@ class ChangeStatusController:
 
     @classmethod
     def _generate_and_save_token(cls, account_id: int, db: Session):
+        """
+        Método interno para la gestión de tokens de verificación.
+
+        Genera un identificador único (UUID4) con una vigencia de 7 días.
+        Si ya existe un token previo para la cuenta, lo actualiza (UPSERT).
+        """
         token = str(uuid4())
         fecha_solicitud = datetime.now()
         fecha_expiracion = fecha_solicitud + timedelta(days=7)
 
         try:
-            # Get the account to retrieve email
             account = (
                 db.query(UserAccounts).filter(UserAccounts.id == account_id).first()
             )
             if not account:
                 return {"success": False, "error": "Account not found"}
 
-            # Query VerificationToken by account_id
+            # Verificación de existencia previa de token
             validation = (
                 db.query(VerificationToken)
                 .filter(VerificationToken.account_id == account_id)
@@ -193,23 +217,21 @@ class ChangeStatusController:
             )
 
             if validation:
-                # Update existing record
+                # Actualización de token existente (Renovación)
                 validation.token = token
                 validation.created_at = fecha_solicitud
                 validation.expires_at = fecha_expiracion
-                if hasattr(validation, "is_used"):
-                    validation.is_used = 0
+                validation.is_used = 0
             else:
-                # Create new record
-                db.add(
-                    VerificationToken(
-                        account_id=account_id,
-                        token=token,
-                        created_at=fecha_solicitud,
-                        expires_at=fecha_expiracion,
-                        is_used=0,
-                    )
+                # Creación de nuevo registro de verificación
+                new_validation = VerificationToken(
+                    account_id=account_id,
+                    token=token,
+                    created_at=fecha_solicitud,
+                    expires_at=fecha_expiracion,
+                    is_used=0,
                 )
+                db.add(new_validation)
 
             return {"success": True, "token": token}
 
