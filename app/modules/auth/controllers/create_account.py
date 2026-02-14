@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
 
@@ -116,6 +117,16 @@ class CreateAccountController:
                 course_id=current_course_id,
                 institute=account_request.institute,
             )
+        course_record = (
+            db.query(UserCourses)
+            .filter(
+                UserCourses.user_id == account_request.id,
+                UserCourses.status == AccountStatusEnum.PENDING,
+            )
+            .first()
+        )
+        if course_record:
+            course_record.status = AccountStatusEnum.APPROVED
 
         # 5. Finalización
         account_request.status = AccountStatusEnum.CREATED
