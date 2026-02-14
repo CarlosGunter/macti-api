@@ -109,7 +109,14 @@ class CreateAccountController:
 
         account_request.moodle_id = moodle_result.get("id")
         m_user_id = account_request.moodle_id
-
+        # Aquí se agrega el rol  role=account_request.role, de moodle
+        # En los cambios que hizo fer hay que scar los siguientes if al controlador
+        #  if role == AccountRoleEnum.ALUMNO:
+        # moodle_role_id = 5
+        # elif role == AccountRoleEnum.DOCENTE:
+        # moodle_role_id = 3
+        # Terminado esto hago rama nueva para los cursos
+        #
         # 4. Inscripción Automática
         if m_user_id is not None:
             await MoodleService.enroll_user(
