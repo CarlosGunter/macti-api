@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
@@ -112,12 +113,20 @@ class CreateAccountController:
         account_request.moodle_id = moodle_result.get("id")
         m_user_id = account_request.moodle_id
 
+        if account_request.role == AccountRoleEnum.ALUMNO:
+            assigned_role = RoleEnum.STUDENT.value
+        elif account_request.role == AccountRoleEnum.DOCENTE:
+            assigned_role = RoleEnum.EDITING_TEACHER.value
+        else:
+            assigned_role = RoleEnum.USER.value
+
         # 4. Inscripción Automática
         if m_user_id is not None:
             await MoodleService.enroll_user(
                 user_id=m_user_id,
                 course_id=current_course_id,
                 institute=account_request.institute,
+                role_id=assigned_role,  # Enviado correctamente al servicio
             )
 
         if account_request.role == AccountRoleEnum.DOCENTE:

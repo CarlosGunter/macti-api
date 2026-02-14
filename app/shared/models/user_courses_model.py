@@ -34,9 +34,3 @@ class UserCourses(Base):
 
     def __repr__(self):
         return f"<UserCourse(course='{self.course_full_name}', status='{self.status.value}')>"
-
-
-# Los cursos SOLO SON PARA LOS DOCENTES QUITAR A LOS ALUMNOS
-# Se queda la parte de pendiente aprobado. Se reutiliza el
-# Si es 0 se queda  para solicitar curso
-#
