@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
+from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
@@ -88,7 +89,7 @@ class CreateAccountController:
                     user_id=str(account_request.kc_id),
                     institute=account_request.institute,
                 )
-            print(f"ERROR CRÍTICO EN MOODLE: {str(e)}")  # Esto saldrá en tu consola
+            print(f"ERROR CRÍTICO EN MOODLE: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail={
@@ -96,6 +97,7 @@ class CreateAccountController:
                     "message": f"No se pudo conectar con Moodle: {str(e)}",
                 },
             ) from e
+
         if not moodle_result.get("created"):
             if account_request.kc_id:
                 await KeycloakService.delete_user(
@@ -109,14 +111,7 @@ class CreateAccountController:
 
         account_request.moodle_id = moodle_result.get("id")
         m_user_id = account_request.moodle_id
-        # Aquí se agrega el rol  role=account_request.role, de moodle
-        # En los cambios que hizo fer hay que scar los siguientes if al controlador
-        #  if role == AccountRoleEnum.ALUMNO:
-        # moodle_role_id = 5
-        # elif role == AccountRoleEnum.DOCENTE:
-        # moodle_role_id = 3
-        # Terminado esto hago rama nueva para los cursos
-        #
+
         # 4. Inscripción Automática
         if m_user_id is not None:
             await MoodleService.enroll_user(
@@ -124,16 +119,18 @@ class CreateAccountController:
                 course_id=current_course_id,
                 institute=account_request.institute,
             )
-        course_record = (
-            db.query(UserCourses)
-            .filter(
-                UserCourses.user_id == account_request.id,
-                UserCourses.status == AccountStatusEnum.PENDING,
+
+        if account_request.role == AccountRoleEnum.DOCENTE:
+            course_record = (
+                db.query(UserCourses)
+                .filter(
+                    UserCourses.user_id == account_request.id,
+                    UserCourses.status == AccountStatusEnum.PENDING,
+                )
+                .first()
             )
-            .first()
-        )
-        if course_record:
-            course_record.status = AccountStatusEnum.APPROVED
+            if course_record:
+                course_record.status = AccountStatusEnum.APPROVED
 
         # 5. Finalización
         account_request.status = AccountStatusEnum.CREATED

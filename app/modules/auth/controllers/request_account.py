@@ -34,7 +34,6 @@ class RequestAccountController:
         """
         Punto de entrada principal para registrar una solicitud de cuenta.
         """
-        # Validación de tipo para Docentes (Fix Pyright)
         if role == AccountRoleEnum.DOCENTE and isinstance(data, TeacherRequestSchema):
             RequestAccountController._print_teacher_subject_request(data)
 
@@ -69,28 +68,22 @@ class RequestAccountController:
                 course_id=data.course_id,
             )
 
-            # Usamos flush() para obtener el ID sin cerrar la transacción (evita ROLLBACK)
             db.add(db_account_request)
             db.flush()
-
-            # 3. Manejo seguro de campos específicos según el rol
-            if isinstance(data, TeacherRequestSchema):
+            if role == AccountRoleEnum.DOCENTE and isinstance(
+                data, TeacherRequestSchema
+            ):
                 course_name = data.course_full_name
                 group_info = data.groups
-            else:
-                # Caso para Alumnos (StudentRequestSchema)
-                course_name = "Curso solicitado (Alumno)"
-                group_info = "N/A"
 
-            # 4. Crear el detalle del curso vinculado al ID de la cuenta recién generada
-            detalles_curso = UserCourses(
-                user_id=db_account_request.id,
-                course_full_name=course_name,
-                groups=group_info,
-                status=AccountStatusEnum.PENDING,
-            )
+                detalles_curso = UserCourses(
+                    user_id=db_account_request.id,
+                    course_full_name=course_name,
+                    groups=group_info,
+                    status=AccountStatusEnum.PENDING,
+                )
+                db.add(detalles_curso)
 
-            db.add(detalles_curso)
             db.commit()
             db.refresh(db_account_request)
 
