@@ -65,24 +65,36 @@ class CreateAccountController:
             account_request.kc_id = UUID(str(kc_user_id))
 
         # 3. Moodle (Aprovisionamiento)
-        # Type Guard para course_id (Pyright fix)
         current_course_id = account_request.course_id
         if current_course_id is None:
             raise HTTPException(
                 status_code=400,
                 detail={"error_code": "DATA_INCOMPLETE", "message": "ID de curso nulo"},
             )
-
-        moodle_result = await MoodleService.create_user(
-            user_data={
-                "name": account_request.name,
-                "last_name": account_request.last_name,
-                "email": account_request.email,
-                "course_id": current_course_id,
-            },
-            institute=account_request.institute,
-        )
-
+        try:
+            moodle_result = await MoodleService.create_user(
+                user_data={
+                    "name": account_request.name,
+                    "last_name": account_request.last_name,
+                    "email": account_request.email,
+                    "course_id": current_course_id,
+                },
+                institute=account_request.institute,
+            )
+        except Exception as e:
+            if account_request.kc_id:
+                await KeycloakService.delete_user(
+                    user_id=str(account_request.kc_id),
+                    institute=account_request.institute,
+                )
+            print(f"ERROR CRÍTICO EN MOODLE: {str(e)}")  # Esto saldrá en tu consola
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "MOODLE_CONNECTION_ERROR",
+                    "message": f"No se pudo conectar con Moodle: {str(e)}",
+                },
+            ) from e
         if not moodle_result.get("created"):
             if account_request.kc_id:
                 await KeycloakService.delete_user(
@@ -94,13 +106,11 @@ class CreateAccountController:
                 detail={"error_code": "MOODLE_ERROR", "message": "Error en Moodle"},
             )
 
-        # Asignamos el ID de Moodle
-        account_request.user_id = moodle_result.get("id")
+        account_request.moodle_id = moodle_result.get("id")
+        m_user_id = account_request.moodle_id
 
         # 4. Inscripción Automática
-        # Type Guard para user_id y course_id (Pyright fix)
-        m_user_id = account_request.user_id
-        if m_user_id is not None and current_course_id is not None:
+        if m_user_id is not None:
             await MoodleService.enroll_user(
                 user_id=m_user_id,
                 course_id=current_course_id,
@@ -124,5 +134,5 @@ class CreateAccountController:
         return {
             "message": "Cuenta creada exitosamente",
             "kc_id": str(account_request.kc_id),
-            "moodle_id": account_request.user_id,
+            "moodle_id": account_request.moodle_id,
         }
