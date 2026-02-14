@@ -91,7 +91,7 @@ async def list_accounts_requests(
     response_model=ConfirmAccountResponse,
 )
 async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
-    return ChangeStatusController.change_status(data=body_info, db=db)
+    return await ChangeStatusController.change_status(data=body_info, db=db)
 
 
 @router.get(

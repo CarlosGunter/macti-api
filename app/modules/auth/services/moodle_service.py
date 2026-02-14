@@ -1,3 +1,9 @@
+"""
+Service for interacting with Moodle LMS API
+"""
+
+import httpx
+
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.services.moodle_client import make_moodle_request
@@ -114,3 +120,32 @@ class MoodleService:
             }
 
         return {"user_id": user_id, "course_id": course_id, "enrolled": True}
+
+    @staticmethod
+    async def delete_user(user_id, institute: InstitutesEnum):
+        """
+        Delete a user in Moodle using the REST API.
+        """
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "core_user_delete_users",
+            "moodlewsrestformat": "json",
+        }
+
+        data = {
+            "userids[0]": str(user_id),
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, params=params, data=data)
+            response.raise_for_status()
+            result = response.json()
+
+        print("DEBUG Moodle response (delete_user):", result)
+
+        if isinstance(result, dict) and "exception" in result:
+            raise Exception(f"Error deleting user in Moodle: {result}")
+
+        return {"deleted": True, "user_id": user_id}
