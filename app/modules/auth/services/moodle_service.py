@@ -6,7 +6,9 @@ import httpx
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.services.moodle_client import make_moodle_request
+from app.shared.services.moodle_service import MoodleService as BaseMoodleService
 
 
 class MoodleService:
@@ -149,3 +151,27 @@ class MoodleService:
             raise Exception(f"Error deleting user in Moodle: {result}")
 
         return {"deleted": True, "user_id": user_id}
+
+    @staticmethod
+    async def get_user_roles(
+        institute: InstitutesEnum,
+        course_id: int,
+        moodle_id: int,
+    ) -> list[RoleEnum]:
+        """
+        Función auxiliar para recuperar roles asignados en un curso de Moodle.
+        """
+
+        get_user_profile_result = await BaseMoodleService.get_user_profile(
+            institute=institute, user_id=moodle_id, course_id=course_id
+        )
+
+        if get_user_profile_result.error:
+            return []
+
+        user_roles = get_user_profile_result.user_profile.get("roles", [])
+
+        # Conversión de IDs numéricos de Moodle al Enum RoleEnum para tipado fuerte
+        list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
+
+        return list_roles

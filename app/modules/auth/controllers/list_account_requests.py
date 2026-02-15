@@ -11,10 +11,10 @@ from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.role_moodle_enum import RoleEnum
-from app.shared.services.moodle_service import MoodleService
 
 from ....shared.enums.status_enum import AccountStatusEnum
 from ....shared.models.users_model import UserAccounts
+from ..services.moodle_service import MoodleService
 
 
 class ListAccountRequestsController:
@@ -49,7 +49,7 @@ class ListAccountRequestsController:
         }
 
         # Validación de identidad externa: Consulta roles en tiempo real en Moodle
-        user_roles = await get_user_roles(
+        user_roles = await MoodleService.get_user_roles(
             institute=institute,
             course_id=course_id,
             moodle_id=user_info.moodle_id,
@@ -131,27 +131,3 @@ class ListAccountRequestsController:
                 status_code=500,
                 detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
             ) from e
-
-
-async def get_user_roles(
-    institute: InstitutesEnum,
-    course_id: int,
-    moodle_id: int,
-) -> list[RoleEnum]:
-    """
-    Función auxiliar para recuperar roles asignados en un curso de Moodle.
-    """
-
-    get_user_profile_result = await MoodleService.get_user_profile(
-        institute=institute, user_id=moodle_id, course_id=course_id
-    )
-
-    if get_user_profile_result.error:
-        return []
-
-    user_roles = get_user_profile_result.user_profile.get("roles", [])
-
-    # Conversión de IDs numéricos de Moodle al Enum RoleEnum para tipado fuerte
-    list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
-
-    return list_roles
