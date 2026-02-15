@@ -43,7 +43,7 @@ class ListAccountRequestsController:
 
         # Mapeo de visibilidad: Define qué solicitudes puede ver cada rol de Moodle
         role_mapping: dict[RoleEnum, AccountRoleEnum] = {
-            RoleEnum.MANAGER: AccountRoleEnum.DOCENTE,
+            RoleEnum.MANAGER: AccountRoleEnum.ALUMNO,
             RoleEnum.TEACHER: AccountRoleEnum.ALUMNO,
             RoleEnum.EDITING_TEACHER: AccountRoleEnum.ALUMNO,
         }
@@ -115,19 +115,7 @@ class ListAccountRequestsController:
             result = db.execute(stmt)
             rows = result.mappings().all()
 
-            # Agrupar las solicitudes por rol
-            grouped_by_role: dict[str, list[dict]] = {}
-            for row in rows:
-                row_dict = dict(row)
-                role = row_dict.pop("role")  # Extraer el rol y removerlo del dict
-                role_key = role.value if role else "SIN_ROL"
-
-                if role_key not in grouped_by_role:
-                    grouped_by_role[role_key] = []
-
-                grouped_by_role[role_key].append(row_dict)
-
-            return grouped_by_role
+            return [dict(r) for r in rows]
 
         except SQLAlchemyError as exc:
             raise HTTPException(

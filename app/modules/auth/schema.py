@@ -87,7 +87,7 @@ class AccountsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-ListAccountsResponse = dict[str, list[AccountsResponse]]
+ListAccountsResponse = list[AccountsResponse]
 
 
 class ConfirmAccountSchema(BaseModel):
