@@ -63,7 +63,10 @@ class ChangeStatusController:
                     AccountStatusEnum.APPROVED,
                     AccountStatusEnum.REJECTED,
                 },
-                AccountStatusEnum.APPROVED: {AccountStatusEnum.REJECTED},
+                AccountStatusEnum.APPROVED: {
+                    AccountStatusEnum.REJECTED,
+                    AccountStatusEnum.PENDING,
+                },
                 AccountStatusEnum.REJECTED: {
                     AccountStatusEnum.PENDING,
                     AccountStatusEnum.APPROVED,
