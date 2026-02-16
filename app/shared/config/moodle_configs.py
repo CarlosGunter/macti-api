@@ -24,6 +24,9 @@ class DCMoodleConfig:
 
     moodle_url: str
     moodle_token: str
+    admins: list[str] | None = (
+        None  # Lista opcional de correos electrónicos de administradores
+    )
 
 
 # Diccionario Maestro de Configuraciones de Moodle (LMS).
@@ -50,5 +53,8 @@ MOODLE_CONFIG: dict[InstitutesEnum, DCMoodleConfig] = {
     InstitutesEnum.INGENIERIA: DCMoodleConfig(
         moodle_url="http://18.116.136.157:8083/webservice/rest/server.php",
         moodle_token=environment.MOODLE_TOKEN_INGENIERIA,
+        admins=environment.INGENIERIA_ADMINS.split(",")
+        if environment.INGENIERIA_ADMINS
+        else None,
     ),
 }

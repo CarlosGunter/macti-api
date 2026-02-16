@@ -1,80 +1,65 @@
-# Módulo ListAccountRequestsController - Gestión de Visibilidad de Solicitudes
-# Este controlador filtra y lista las solicitudes de cuenta según los privilegios
-# del usuario en Moodle, aplicando un mapeo de roles y ordenamiento por estatus.
+# Módulo AccountRequestsTeacherController - Gestión de Solicitudes de Docentes
+# Este controlador lista las solicitudes de cuenta de docentes. Solo usuarios
+# con permisos de administrador definidos en las configuraciones de Moodle
+# pueden acceder a esta funcionalidad.
 
 from fastapi import HTTPException
 from sqlalchemy import case, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
-from app.shared.enums.role_moodle_enum import RoleEnum
-
-from ....shared.enums.status_enum import AccountStatusEnum
-from ....shared.models.users_model import UserAccounts
-from ..services.moodle_service import MoodleService
+from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.models.users_model import UserAccounts
 
 
-class ListAccountRequestsController:
+class AccountRequestsTeacherController:
     """
-    Controlador para la consulta y filtrado de solicitudes de creación de cuenta.
-    Asegura que solo usuarios con roles de gestión (Manager/Teacher) puedan visualizar
-    solicitudes de niveles inferiores.
+    Controlador para la consulta de solicitudes de cuenta de docentes.
+    Solo usuarios administradores pueden acceder a estas solicitudes.
     """
 
     @staticmethod
-    async def list_accounts_requests(
+    async def list_teacher_accounts_requests(
         db: Session,
-        course_id: int,
         institute: InstitutesEnum,
         user_info: CurrentUserReturn,
         status: AccountStatusEnum | None = None,
     ):
         """
-        Obtiene la lista de solicitudes de cuenta filtradas por curso e instituto.
+        Obtiene la lista de solicitudes de cuenta de docentes filtradas por instituto.
 
         Lógica de Negocio:
-        1. Consulta roles en Moodle.
-        2. Mapea roles a la jerarquía interna.
-        3. Filtra y ordena resultados por prioridad de estatus.
+        1. Verifica que el usuario sea administrador del instituto.
+        2. Filtra solicitudes de docentes por instituto y estado.
+        3. Ordena resultados por prioridad de estatus (PENDING primero).
         """
 
-        # Mapeo de visibilidad: Define qué solicitudes puede ver cada rol de Moodle
-        role_mapping: dict[RoleEnum, AccountRoleEnum] = {
-            RoleEnum.MANAGER: AccountRoleEnum.ALUMNO,
-            RoleEnum.TEACHER: AccountRoleEnum.ALUMNO,
-            RoleEnum.EDITING_TEACHER: AccountRoleEnum.ALUMNO,
-        }
+        # Obtener configuración del instituto
+        institute_config = MOODLE_CONFIG.get(institute)
 
-        # Validación de identidad externa: Consulta roles en tiempo real en Moodle
-        user_roles = await MoodleService.get_user_roles(
-            institute=institute,
-            course_id=course_id,
-            moodle_id=user_info.moodle_id,
-        )
-
-        if not user_roles:
+        if not institute_config:
             raise HTTPException(
-                status_code=403,
+                status_code=400,
                 detail={
-                    "error_code": "SIN_PERMISOS",
-                    "message": "Sin privilegios para ver las solicitudes de este curso.",
+                    "error_code": "INSTITUTO_INVALIDO",
+                    "message": f"Instituto {institute.value} no encontrado en configuraciones.",
                 },
             )
 
-        # Determinar qué roles internos puede listar el usuario actual
-        internal_roles = [
-            role_mapping[role] for role in user_roles if role in role_mapping
-        ]
-
-        if not internal_roles:
+        # Verificar permisos de administrador
+        if (
+            not institute_config.admins
+            or user_info.email not in institute_config.admins
+        ):
             raise HTTPException(
                 status_code=403,
                 detail={
                     "error_code": "SIN_PERMISOS",
-                    "message": "No tiene roles válidos para ver solicitudes en este curso.",
+                    "message": "Solo administradores pueden ver las solicitudes de docentes.",
                 },
             )
 
@@ -90,9 +75,8 @@ class ListAccountRequestsController:
 
             # Construcción dinámica de filtros de consulta
             filters = [
-                UserAccounts.course_id == course_id,
                 UserAccounts.institute == institute,
-                UserAccounts.role.in_(internal_roles),
+                UserAccounts.role == AccountRoleEnum.DOCENTE,
             ]
 
             if status is not None:

@@ -87,7 +87,6 @@ class AccountsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Alias para tipado de respuestas que contienen múltiples registros de cuentas.
 ListAccountsResponse = list[AccountsResponse]
 
 
