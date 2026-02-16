@@ -1,21 +1,38 @@
+# CONFIGURACIÓN DE LA BASE DE DATOS
+# Este módulo gestiona la conexión a SQLite y la sesión de SQLAlchemy.
+
 import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+# Configuración de rutas para el archivo .db
 BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'macti.db')}"
+
+# Motor de conexión
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, echo=True
 )
+
+# Generador de sesiones
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Base para los modelos
 Base = declarative_base()
 
 
 def get_db():
+    """
+    Genera una sesión de DB para cada petición y la cierra al finalizar.
+
+    Esta función se usa como dependencia en FastAPI para inyectar la
+    sesión en los endpoints.
+    """
     db = SessionLocal()
     try:
         yield db
     finally:
+        # Cerramos siempre la conexión por seguridad
         db.close()
