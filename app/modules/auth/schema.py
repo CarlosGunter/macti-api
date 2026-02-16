@@ -50,11 +50,10 @@ class TeacherRequestSchema(AccountBaseSchema):
     """
 
     course_full_name: str
-    course_key: str
     groups: str | None = None
     course_id: int | None = Field(
         None,
-        gt=0,
+        ge=0,
         description="ID opcional. Si se omite, se procesa como creación de curso nuevo.",
     )
 
