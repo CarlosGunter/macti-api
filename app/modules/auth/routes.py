@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.auth.controllers.account_requests_teacher import (
+    AccountRequestsTeacherController,
+)
 from app.modules.auth.controllers.get_user_info import GetUserInfoController
 from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
@@ -65,8 +68,8 @@ async def request_teacher_account(
 
 
 @router.get(
-    "/list-account-requests",
-    summary="Listar solicitudes de cuenta por curso",
+    "/list-account-requests/students",
+    summary="Listar solicitudes de cuenta de alumnos por curso",
     response_model=ListAccountsResponse,
 )
 async def list_accounts_requests(
@@ -82,6 +85,26 @@ async def list_accounts_requests(
         institute=institute,
         status=status,
         user_info=user_info,
+    )
+
+
+@router.get(
+    "/list-account-requests/teachers",
+    summary="Listar solicitudes de cuenta de docentes",
+    description="Endpoint para listar solicitudes de cuenta de docentes. Solo accesible para roles de gestión.",
+    response_model=ListAccountsResponse,
+)
+async def list_teacher_accounts_requests(
+    institute: InstitutesEnum = Query(..., description="Instituto"),
+    status: AccountStatusEnum | None = Query(None),
+    db=Depends(get_db),
+    user_info=Depends(get_current_user),
+):
+    return await AccountRequestsTeacherController.list_teacher_accounts_requests(
+        institute=institute,
+        status=status,
+        user_info=user_info,
+        db=db,
     )
 
 

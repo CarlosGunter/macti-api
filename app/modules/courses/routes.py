@@ -31,6 +31,9 @@ router = APIRouter(prefix="/courses", tags=["Cursos"])
 )
 async def list_courses(
     institute: InstitutesEnum = Query(..., description="Nombre del instituto (Enum)"),
+    ids: list[int] | None = Query(
+        None, description="Lista de IDs de cursos para filtrar"
+    ),
 ) -> list[CourseResponseSchema]:
     """
     Endpoint público/administrativo para obtener el catálogo completo de Moodle.
@@ -38,7 +41,7 @@ async def list_courses(
     Permite conocer la oferta académica disponible en una instancia específica
     antes de realizar procesos de inscripción.
     """
-    return await ListCoursesController.list_courses(institute=institute)
+    return await ListCoursesController.list_courses(institute=institute, ids=ids)
 
 
 @router.get(

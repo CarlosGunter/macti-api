@@ -17,7 +17,7 @@ class MoodleService:
     """
 
     @staticmethod
-    async def get_courses(institute: InstitutesEnum):
+    async def get_courses(institute: InstitutesEnum, ids: list[int] | None = None):
         """
         Recupera la lista completa de cursos disponibles en un instituto.
 
@@ -34,11 +34,17 @@ class MoodleService:
             "moodlewsrestformat": "json",
         }
 
+        data = {} if ids else None
+        for i, course_id in enumerate(ids or []):
+            if data is not None:
+                data[f"options[ids][{i}]"] = course_id
+
         # Ejecución de la petición a través del cliente asíncrono compartido
         result = await make_moodle_request(
             url=config.moodle_url,
             params=params,
             institute=institute,
+            data=data,
         )
 
         if not result["success"]:

@@ -18,7 +18,9 @@ class ListCoursesController:
     """
 
     @staticmethod
-    async def list_courses(institute: InstitutesEnum):
+    async def list_courses(
+        institute: InstitutesEnum, ids: list[int] | None = None
+    ) -> list:
         """
         Lista todos los cursos disponibles en la plataforma Moodle para un instituto específico.
 
@@ -33,7 +35,12 @@ class ListCoursesController:
         """
 
         # Consumo del servicio de Moodle especializado en lectura de catálogo
-        courses = await MoodleService.get_courses(institute=institute)
+        courses = await MoodleService.get_courses(institute=institute, ids=ids)
+
+        # Cuando se recuperan todos los cursos, Moodle retorna en su primer elemento
+        # la misma instancia, se elimina para evitar mostrarla en la lista.
+        if ids is None and courses.courses:
+            courses.courses = courses.courses[1:]
 
         # Manejo de errores provenientes del Web Service
         if courses.error:
