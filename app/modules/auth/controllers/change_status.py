@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
 from app.modules.auth.services.kc_service import KeycloakService
-from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
+from app.shared.services.moodle_service import MoodleService
 
 from ..schema import ConfirmAccountSchema
 
@@ -101,7 +101,7 @@ class ChangeStatusController:
 
                     if course_detail and course_detail.course_full_name:
                         # El método create_course genera el shortname oficial internamente.
-                        moodle_res = await MoodleService.create_course(  # type: ignore
+                        moodle_res = await MoodleService.create_course(
                             institute=account_request.institute,
                             fullname=course_detail.course_full_name,
                             teacher_name=f"{account_request.name} {account_request.last_name}",
