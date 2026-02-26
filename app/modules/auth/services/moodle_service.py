@@ -188,7 +188,7 @@ class MoodleService:
 
         params = {
             "wstoken": config.moodle_token,
-            "wsfunction": "local_sitemanagers_get__site_managers",
+            "wsfunction": "local_sitemanagers_get_site_managers",
             "moodlewsrestformat": "json",
         }
 
@@ -207,5 +207,5 @@ class MoodleService:
         return SimpleNamespace(
             success=True,
             error_message=None,
-            admins=result_response["data"].get("admins", []),
+            admins=result_response.get("data", []),
         )
