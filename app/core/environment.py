@@ -26,12 +26,6 @@ class EnvironmentConfigs(BaseSettings):
     MOODLE_TOKEN_CIENCIAS: str = ""
     MOODLE_TOKEN_INGENIERIA: str = ""
 
-    # Lista de administradores para el instituto de Ingeniería
-    PRINCIPAL_ADMINS: str = ""
-    CUANTICO_ADMINS: str = ""
-    CIENCIAS_ADMINS: str = ""
-    INGENIERIA_ADMINS: str = ""
-
     # Configuración del servidor de correo saliente (SMTP)
     SMTP_HOST: str = "smtp.titan.email"
     SMTP_PORT: int = 587
