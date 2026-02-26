@@ -10,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 
 from app.core.database import get_db
 from app.modules.auth.services.kc_service import KeycloakService
+from app.modules.auth.services.moodle_service import MoodleService as AuthMoodleService
 from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.models.users_model import UserAccounts
@@ -110,3 +111,16 @@ async def get_user_info(
     return await MoodleService.get_user_profile_by_email(
         institute=institute, user_email=email
     )
+
+
+@router.get(
+    "/list-manager-accounts",
+    summary="Listar solicitudes de cuenta de docentes por instituto",
+)
+async def list_manager_accounts(
+    institute: InstitutesEnum = Query(
+        ..., description="Instituto para filtrar las solicitudes de docentes"
+    ),
+):
+    """Endpoint de prueba para listar solicitudes de cuenta de docentes por instituto."""
+    return await AuthMoodleService.get_admins(institute=institute)

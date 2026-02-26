@@ -2,6 +2,8 @@
 Service for interacting with Moodle LMS API
 """
 
+from types import SimpleNamespace
+
 import httpx
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
@@ -175,3 +177,35 @@ class MoodleService:
         list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
 
         return list_roles
+
+    @staticmethod
+    async def get_admins(institute: InstitutesEnum):
+        """
+        Función auxiliar para obtener la lista de emails de administradores de un instituto.
+        """
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
+
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "local_sitemanagers_get__site_managers",
+            "moodlewsrestformat": "json",
+        }
+
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            institute=institute,
+        )
+        if not result_response["success"]:
+            return SimpleNamespace(
+                success=False,
+                error_message=result_response["error_message"],
+                admins=[],
+            )
+
+        return SimpleNamespace(
+            success=True,
+            error_message=None,
+            admins=result_response["data"].get("admins", []),
+        )
