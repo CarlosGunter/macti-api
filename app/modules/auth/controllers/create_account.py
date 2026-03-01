@@ -8,12 +8,12 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.modules.auth.services.kc_service import KeycloakService
-from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
+from app.shared.services.moodle_service import MoodleService
 
 from ..schema import CreateAccountSchema
 
@@ -25,23 +25,6 @@ class CreateAccountController:
     Orquesta la integración con Keycloak para identidad y Moodle para
     el aprendizaje, asegurando consistencia entre ambos sistemas.
     """
-
-    @staticmethod
-    def _generate_moodle_shortname(
-        institute_val: str, course_name: str, group: str | None
-    ) -> str:
-        """
-        Genera el nombre corto compuesto: PREFIJOINST-PREFIJOCURSO-GRUPO
-        """
-        inst_prefix = str(institute_val)[:3].upper()
-        words = course_name.split()
-        if len(words) >= 2:
-            course_initials = "".join([word[0] for word in words[:3]]).upper()
-        else:
-            course_initials = course_name[:3].upper()
-
-        group_suffix = str(group).upper() if group and group != "None" else "0"
-        return f"{inst_prefix}-{course_initials}-{group_suffix}"
 
     @staticmethod
     async def create_account(data: CreateAccountSchema, db: Session):
@@ -113,25 +96,18 @@ class CreateAccountController:
         if account_request.role == AccountRoleEnum.DOCENTE and current_course_id == 0:
             course_detail = (
                 db.query(UserCourses)
-                .filter(UserCourses.user_id == account_request.id)
+                .filter(
+                    UserCourses.user_id == account_request.id,
+                    UserCourses.status == AccountStatusEnum.PENDING,
+                )
                 .first()
             )
 
-            # Validamos que existan los detalles y el nombre no sea nulo para Pyright
             if course_detail and course_detail.course_full_name:
-                # Generamos el nombre corto compuesto solicitado (INST-CUR-GRP)
-                composed_shortname = CreateAccountController._generate_moodle_shortname(
-                    institute_val=account_request.institute.value,
-                    course_name=course_detail.course_full_name,
-                    group=course_detail.groups,
-                )
-
-                # Invocamos la creación en Moodle enviando el shortname generado
-                # Usamos type: ignore porque Pyright tiene un problema detectando el método estático
-                moodle_course_res = await MoodleService.create_course(  # type: ignore
+                # Invocamos la creación en Moodle tal cual estaba en tu código original
+                moodle_course_res = await MoodleService.create_course(
                     institute=account_request.institute,
                     fullname=course_detail.course_full_name,
-                    shortname=composed_shortname,
                     teacher_name=f"{account_request.name} {account_request.last_name}",
                     group_name=course_detail.groups or "0",
                 )
@@ -154,6 +130,7 @@ class CreateAccountController:
                 if moodle_course_res.course and "id" in moodle_course_res.course:
                     current_course_id = moodle_course_res.course["id"]
                     account_request.course_id = current_course_id
+                    course_detail.status = AccountStatusEnum.APPROVED
 
         if current_course_id is None:
             raise HTTPException(
