@@ -9,6 +9,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
+from app.modules.auth.services.kc_service import KeycloakService
+from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
@@ -86,7 +88,9 @@ class ChangeStatusController:
 
             elif new_status == AccountStatusEnum.REJECTED:
                 # El rechazo implica limpieza de tokens
-                await ChangeStatusController._handle_rejected(account_request, db)
+                await ChangeStatusController._handle_rejected(
+                    account_request, db, current_status
+                )
 
             else:
                 raise HTTPException(
@@ -156,11 +160,31 @@ class ChangeStatusController:
         account_request.status = AccountStatusEnum.PENDING
 
     @staticmethod
-    async def _handle_rejected(account_request: UserAccounts, db: Session):
+    async def _handle_rejected(
+        account_request: UserAccounts,
+        db: Session,
+        current_status: AccountStatusEnum,
+    ):
         """Limpia los datos del usuario en BD."""
         db.query(VerificationToken).filter(
             VerificationToken.account_id == account_request.id
         ).delete(synchronize_session=False)
+        if current_status == AccountStatusEnum.CREATED:
+            # Eliminación de usuarios en Keycloak y Moodle por rechazo administrativo
+            if getattr(account_request, "kc_id", None):
+                await KeycloakService.delete_user(
+                    user_id=str(account_request.kc_id),
+                    institute=account_request.institute,
+                )
+
+            if getattr(account_request, "moodle_id", None):
+                await MoodleService.delete_user(
+                    user_id=str(account_request.moodle_id),
+                    institute=account_request.institute,
+                )
+
+            account_request.kc_id = None
+            account_request.moodle_id = None
         account_request.status = AccountStatusEnum.REJECTED
 
     @classmethod

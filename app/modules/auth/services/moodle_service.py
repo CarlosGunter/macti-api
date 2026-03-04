@@ -153,6 +153,18 @@ class MoodleService:
         return {"deleted": True, "user_id": user_id}
 
     @staticmethod
+    async def create_course(institute, fullname, teacher_name, group_name):
+        """
+        Puentee al servicio base para no repetir la lógica del request.
+        """
+        return await BaseMoodleService.create_course(
+            institute=institute,
+            fullname=fullname,
+            teacher_name=teacher_name,
+            group_name=group_name,
+        )
+
+    @staticmethod
     async def get_user_roles(
         institute: InstitutesEnum,
         course_id: int,
