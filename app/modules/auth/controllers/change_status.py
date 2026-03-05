@@ -10,12 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.email_service import EmailService
 from app.modules.auth.services.kc_service import KeycloakService
-from app.shared.enums.role_enum import AccountRoleEnum
+from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.enums.status_enum import AccountStatusEnum
-from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
-from app.shared.services.moodle_service import MoodleService
 
 from ..schema import ConfirmAccountSchema
 
@@ -30,11 +28,6 @@ class ChangeStatusController:
     async def change_status(data: ConfirmAccountSchema, db: Session):
         """
         Cambia el estatus de una solicitud de cuenta específica.
-
-        Si el estatus es 'APPROVED', inicia el flujo de verificación:
-        1. Genera un token UUID único.
-        2. Guarda el token en la base de datos relacionado con la cuenta.
-        3. Envía un correo electrónico al usuario con el enlace de validación.
         """
         request_id = data.id
         new_status = data.status
@@ -87,51 +80,14 @@ class ChangeStatusController:
 
             # --- PROCESAMIENTO SEGÚN EL NUEVO ESTADO ---
             if new_status == AccountStatusEnum.APPROVED:
-                # LÓGICA DE APROVISIONAMIENTO DE CURSO (DOCENTE + ID 0)
-                # Solo se dispara si el docente solicita un espacio nuevo.
-                if (
-                    account_request.role == AccountRoleEnum.DOCENTE
-                    and account_request.course_id == 0
-                ):
-                    course_detail = (
-                        db.query(UserCourses)
-                        .filter(
-                            UserCourses.user_id == account_request.id,
-                            UserCourses.status == AccountStatusEnum.PENDING,
-                        )
-                        .first()
-                    )
-
-                    if course_detail and course_detail.course_full_name:
-                        # El método create_course genera el shortname oficial internamente.
-                        moodle_res = await MoodleService.create_course(
-                            institute=account_request.institute,
-                            fullname=course_detail.course_full_name,
-                            teacher_name=f"{account_request.name} {account_request.last_name}",
-                            group_name=course_detail.groups or "0",
-                        )
-
-                        if moodle_res.error:
-                            raise HTTPException(
-                                status_code=502,
-                                detail={
-                                    "error_code": "MOODLE_ERROR",
-                                    "message": f"Fallo en Moodle: {moodle_res.error}",
-                                },
-                            )
-
-                        # Actualizamos el ID de referencia con el valor real de Moodle
-                        account_request.course_id = moodle_res.course["id"]
-                        course_detail.status = AccountStatusEnum.APPROVED
-
-                # Gestión de token de seguridad y notificación vía email
+                # Se eliminó la lógica de aprovisionamiento de Moodle de aquí.
                 await ChangeStatusController._handle_approved(account_request, db)
 
             elif new_status == AccountStatusEnum.PENDING:
                 ChangeStatusController._handle_pending(account_request)
 
             elif new_status == AccountStatusEnum.REJECTED:
-                # El rechazo implica limpieza de servicios externos si ya existían
+                # El rechazo implica limpieza de tokens
                 await ChangeStatusController._handle_rejected(
                     account_request, db, current_status
                 )
@@ -148,11 +104,6 @@ class ChangeStatusController:
             # Confirmación de cambios en la base de datos
             db.commit()
             db.refresh(account_request)
-
-            if new_status == AccountStatusEnum.APPROVED:
-                return {
-                    "message": f"Cuenta aprobada. Espacio creado y correo enviado a {account_request.email}"
-                }
 
             return {
                 "message": f"Estado actualizado a {new_status.value} correctamente."
@@ -214,11 +165,10 @@ class ChangeStatusController:
         db: Session,
         current_status: AccountStatusEnum,
     ):
-        """Limpia los datos del usuario en BD y servicios externos."""
+        """Limpia los datos del usuario en BD."""
         db.query(VerificationToken).filter(
             VerificationToken.account_id == account_request.id
         ).delete(synchronize_session=False)
-
         if current_status == AccountStatusEnum.CREATED:
             # Eliminación de usuarios en Keycloak y Moodle por rechazo administrativo
             if getattr(account_request, "kc_id", None):
@@ -235,7 +185,6 @@ class ChangeStatusController:
 
             account_request.kc_id = None
             account_request.moodle_id = None
-
         account_request.status = AccountStatusEnum.REJECTED
 
     @classmethod
@@ -246,7 +195,6 @@ class ChangeStatusController:
         expira = ahora + timedelta(days=7)
 
         try:
-            # Lógica de UPSERT para el token de verificación
             validation = (
                 db.query(VerificationToken)
                 .filter(VerificationToken.account_id == account_id)
