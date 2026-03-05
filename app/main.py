@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
+from app.core.environment import environment
 from app.modules.auth.routes import router as auth_router
 from app.modules.courses.routes import router as courses_router
 from app.modules.temp.routes import router as temp_router
@@ -42,5 +43,8 @@ async def read_root():
 
 # Registro de rutas modulares (Routing)
 app.include_router(auth_router)
-app.include_router(temp_router)
 app.include_router(courses_router)
+
+# Rutas temporales para desarrollo: Solo se incluyen si APP_ENV=development
+if environment.APP_ENV == "development":
+    app.include_router(temp_router)
