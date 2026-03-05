@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
+from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
@@ -104,11 +105,17 @@ class CreateAccountController:
             )
 
             if course_detail and course_detail.course_full_name:
-                # Invocamos la creación en Moodle tal cual estaba en tu código original
+                shortname = CreateAccountController._create_course_shortname(
+                    institute=account_request.institute,
+                    fullname=course_detail.course_full_name,
+                    group=course_detail.groups or "0",
+                )
+
                 moodle_course_res = await MoodleService.create_course(
                     institute=account_request.institute,
                     fullname=course_detail.course_full_name,
                     teacher_name=f"{account_request.name} {account_request.last_name}",
+                    shortname=shortname,
                     group_name=course_detail.groups or "0",
                 )
 
@@ -225,3 +232,23 @@ class CreateAccountController:
             "moodle_id": account_request.moodle_id,
             "moodle_course_id": current_course_id,
         }
+
+    @classmethod
+    def _create_course_shortname(
+        cls, institute: InstitutesEnum, fullname: str, group: str
+    ) -> str:
+        """
+        Genera el nombre corto oficial (Subject) siguiendo la lógica del proyecto.
+        Ejemplo: CIENCIAS + "Programación" + "G1" -> CIE-PRO-G1
+        """
+        inst_prefix = str(institute.value)[:3].upper()
+        words = fullname.split()
+
+        # Lógica de iniciales: toma la primera letra de las primeras 3 palabras
+        if len(words) >= 2:
+            course_initials = "".join([word[0] for word in words[:3]]).upper()
+        else:
+            course_initials = fullname[:3].upper()
+
+        group_suffix = str(group).upper() if group else "0"
+        return f"{inst_prefix}-{course_initials}-{group_suffix}"
