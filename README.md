@@ -93,23 +93,23 @@ backend-py/
 ├── 📄 pyproject.toml              # Configuración del proyecto
 │
 └── app/                           # Código fuente principal
-    ├── 📄 main.py                 # Punto de entrada de la aplicación
+    ├── 📄 main.py                # Punto de entrada de la aplicación
     │
     ├── core/                      # Núcleo de la aplicación
-    │   └── 📄 database.py         # Configuración de base de datos
-    │   └── 📄 config.py           # Centralización de las variables de entorno
+    │   └── 📄 database.py        # Configuración de base de datos
+    │   └── 📄 environment.py     # Centralización de las variables de entorno
     │
-    ├── modules/                   # Módulos de funcionalidad
-    │   ├── auth/                  # Módulo de autenticación
+    ├── modules/                  # Módulos de funcionalidad
+    │   ├── auth/                 # Módulo de autenticación
     │   │   ├── 📄 controllers    # Lógica de negocio
     │   │   ├── 📄 models         # Modelos de base de datos
     │   │   ├── 📄 routes         # Definición de endpoints
     │   │   ├── 📄 schemas        # Esquemas de validación
     │   │   └── 📄 services       # Servicios externos como llamadas a APIs
     │   │
-    │   └── courses/              # Módulo de cursos
+    │   └── courses/               # Módulo de cursos
     │
-    └── shared/                   # Modulo general compartido
+    └── shared/                    # Modulo general compartido
 ```
 
 ---

@@ -115,12 +115,12 @@ async def get_user_info(
 
 @router.get(
     "/list-manager-accounts",
-    summary="Listar solicitudes de cuenta de docentes por instituto",
+    summary="Listar cuentas de administradores por instituto",
 )
 async def list_manager_accounts(
     institute: InstitutesEnum = Query(
-        ..., description="Instituto para filtrar las solicitudes de docentes"
+        ..., description="Instituto para filtrar cuentas de administradores"
     ),
 ):
-    """Endpoint de prueba para listar solicitudes de cuenta de docentes por instituto."""
+    """Endpoint de prueba para listar cuentas de administradores por instituto."""
     return await AuthMoodleService.get_admins(institute=institute)

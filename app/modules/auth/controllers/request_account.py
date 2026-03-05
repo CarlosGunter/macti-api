@@ -77,7 +77,7 @@ class RequestAccountController:
                 detalles_curso = UserCourses(
                     user_id=db_account_request.id,
                     course_full_name=course_name,
-                    groups=group_info,
+                    groups=",".join(group_info) if group_info else None,
                     status=AccountStatusEnum.PENDING,
                 )
                 db.add(detalles_curso)
