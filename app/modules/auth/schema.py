@@ -5,7 +5,7 @@
 # que los datos de entrada cumplan con los tipos requeridos y para formatear
 # las respuestas JSON de salida de manera consistente.
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.models.users_model import AccountStatusEnum
@@ -59,12 +59,6 @@ class TeacherRequestSchema(AccountBaseSchema):
         ge=0,
         description="ID opcional. Si se omite, se procesa como creación de curso nuevo.",
     )
-
-    @field_validator("groups")
-    @classmethod
-    def groups_stringify(cls, v):
-        """Convierte la lista de grupos en una cadena separada por comas para su almacenamiento o procesamiento posterior, si es necesario."""
-        return ",".join(v) if isinstance(v, list) else v
 
 
 class AccountRequestResponse(BaseModel):
