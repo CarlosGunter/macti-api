@@ -123,11 +123,11 @@ backend-py/
 
 ### Agregar Nuevos Endpoints
 
-1. Crear el modelo en `models.py`
-2. Definir el schema en `schema.py`
-3. Implementar la lógica en `controllers.py`
-4. Definir las rutas en `routes.py`
-5. Registrar el router en `main.py`
+1. Define o crea el modulo donde quieres agregar el endpoint (ej. `auth`, `courses`).
+2. Crea tu endpoint en el archivo `routes.py` del módulo correspondiente.
+3. Implementa la lógica de negocio en `controllers.py` y los modelos de datos en los modelos.
+4. Agrega validación de datos con Pydantic en `schemas.py`.
+5. Si necesitas llamar a servicios externos, implementa esa lógica en `services.py`.
 
 ### Flujo de Trabajo
 
