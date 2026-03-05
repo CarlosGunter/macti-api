@@ -8,9 +8,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr
 from sqlalchemy import DateTime, Enum, Integer, String, Uuid
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -76,9 +76,8 @@ class UserAccounts(Base):
         "VerificationToken", back_populates="account", cascade="all, delete-orphan"
     )
 
-    @field_validator("email", mode="before")
-    @classmethod
-    def email_must_be_lowercase(cls, value: str) -> str:
+    @validates("email")
+    def email_must_be_lowercase(self, _k, value) -> str:
         """Valida que el correo electrónico se almacene en minúsculas."""
         return value.lower() if isinstance(value, str) else value
 
