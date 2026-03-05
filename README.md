@@ -247,6 +247,11 @@ backend-py/
 
 ## 🔧 Desarrollo
 
+### Entorno y rutas temporales
+
+- Define `APP_ENV` en tu `.env` con uno de estos valores: `development`, `testing`, `production`.
+- Las rutas del módulo temporal (`/temp/*`) solo se registran cuando `APP_ENV=development`.
+
 ### Agregar Nuevos Endpoints
 
 1. Crear el modelo en `models.py`

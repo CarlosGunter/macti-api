@@ -33,6 +33,21 @@ class EnvironmentConfigs(BaseSettings):
     SMTP_PASS: str = ""
     FROM_ADDRESS: str = "aramirez@solucionesatd.com"
 
+    # Variable de entorno para controlar el registro de rutas temporales (Temp Module)
+    APP_ENV: str = "production"
+
+    @field_validator("APP_ENV")
+    @classmethod
+    def validate_app_env(cls, v):
+        """Normaliza y valida el entorno de ejecución."""
+        normalized = v.strip().lower()
+        valid_envs = {"development", "testing", "production"}
+        if normalized not in valid_envs:
+            raise ValueError(
+                "APP_ENV debe ser uno de: development, testing, production"
+            )
+        return normalized
+
     @field_validator(
         "PRINCIPAL_ADMIN_CLIENT_SECRET",
         "CUANTICO_ADMIN_CLIENT_SECRET",
