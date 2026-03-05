@@ -2,8 +2,6 @@
 Service for interacting with Moodle LMS API
 """
 
-import httpx
-
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_moodle_enum import RoleEnum
@@ -140,15 +138,18 @@ class MoodleService:
             "userids[0]": str(user_id),
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, params=params, data=data)
-            response.raise_for_status()
-            result = response.json()
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            data=data,
+            institute=institute,
+        )
 
-        print("DEBUG Moodle response (delete_user):", result)
-
-        if isinstance(result, dict) and "exception" in result:
-            raise Exception(f"Error deleting user in Moodle: {result}")
+        if not result_response["success"]:
+            return {
+                "deleted": False,
+                "error": result_response["error_message"],
+            }
 
         return {"deleted": True, "user_id": user_id}
 
