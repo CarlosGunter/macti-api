@@ -8,7 +8,7 @@ from sqlalchemy import case, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.shared.config.moodle_configs import MOODLE_CONFIG
+from app.modules.auth.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
@@ -38,28 +38,22 @@ class AccountRequestsTeacherController:
         3. Ordena resultados por prioridad de estatus (PENDING primero).
         """
 
-        # Obtener configuración del instituto
-        institute_config = MOODLE_CONFIG.get(institute)
-
-        if not institute_config:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "INSTITUTO_INVALIDO",
-                    "message": f"Instituto {institute.value} no encontrado en configuraciones.",
-                },
-            )
-
-        # Verificar permisos de administrador
-        if (
-            not institute_config.admins
-            or user_info.email not in institute_config.admins
-        ):
+        admin_list = await MoodleService.get_admins(institute=institute)
+        if not admin_list:
             raise HTTPException(
                 status_code=403,
                 detail={
-                    "error_code": "SIN_PERMISOS",
-                    "message": "Solo administradores pueden ver las solicitudes de docentes.",
+                    "error_code": "CONFIGURACION_INCOMPLETA",
+                    "message": f"No se han configurado administradores para el instituto {institute.value}.",
+                },
+            )
+
+        if user_info.email not in [admin.get("email") for admin in admin_list.admins]:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error_code": "ACCESO_DENEGADO",
+                    "message": "No tienes permisos de administrador para acceder a estas solicitudes.",
                 },
             )
 

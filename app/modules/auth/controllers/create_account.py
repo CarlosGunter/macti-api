@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.services.kc_service import KeycloakService
 from app.modules.auth.services.moodle_service import MoodleService
+from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.user_courses_model import UserCourses
 from app.shared.models.users_model import UserAccounts
@@ -33,9 +35,10 @@ class CreateAccountController:
         Pasos:
         1. Valida que la solicitud exista y esté aprobada.
         2. Crea el usuario en Keycloak.
-        3. Crea el usuario en Moodle (con rollback de Keycloak si falla).
-        4. Inscribe al usuario en el curso correspondiente.
-        5. Actualiza estados en BD local y elimina tokens temporales.
+        3. Crea el curso en Moodle (si el ID es 0).
+        4. Crea el usuario en Moodle (con rollback de Keycloak si falla).
+        5. Inscribe al usuario en el curso correspondiente con rol dinámico.
+        6. Actualiza estados en BD local y elimina tokens temporales.
         """
 
         # 1. Validación de la solicitud
@@ -87,14 +90,62 @@ class CreateAccountController:
         if kc_user_id:
             account_request.kc_id = UUID(str(kc_user_id))
 
-        # 3. Moodle (Aprovisionamiento de plataforma educativa)
+        # 3. Moodle - Gestión de Curso y Usuario
         current_course_id = account_request.course_id
+
+        # LÓGICA DE CREACIÓN: Si el docente solicita curso (ID 0), lo creamos primero
+        if account_request.role == AccountRoleEnum.DOCENTE and current_course_id == 0:
+            course_detail = (
+                db.query(UserCourses)
+                .filter(
+                    UserCourses.user_id == account_request.id,
+                    UserCourses.status == AccountStatusEnum.PENDING,
+                )
+                .first()
+            )
+
+            if course_detail and course_detail.course_full_name:
+                shortname = CreateAccountController._create_course_shortname(
+                    institute=account_request.institute,
+                    fullname=course_detail.course_full_name,
+                    group=course_detail.groups or "0",
+                )
+
+                moodle_course_res = await MoodleService.create_course(
+                    institute=account_request.institute,
+                    fullname=course_detail.course_full_name,
+                    teacher_name=f"{account_request.name} {account_request.last_name}",
+                    shortname=shortname,
+                    group_name=course_detail.groups or "0",
+                )
+
+                if moodle_course_res.error:
+                    # Rollback Keycloak si no se pudo crear el curso
+                    if account_request.kc_id:
+                        await KeycloakService.delete_user(
+                            str(account_request.kc_id), account_request.institute
+                        )
+                    raise HTTPException(
+                        status_code=502,
+                        detail={
+                            "error_code": "COURSE_CREATION_FAILED",
+                            "message": moodle_course_res.error,
+                        },
+                    )
+
+                # Actualizamos el ID local con el ID real de Moodle (ej. 105)
+                if moodle_course_res.course and "id" in moodle_course_res.course:
+                    current_course_id = moodle_course_res.course["id"]
+                    account_request.course_id = current_course_id
+                    course_detail.status = AccountStatusEnum.APPROVED
+
         if current_course_id is None:
             raise HTTPException(
                 status_code=400,
                 detail={"error_code": "DATA_INCOMPLETE", "message": "ID de curso nulo"},
             )
 
+        # 4. Moodle - Aprovisionamiento de usuario
         try:
             moodle_result = await MoodleService.create_user(
                 user_data={
@@ -106,13 +157,12 @@ class CreateAccountController:
                 institute=account_request.institute,
             )
         except Exception as e:
-            # ROLLBACK: Si Moodle falla, borramos el rastro en Keycloak para evitar inconsistencias
+            # ROLLBACK: Si Moodle falla, borramos el rastro en Keycloak
             if account_request.kc_id:
                 await KeycloakService.delete_user(
                     user_id=str(account_request.kc_id),
                     institute=account_request.institute,
                 )
-            print(f"ERROR CRÍTICO EN MOODLE: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail={
@@ -130,22 +180,23 @@ class CreateAccountController:
                 )
             raise HTTPException(
                 status_code=502,
-                detail={"error_code": "MOODLE_ERROR", "message": "Error en Moodle"},
+                detail={
+                    "error_code": "MOODLE_ERROR",
+                    "message": "Error al crear usuario en Moodle",
+                },
             )
 
         account_request.moodle_id = moodle_result.get("id")
         m_user_id = account_request.moodle_id
 
-        # NOTA PARA FUTUROS CAMBIOS (Pendiente integrar cambios de Fer):
-        # Aquí se debe agregar la lógica de roles de Moodle según AccountRoleEnum
-        # ALUMNO -> 5, DOCENTE -> 3
-
-        # 4. Inscripción Automática al curso
+        # 5. Inscripción Automática con Roles (Docente: 3, Alumno: 5)
         if m_user_id is not None:
+            moodle_role = 3 if account_request.role == AccountRoleEnum.DOCENTE else 5
             await MoodleService.enroll_user(
                 user_id=m_user_id,
                 course_id=current_course_id,
                 institute=account_request.institute,
+                role_id=moodle_role,
             )
 
         # Actualizamos el registro del curso del usuario a APPROVED
@@ -160,11 +211,10 @@ class CreateAccountController:
         if course_record:
             course_record.status = AccountStatusEnum.APPROVED
 
-        # 5. Finalización y Limpieza
+        # 6. Finalización y Limpieza
         # Cambiamos el estatus global a CREATED
         account_request.status = AccountStatusEnum.CREATED
 
-        # El token de verificación ya no es necesario una vez creada la cuenta
         token_record = (
             db.query(VerificationToken)
             .filter(VerificationToken.account_id == account_request.id)
@@ -180,4 +230,25 @@ class CreateAccountController:
             "message": "Cuenta creada exitosamente",
             "kc_id": str(account_request.kc_id),
             "moodle_id": account_request.moodle_id,
+            "moodle_course_id": current_course_id,
         }
+
+    @classmethod
+    def _create_course_shortname(
+        cls, institute: InstitutesEnum, fullname: str, group: str
+    ) -> str:
+        """
+        Genera el nombre corto oficial (Subject) siguiendo la lógica del proyecto.
+        Ejemplo: CIENCIAS + "Programación" + "G1" -> CIE-PRO-G1
+        """
+        inst_prefix = str(institute.value)[:3].upper()
+        words = fullname.split()
+
+        # Lógica de iniciales: toma la primera letra de las primeras 3 palabras
+        if len(words) >= 2:
+            course_initials = "".join([word[0] for word in words[:3]]).upper()
+        else:
+            course_initials = fullname[:3].upper()
+
+        group_suffix = str(group).upper() if group else "0"
+        return f"{inst_prefix}-{course_initials}-{group_suffix}"

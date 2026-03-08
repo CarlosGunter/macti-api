@@ -28,11 +28,6 @@ class ChangeStatusController:
     async def change_status(data: ConfirmAccountSchema, db: Session):
         """
         Cambia el estatus de una solicitud de cuenta específica.
-
-        Si el estatus es 'APPROVED', inicia el flujo de verificación:
-        1. Genera un token UUID único.
-        2. Guarda el token en la base de datos relacionado con la cuenta.
-        3. Envía un correo electrónico al usuario con el enlace de validación.
         """
         request_id = data.id
         new_status = data.status
@@ -57,7 +52,7 @@ class ChangeStatusController:
             if new_status == current_status:
                 return {"message": f"Sin cambios: el estado ya es {new_status.value}"}
 
-            # Transiciones permitidas
+            # Definición de transiciones de estado permitidas
             valid_transitions = {
                 AccountStatusEnum.PENDING: {
                     AccountStatusEnum.APPROVED,
@@ -83,14 +78,16 @@ class ChangeStatusController:
                     },
                 )
 
-            # Acciones según estado destino
+            # --- PROCESAMIENTO SEGÚN EL NUEVO ESTADO ---
             if new_status == AccountStatusEnum.APPROVED:
-                ChangeStatusController._handle_approved(account_request, db)
+                # Se eliminó la lógica de aprovisionamiento de Moodle de aquí.
+                await ChangeStatusController._handle_approved(account_request, db)
 
             elif new_status == AccountStatusEnum.PENDING:
                 ChangeStatusController._handle_pending(account_request)
 
             elif new_status == AccountStatusEnum.REJECTED:
+                # El rechazo implica limpieza de tokens
                 await ChangeStatusController._handle_rejected(
                     account_request, db, current_status
                 )
@@ -99,20 +96,18 @@ class ChangeStatusController:
                 raise HTTPException(
                     status_code=422,
                     detail={
-                        "error_code": "ESTADO_DESTINO_NO_SOPORTADO",
-                        "message": f"Estado destino no soportado: {new_status}",
+                        "error_code": "ESTADO_NO_COMPATIBLE",
+                        "message": f"El estado {new_status} no puede ser procesado aquí.",
                     },
                 )
 
+            # Confirmación de cambios en la base de datos
             db.commit()
             db.refresh(account_request)
 
-            if new_status == AccountStatusEnum.APPROVED:
-                return {
-                    "message": f"Solicitud aprobada. Correo de validación enviado a {account_request.email}"
-                }
-
-            return {"message": f"Estado actualizado correctamente a {new_status.value}"}
+            return {
+                "message": f"Estado actualizado a {new_status.value} correctamente."
+            }
 
         except HTTPException as httpe:
             db.rollback()
@@ -120,14 +115,15 @@ class ChangeStatusController:
 
         except Exception as e:
             db.rollback()
-            print(f"Error en change_status: {e}")
+            print(f"CRITICAL ERROR [change_status]: {e}")
             raise HTTPException(
                 status_code=500,
-                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
+                detail={"error_code": "INTERNAL_SERVER_ERROR", "message": str(e)},
             ) from e
 
     @staticmethod
-    def _handle_approved(account_request: UserAccounts, db: Session):
+    async def _handle_approved(account_request: UserAccounts, db: Session):
+        """Maneja la generación de tokens y envío de correos de bienvenida."""
         token_data = ChangeStatusController._generate_and_save_token(
             account_request.id, db
         )
@@ -157,10 +153,10 @@ class ChangeStatusController:
             )
 
         account_request.status = AccountStatusEnum.APPROVED
-        return {"token": token}
 
     @staticmethod
     def _handle_pending(account_request: UserAccounts):
+        """Revierte el estado a pendiente."""
         account_request.status = AccountStatusEnum.PENDING
 
     @staticmethod
@@ -169,11 +165,12 @@ class ChangeStatusController:
         db: Session,
         current_status: AccountStatusEnum,
     ):
+        """Limpia los datos del usuario en BD."""
         db.query(VerificationToken).filter(
             VerificationToken.account_id == account_request.id
         ).delete(synchronize_session=False)
-
         if current_status == AccountStatusEnum.CREATED:
+            # Eliminación de usuarios en Keycloak y Moodle por rechazo administrativo
             if getattr(account_request, "kc_id", None):
                 await KeycloakService.delete_user(
                     user_id=str(account_request.kc_id),
@@ -186,33 +183,18 @@ class ChangeStatusController:
                     institute=account_request.institute,
                 )
 
-            if hasattr(account_request, "kc_id"):
-                account_request.kc_id = None
-            if hasattr(account_request, "moodle_id"):
-                account_request.moodle_id = None
-
+            account_request.kc_id = None
+            account_request.moodle_id = None
         account_request.status = AccountStatusEnum.REJECTED
 
     @classmethod
     def _generate_and_save_token(cls, account_id: int, db: Session):
-        """
-        Método interno para la gestión de tokens de verificación.
-
-        Genera un identificador único (UUID4) con una vigencia de 7 días.
-        Si ya existe un token previo para la cuenta, lo actualiza (UPSERT).
-        """
+        """Genera y persiste un token de verificación UUID4."""
         token = str(uuid4())
-        fecha_solicitud = datetime.now()
-        fecha_expiracion = fecha_solicitud + timedelta(days=7)
+        ahora = datetime.now()
+        expira = ahora + timedelta(days=7)
 
         try:
-            account = (
-                db.query(UserAccounts).filter(UserAccounts.id == account_id).first()
-            )
-            if not account:
-                return {"success": False, "error": "Account not found"}
-
-            # Verificación de existencia previa de token
             validation = (
                 db.query(VerificationToken)
                 .filter(VerificationToken.account_id == account_id)
@@ -220,24 +202,21 @@ class ChangeStatusController:
             )
 
             if validation:
-                # Actualización de token existente (Renovación)
                 validation.token = token
-                validation.created_at = fecha_solicitud
-                validation.expires_at = fecha_expiracion
+                validation.created_at = ahora
+                validation.expires_at = expira
                 validation.is_used = 0
             else:
-                # Creación de nuevo registro de verificación
-                new_validation = VerificationToken(
+                new_val = VerificationToken(
                     account_id=account_id,
                     token=token,
-                    created_at=fecha_solicitud,
-                    expires_at=fecha_expiracion,
+                    created_at=ahora,
+                    expires_at=expira,
                     is_used=0,
                 )
-                db.add(new_validation)
+                db.add(new_val)
 
             return {"success": True, "token": token}
-
         except Exception as e:
             db.rollback()
-            return {"success": False, "error": f"Error en BD: {e}"}
+            return {"success": False, "error": str(e)}

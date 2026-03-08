@@ -1,8 +1,6 @@
-# Módulo MoodleService - Gestión de Perfiles y Creación Académica
-#
-# Este servicio centraliza las consultas de perfiles de usuario y la automatización
-# de creación de espacios (cursos) en Moodle. Es fundamental para el aprovisionamiento
-# 'Just-In-Time' y la gestión de permisos basada en roles de curso.
+"""
+Service for interacting with Moodle LMS API - Project MACTI
+"""
 
 from types import SimpleNamespace
 
@@ -13,7 +11,8 @@ from app.shared.services.moodle_client import make_moodle_request
 
 class MoodleService:
     """
-    Servicio compartido para interactuar con las funciones de usuario y curso de Moodle.
+    Clase estática que centraliza las operaciones de lectura y escritura en Moodle.
+    Incluye gestión de usuarios, inscripciones y creación dinámica de espacios (cursos).
     """
 
     @staticmethod
@@ -91,44 +90,3 @@ class MoodleService:
             user_profile=user_profile,
             error=None,
         )
-
-    @staticmethod
-    async def create_course(
-        institute: InstitutesEnum,
-        fullname: str,
-        shortname: str,
-        teacher_name: str,
-        group_name: str,
-        category_id: int = 1,
-    ):
-        """
-        Automatiza la creación de un nuevo curso en Moodle.
-
-        Formatea el nombre visible para incluir el grupo y el nombre del docente,
-        asegurando una nomenclatura clara dentro del LMS.
-        """
-        config = MOODLE_CONFIG[institute]
-        display_name = f"{fullname} - {group_name} ({teacher_name})"
-
-        params = {
-            "wstoken": config.moodle_token,
-            "wsfunction": "core_course_create_courses",
-            "moodlewsrestformat": "json",
-            "courses[0][fullname]": display_name,
-            "courses[0][shortname]": f"{shortname}_{group_name}",
-            "courses[0][categoryid]": category_id,
-            "courses[0][idnumber]": group_name,
-            "courses[0][summary]": f"Docente: {teacher_name}",
-        }
-
-        result = await make_moodle_request(
-            url=config.moodle_url,
-            params=params,
-            institute=institute,
-        )
-
-        if not result["success"]:
-            return SimpleNamespace(course=None, error=result["error_message"])
-
-        # Retorna los datos del curso recién creado (incluyendo el nuevo ID)
-        return SimpleNamespace(course=result["data"][0], error=None)
