@@ -26,18 +26,27 @@ class EnvironmentConfigs(BaseSettings):
     MOODLE_TOKEN_CIENCIAS: str = ""
     MOODLE_TOKEN_INGENIERIA: str = ""
 
-    # Lista de administradores para el instituto de Ingeniería
-    PRINCIPAL_ADMINS: str = ""
-    CUANTICO_ADMINS: str = ""
-    CIENCIAS_ADMINS: str = ""
-    INGENIERIA_ADMINS: str = ""
-
     # Configuración del servidor de correo saliente (SMTP)
     SMTP_HOST: str = "smtp.titan.email"
     SMTP_PORT: int = 587
     SMTP_USER: str = "aramirez@solucionesatd.com"
     SMTP_PASS: str = ""
     FROM_ADDRESS: str = "aramirez@solucionesatd.com"
+
+    # Variable de entorno para controlar el registro de rutas temporales (Temp Module)
+    APP_ENV: str = "production"
+
+    @field_validator("APP_ENV")
+    @classmethod
+    def validate_app_env(cls, v):
+        """Normaliza y valida el entorno de ejecución."""
+        normalized = v.strip().lower()
+        valid_envs = {"development", "testing", "production"}
+        if normalized not in valid_envs:
+            raise ValueError(
+                "APP_ENV debe ser uno de: development, testing, production"
+            )
+        return normalized
 
     @field_validator(
         "PRINCIPAL_ADMIN_CLIENT_SECRET",

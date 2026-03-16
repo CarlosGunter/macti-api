@@ -50,7 +50,10 @@ class TeacherRequestSchema(AccountBaseSchema):
     """
 
     course_full_name: str
-    groups: str | None = None
+    groups: list[str] = Field(
+        default_factory=list,
+        description="Lista de grupos a crear en Moodle. Puede estar vacía.",
+    )
     course_id: int | None = Field(
         None,
         ge=0,

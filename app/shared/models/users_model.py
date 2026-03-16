@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import EmailStr
 from sqlalchemy import DateTime, Enum, Integer, String, Uuid
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -74,6 +74,11 @@ class UserAccounts(Base):
     verification_tokens: Mapped[list["VerificationToken"]] = relationship(
         "VerificationToken", back_populates="account", cascade="all, delete-orphan"
     )
+
+    @validates("email")
+    def email_must_be_lowercase(self, _k, value) -> str:
+        """Valida que el correo electrónico se almacene en minúsculas."""
+        return value.lower() if isinstance(value, str) else value
 
     def __repr__(self):
         """Genera una cadena descriptiva para depuración y logs."""

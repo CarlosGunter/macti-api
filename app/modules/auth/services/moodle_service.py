@@ -2,7 +2,7 @@
 Service for interacting with Moodle LMS API
 """
 
-import httpx
+from types import SimpleNamespace
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
@@ -140,29 +140,20 @@ class MoodleService:
             "userids[0]": str(user_id),
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, params=params, data=data)
-            response.raise_for_status()
-            result = response.json()
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            data=data,
+            institute=institute,
+        )
 
-        print("DEBUG Moodle response (delete_user):", result)
-
-        if isinstance(result, dict) and "exception" in result:
-            raise Exception(f"Error deleting user in Moodle: {result}")
+        if not result_response["success"]:
+            return {
+                "deleted": False,
+                "error": result_response["error_message"],
+            }
 
         return {"deleted": True, "user_id": user_id}
-
-    @staticmethod
-    async def create_course(institute, fullname, teacher_name, group_name):
-        """
-        Puentee al servicio base para no repetir la lógica del request.
-        """
-        return await BaseMoodleService.create_course(
-            institute=institute,
-            fullname=fullname,
-            teacher_name=teacher_name,
-            group_name=group_name,
-        )
 
     @staticmethod
     async def get_user_roles(
@@ -187,3 +178,81 @@ class MoodleService:
         list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
 
         return list_roles
+
+    @staticmethod
+    async def get_admins(institute: InstitutesEnum):
+        """
+        Función auxiliar para obtener la lista de emails de administradores de un instituto.
+        """
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
+
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "local_sitemanagers_get_site_managers",
+            "moodlewsrestformat": "json",
+        }
+
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            institute=institute,
+        )
+        if not result_response["success"]:
+            return SimpleNamespace(
+                success=False,
+                error_message=result_response["error_message"],
+                admins=[],
+            )
+
+        return SimpleNamespace(
+            success=True,
+            error_message=None,
+            admins=result_response.get("data", []),
+        )
+
+    @staticmethod
+    async def create_course(
+        institute: InstitutesEnum,
+        fullname: str,
+        teacher_name: str,
+        group_name: str,
+        shortname: str,
+        category_id: int = 1,
+    ):
+        """
+        Automatiza la creación de un nuevo curso en Moodle.
+        Genera el shortname automáticamente antes de realizar la petición.
+        """
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
+
+        display_name = f"{fullname} - {group_name} ({teacher_name})"
+
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "core_course_create_courses",
+            "moodlewsrestformat": "json",
+        }
+
+        data = {
+            "courses[0][fullname]": display_name,
+            "courses[0][shortname]": shortname,
+            "courses[0][categoryid]": category_id,
+            "courses[0][idnumber]": group_name,
+            "courses[0][summary]": f"Docente: {teacher_name}",
+            "courses[0][format]": "topics",
+        }
+
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            data=data,
+            institute=institute,
+        )
+
+        if not result_response["success"]:
+            return SimpleNamespace(course=None, error=result_response["error_message"])
+
+        # Moodle retorna una lista; extraemos el primer curso creado
+        return SimpleNamespace(course=result_response["data"][0], error=None)
