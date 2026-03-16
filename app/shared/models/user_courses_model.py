@@ -37,6 +37,7 @@ class UserCourses(Base):
 
     # Metadatos del curso solicitado
     course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+
     groups: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Estado de la solicitud para este curso específico
@@ -53,4 +54,5 @@ class UserCourses(Base):
 
     def __repr__(self):
         """Retorna una representación legible del objeto de curso por usuario."""
+
         return f"<UserCourse(course='{self.course_full_name}', status='{self.status.value}')>"

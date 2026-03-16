@@ -18,8 +18,6 @@ from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 
-from .user_courses_model import UserCourses
-
 if TYPE_CHECKING:
     from app.shared.models.user_courses_model import UserCourses
     from app.shared.models.verification_tokens_model import VerificationToken
@@ -68,6 +66,7 @@ class UserAccounts(Base):
     )
 
     # Relaciones de propiedad y ciclo de vida (Cascade)
+    # Se usa el nombre de la clase como string para resolver la carga diferida
     assigned_courses: Mapped[list["UserCourses"]] = relationship(
         "UserCourses", back_populates="owner_user", cascade="all, delete-orphan"
     )

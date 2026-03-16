@@ -5,12 +5,15 @@
 # administrativa de una cuenta y el aprovisionamiento final en Keycloak y Moodle.
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.shared.models.users_model import UserAccounts
+
+if TYPE_CHECKING:
+    from app.shared.models.users_model import UserAccounts
 
 
 class VerificationToken(Base):
