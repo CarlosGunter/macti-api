@@ -39,7 +39,7 @@ class DCMoodleConfig:
 
 MOODLE_CONFIG: dict[InstitutesEnum, DCMoodleConfig] = {
     InstitutesEnum.PRINCIPAL: DCMoodleConfig(
-        moodle_url="http://18.116.136.157:8084/webservice/rest/server.php",
+        moodle_url="https://tlapoa.lamod.unam.mx/lmsier/webservice/rest/server.php",
         moodle_token=environment.MOODLE_TOKEN_PRINCIPAL,
     ),
     InstitutesEnum.CUANTICO: DCMoodleConfig(
