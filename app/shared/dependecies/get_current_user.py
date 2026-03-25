@@ -141,7 +141,7 @@ async def get_current_user(
         )
 
         # Validación estricta del cliente originario
-        if payload.get("azp") != "next-login":
+        if payload.get("azp") not in ["next-login", "local-next-login"]:
             raise HTTPException(
                 status_code=401,
                 detail={
