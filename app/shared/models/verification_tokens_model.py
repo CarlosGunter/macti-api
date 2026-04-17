@@ -1,7 +1,8 @@
 # Módulo VerificationToken - Persistencia de Tokens de Seguridad
 #
 # Este modelo gestiona la creación y el estado de los tokens UUID enviados por
-# correo electrónico.
+# correo electrónico. Actúa como el puente de seguridad entre la aprobación
+# administrativa de una cuenta y el aprovisionamiento final en Keycloak y Moodle.
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -36,8 +37,12 @@ class VerificationToken(Base):
     # El token UUID único que se envía en el enlace de correo
     token: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
-    # Fecha de expiración del token
+    # Trazabilidad temporal para auditoría y expiración
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # Estado del token (0: Disponible, 1: Utilizado)
+    is_used: Mapped[int] = mapped_column(Integer, default=0)
 
     # Relación bidireccional con el modelo de cuentas de usuario
     user: Mapped["UserAccounts"] = relationship(
@@ -46,6 +51,4 @@ class VerificationToken(Base):
 
     def __repr__(self):
         """Representación legible para logs de depuración."""
-        return (
-            f"<VerificationToken(token='{self.token}', expires_at='{self.expires_at}')>"
-        )
+        return f"<VerificationToken(token='{self.token}', expires_at='{self.expires_at}', is_used={self.is_used})>"
