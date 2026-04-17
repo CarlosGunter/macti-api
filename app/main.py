@@ -26,9 +26,12 @@ app = FastAPI(
 
 # Configuración de CORS (Cross-Origin Resource Sharing)
 # Permite la comunicación con el Front-end de Next.js
+frontend_origin = (
+    "https://macti-frontend.vercel.app" if environment.APP_ENV != "development" else "*"
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restringir a dominios específicos en producción
+    allow_origins=[frontend_origin],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
