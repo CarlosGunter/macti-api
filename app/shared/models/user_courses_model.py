@@ -1,9 +1,7 @@
 # Módulo UserCourses - Modelo de Relación Usuario-Curso
 #
 # Este modelo define la estructura de persistencia para los detalles específicos
-# de los cursos vinculados a una solicitud de cuenta. Permite rastrear el
-# nombre completo del curso, los grupos asignados y el estado de aprobación
-# a nivel individual de curso.
+# de los cursos vinculados a una cuenta de usuario.
 
 from typing import TYPE_CHECKING
 
@@ -22,7 +20,10 @@ class UserCourses(Base):
     Representación en base de datos de los detalles académicos de una solicitud.
 
     Almacena la información necesaria para el aprovisionamiento de espacios
-    especialmente para el rol de docente, incluyendo el mapeo hacia la cuenta de usuario.
+    especialmente para el rol de docente.
+
+    Relaciones:
+        - Pertenece a un UserAccounts mediante auth_id
     """
 
     __tablename__ = "MCT_user_courses"
@@ -31,13 +32,12 @@ class UserCourses(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     # Relación con la cuenta de usuario principal (Foreign Key)
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("MCT_user_accounts.id"), nullable=False
+    auth_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("MCT_auth.id"), nullable=False
     )
 
     # Metadatos del curso solicitado
     course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
-
     groups: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Estado de la solicitud para este curso específico
@@ -47,12 +47,11 @@ class UserCourses(Base):
         nullable=False,
     )
 
-    # Relación inversa hacia el modelo de cuenta de usuario
-    owner_user: Mapped["UserAccounts"] = relationship(
+    # Relación inversa hacia el modelo de cuentas de usuario
+    user: Mapped["UserAccounts"] = relationship(
         "UserAccounts", back_populates="assigned_courses"
     )
 
     def __repr__(self):
         """Retorna una representación legible del objeto de curso por usuario."""
-
         return f"<UserCourse(course='{self.course_full_name}', status='{self.status.value}')>"

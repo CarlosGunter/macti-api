@@ -8,7 +8,7 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.models.users_model import AccountStatusEnum
+from app.shared.enums.status_enum import AccountStatusEnum
 
 
 class AccountBaseSchema(BaseModel):
