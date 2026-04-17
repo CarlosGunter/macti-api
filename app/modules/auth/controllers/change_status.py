@@ -222,7 +222,7 @@ class ChangeStatusController:
             import traceback
 
             print("=" * 60)
-            print("🔥 ERROR COMPLETO:")
+            print("ERROR COMPLETO:")
             traceback.print_exc()
             print("=" * 60)
             raise HTTPException(

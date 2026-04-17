@@ -2,7 +2,6 @@
 # Coordina la creación de usuarios en Keycloak y Moodle, además de la
 # inscripción a cursos y la limpieza de tokens de verificación.
 
-from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -88,7 +87,7 @@ class CreateAccountController:
         # Asignación segura del UUID de Keycloak
         kc_user_id = kc_result.get("user_id")
         if kc_user_id:
-            account_request.kc_id = UUID(str(kc_user_id))
+            account_request.kc_id = str(kc_user_id)
 
         # 3. Moodle - Gestión de Curso y Usuario
         current_course_id = account_request.course_id
@@ -98,7 +97,7 @@ class CreateAccountController:
             course_detail = (
                 db.query(UserCourses)
                 .filter(
-                    UserCourses.user_id == account_request.id,
+                    UserCourses.auth_id == account_request.id,
                     UserCourses.status == AccountStatusEnum.PENDING,
                 )
                 .first()
@@ -133,7 +132,7 @@ class CreateAccountController:
                         },
                     )
 
-                # Actualizamos el ID local con el ID real de Moodle (ej. 105)
+                # Actualizamos el ID local con el ID real de Moodle
                 if moodle_course_res.course and "id" in moodle_course_res.course:
                     current_course_id = moodle_course_res.course["id"]
                     account_request.course_id = current_course_id
@@ -203,7 +202,7 @@ class CreateAccountController:
         course_record = (
             db.query(UserCourses)
             .filter(
-                UserCourses.user_id == account_request.id,
+                UserCourses.auth_id == account_request.id,
                 UserCourses.status == AccountStatusEnum.PENDING,
             )
             .first()
@@ -217,7 +216,7 @@ class CreateAccountController:
 
         token_record = (
             db.query(VerificationToken)
-            .filter(VerificationToken.account_id == account_request.id)
+            .filter(VerificationToken.auth_id == account_request.id)
             .first()
         )
         if token_record:
