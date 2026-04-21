@@ -1,7 +1,8 @@
 # Módulo UserCourses - Modelo de Relación Usuario-Curso
 #
 # Este modelo define la estructura de persistencia para los detalles específicos
-# de los cursos vinculados a una cuenta de usuario.
+# de los cursos vinculados a una cuenta de usuario. Permite rastrear el
+# nombre completo del curso, los grupos asignados y el estado de aprobación.
 
 from typing import TYPE_CHECKING
 
@@ -18,40 +19,43 @@ if TYPE_CHECKING:
 class UserCourses(Base):
     """
     Representación en base de datos de los detalles académicos de una solicitud.
-
     Almacena la información necesaria para el aprovisionamiento de espacios
     especialmente para el rol de docente.
 
-    Relaciones:
-        - Pertenece a un UserAccounts mediante auth_id
+    Tabla: MCT_user_courses (según imagen aprobada)
     """
 
     __tablename__ = "MCT_user_courses"
 
-    # Identificador único del registro de detalle
+    # ========== IDENTIFICACIÓN PRIMARIA ==========
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    # Relación con la cuenta de usuario principal (Foreign Key)
+    # ========== RELACIÓN CON USUARIO ==========
+    # Foreign Key a MCT_auth.id
     auth_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("MCT_auth.id"), nullable=False
     )
 
-    # Metadatos del curso solicitado
+    # ========== METADATOS DEL CURSO ==========
+    # Nombre completo del curso solicitado
     course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Grupos solicitados, almacenados como string separado por comas
+    # Ejemplo: "G1,G2,G3"
     groups: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    # Estado de la solicitud para este curso específico
+    # ========== ESTADO DE LA SOLICITUD ==========
     status: Mapped[AccountStatusEnum] = mapped_column(
         Enum(AccountStatusEnum, name="account_status_enum"),
         default=AccountStatusEnum.PENDING,
         nullable=False,
     )
 
-    # Relación inversa hacia el modelo de cuentas de usuario
+    # ========== RELACIÓN INVERSA ==========
     user: Mapped["UserAccounts"] = relationship(
         "UserAccounts", back_populates="assigned_courses"
     )
 
     def __repr__(self):
-        """Retorna una representación legible del objeto de curso por usuario."""
+        """Retorna una representación legible del objeto."""
         return f"<UserCourse(course='{self.course_full_name}', status='{self.status.value}')>"
