@@ -5,8 +5,8 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.modules.auth.services.kc_service import KeycloakService
-from app.modules.auth.services.moodle_service import MoodleService
+from app.modules.register.services.kc_service import KeycloakService
+from app.modules.register.services.moodle_service import MoodleService
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum

@@ -9,8 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 
 from app.core.database import get_db
-from app.modules.auth.services.kc_service import KeycloakService
-from app.modules.auth.services.moodle_service import MoodleService as AuthMoodleService
+from app.modules.register.services.kc_service import KeycloakService
+from app.modules.register.services.moodle_service import (
+    MoodleService as RegisterMoodleService,
+)
 from app.shared.dependecies.get_current_user import get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.models.users_model import UserAccounts
@@ -123,4 +125,4 @@ async def list_manager_accounts(
     ),
 ):
     """Endpoint de prueba para listar cuentas de administradores por instituto."""
-    return await AuthMoodleService.get_admins(institute=institute)
+    return await RegisterMoodleService.get_admins(institute=institute)
