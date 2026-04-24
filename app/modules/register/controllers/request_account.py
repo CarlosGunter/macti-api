@@ -50,12 +50,21 @@ class RequestAccountController:
             .one_or_none()
         )
 
-        if existing_request is not None:
+        if existing_request is None:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "error_code": "EMAIL_EXISTENTE",
                     "message": "El correo ya tiene una solicitud registrada en este instituto.",
+                },
+            )
+
+        if existing_request.status == AccountStatusEnum.REJECTED:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "SOLICITUD_RECHAZADA",
+                    "message": "Tu solicitud anterior fue rechazada. Por favor, contacta al administrador para más información.",
                 },
             )
 
