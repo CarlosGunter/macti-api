@@ -47,7 +47,7 @@ class RequestAccountController:
                 UserAccounts.email == data.email,
                 UserAccounts.institute == data.institute,
             )
-            .first()
+            .one_or_none()
         )
 
         if existing_request is not None:
