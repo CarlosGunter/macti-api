@@ -7,6 +7,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.shared.models.user_courses_model
+import app.shared.models.user_profiles_model
+import app.shared.models.users_model
+import app.shared.models.verification_tokens_model
 from app.core.database import Base, engine
 from app.core.environment import environment
 from app.modules.auth.routes import router as auth_router
@@ -14,7 +18,6 @@ from app.modules.courses.routes import router as courses_router
 from app.modules.temp.routes import router as temp_router
 
 # Inicialización de la persistencia: Crea las tablas si no existen al arrancar
-# Nota: En entornos de producción avanzados se recomienda usar Alembic para migraciones.
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -23,9 +26,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-
-# Configuración de CORS (Cross-Origin Resource Sharing)
-# Permite la comunicación con el Front-end de Next.js
+# Configuración de CORS
 frontend_origin = (
     "https://macti-frontend.vercel.app" if environment.APP_ENV != "development" else "*"
 )
@@ -44,10 +45,9 @@ async def read_root():
     return {"Inicio": "MACTI API - Sistema en línea"}
 
 
-# Registro de rutas modulares (Routing)
+# Registro de rutas modulares
 app.include_router(auth_router)
 app.include_router(courses_router)
 
-# Rutas temporales para desarrollo: Solo se incluyen si APP_ENV=development
 if environment.APP_ENV == "development":
     app.include_router(temp_router)

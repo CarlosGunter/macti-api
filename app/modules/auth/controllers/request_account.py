@@ -1,4 +1,5 @@
 # Módulo RequestAccountController - Captura y Validación de Solicitudes
+#
 # Este controlador es la puerta de entrada para los nuevos usuarios en el sistema.
 # Maneja la lógica inicial de registro para Alumnos y Docentes, validando duplicados
 # y generando códigos de identificación interna (Subjects) para personal académico.
@@ -29,7 +30,16 @@ class RequestAccountController:
     ):
         """
         Punto de entrada principal para registrar una solicitud de cuenta.
+
+        Args:
+            role: ALUMNO o DOCENTE
+            data: Datos de la solicitud (varía según el rol)
+            db: Sesión de base de datos
+
+        Returns:
+            dict: Mensaje de éxito
         """
+        # Si es docente, mostramos un preview del código generado en consola
         if role == AccountRoleEnum.DOCENTE and isinstance(data, TeacherRequestSchema):
             RequestAccountController._print_teacher_subject_request(data)
 
@@ -53,7 +63,10 @@ class RequestAccountController:
             )
 
         try:
-            # 2. Crear el registro base de la cuenta
+            # Si course_id es None, lo ponemos como 0 (indica creación de curso nuevo)
+            course_id_value = data.course_id if data.course_id else 0
+
+            # 2. Crear el registro base de la cuenta en MCT_auth
             db_account_request = UserAccounts(
                 name=data.name,
                 last_name=data.last_name,
@@ -61,27 +74,29 @@ class RequestAccountController:
                 institute=data.institute,
                 role=role,
                 status=AccountStatusEnum.PENDING,
-                course_id=data.course_id,
+                course_id=course_id_value,
             )
 
             db.add(db_account_request)
-            db.flush()
+            db.flush()  # Para obtener el ID generado sin hacer commit
 
-            # 3. Registro de detalles adicionales si es docente
+            # 3. Si es docente, guardar detalles del curso en MCT_user_courses
             if role == AccountRoleEnum.DOCENTE and isinstance(
                 data, TeacherRequestSchema
             ):
-                course_name = data.course_full_name
                 group_info = data.groups
+                # Guardamos los grupos como string separado por comas: "G1,G2,G3"
+                grupos_str = ",".join(group_info) if group_info else None
 
                 detalles_curso = UserCourses(
-                    user_id=db_account_request.id,
-                    course_full_name=course_name,
-                    groups=",".join(group_info) if group_info else None,
+                    auth_id=db_account_request.id,  # FK al usuario recién creado
+                    course_full_name=data.course_full_name,
+                    groups=grupos_str,
                     status=AccountStatusEnum.PENDING,
                 )
                 db.add(detalles_curso)
 
+            # 4. Confirmar todo en la base de datos
             db.commit()
             db.refresh(db_account_request)
 
@@ -113,23 +128,54 @@ class RequestAccountController:
     def _print_teacher_subject_request(data: TeacherRequestSchema):
         """
         Genera una representación visual en consola del curso solicitado.
+        Ejemplo de salida:
+        ════════════════════════════════════════════════════════════
+        SOLICITUD DE CREACIÓN DE ESPACIO (DOCENTE)
+        CÓDIGO GENERADO (SUBJECT): PRI-DDJ-A257
+        CURSO SOLICITADO: Desarrollo de juegos
+        GRUPOS SOLICITADOS: ['A257', 'B258']
+        INSTITUTO: principal
+        ════════════════════════════════════════════════════════════
         """
         try:
+            # Prefijo del instituto (3 primeras letras en mayúscula)
             inst_prefix = str(data.institute.value)[:3].upper()
 
+            # Iniciales del curso (primeras letras de cada palabra)
             words = data.course_full_name.split()
             if len(words) >= 2:
                 course_initials = "".join([word[0] for word in words[:3]]).upper()
             else:
                 course_initials = data.course_full_name[:3].upper()
 
-            group = str(data.groups).upper() if data.groups else "0"
+            # Obtener el primer grupo para el código
+            if data.groups:
+                if isinstance(data.groups, list):
+                    group = data.groups[0] if data.groups else "0"
+                else:
+                    group = str(data.groups)
+            else:
+                group = "0"
+
+            # Limpiar caracteres extraños (corchetes, comillas)
+            group = (
+                str(group)
+                .replace("[", "")
+                .replace("]", "")
+                .replace("'", "")
+                .replace('"', "")
+                .strip()
+            )
+
+            # Código completo: PRI-DDJ-A257
             subject_code = f"{inst_prefix}-{course_initials}-{group}"
 
+            # Mostrar en consola
             print("\n" + "═" * 60)
             print("SOLICITUD DE CREACIÓN DE ESPACIO (DOCENTE)")
             print(f"CÓDIGO GENERADO (SUBJECT): {subject_code}")
             print(f"CURSO SOLICITADO: {data.course_full_name}")
+            print(f"GRUPOS SOLICITADOS: {data.groups}")
             print(f"INSTITUTO: {data.institute.value}")
             print("═" * 60 + "\n")
 
