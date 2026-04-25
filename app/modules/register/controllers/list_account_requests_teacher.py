@@ -8,7 +8,7 @@ from sqlalchemy import case, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.modules.auth.services.moodle_service import MoodleService
+from app.modules.register.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum

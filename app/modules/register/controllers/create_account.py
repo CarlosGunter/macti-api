@@ -3,10 +3,10 @@
 # inscripción a cursos, creación de grupos y limpieza de tokens de verificación.
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.modules.auth.services.kc_service import KeycloakService
-from app.modules.auth.services.moodle_service import MoodleService
+from app.modules.register.services.kc_service import KeycloakService
+from app.modules.register.services.moodle_service import MoodleService
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
@@ -37,23 +37,38 @@ class CreateAccountController:
         1. Valida que la solicitud exista y esté en estado APPROVED.
         2. Crea el usuario en Keycloak (o recupera su ID si ya existe).
         3. Si es docente y course_id == 0:
-           a. Crea UN CURSO POR CADA GRUPO en Moodle.
-           b. Inscribe al docente en cada curso creado.
+            a. Crea UN CURSO POR CADA GRUPO en Moodle.
+            b. Inscribe al docente en cada curso creado.
         4. Si es alumno, inscribe al alumno en el curso existente.
         5. Actualiza estados en BD local y elimina tokens temporales.
         """
 
         # ========== 1. VALIDACIÓN DE LA SOLICITUD ==========
         account_request = (
-            db.query(UserAccounts).filter(UserAccounts.id == data.user_id).first()
+            db.query(UserAccounts)
+            .filter(UserAccounts.id == data.user_id)
+            .options(joinedload(UserAccounts.verification_tokens))
+            .one_or_none()
         )
 
-        if not account_request:
+        if account_request is None:
             raise HTTPException(
                 status_code=404,
                 detail={
                     "error_code": "NO_ENCONTRADO",
                     "message": "Solicitud no encontrada",
+                },
+            )
+
+        if (
+            account_request.verification_tokens is None
+            or len(account_request.verification_tokens) == 0
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "TOKEN_NO_ENCONTRADO",
+                    "message": "No se encontró un token de verificación asociado a esta solicitud",
                 },
             )
 

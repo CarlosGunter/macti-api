@@ -2,7 +2,7 @@
 #
 # Este módulo inicializa la aplicación FastAPI, configura los middlewares de
 # seguridad (CORS), gestiona la creación automática del esquema de base de datos
-# y orquesta la inclusión de los diferentes módulos de negocio (Auth, Courses, Temp).
+# y orquesta la inclusión de los diferentes módulos de negocio (Register, Courses, Temp).
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,8 +13,8 @@ import app.shared.models.users_model
 import app.shared.models.verification_tokens_model
 from app.core.database import Base, engine
 from app.core.environment import environment
-from app.modules.auth.routes import router as auth_router
 from app.modules.courses.routes import router as courses_router
+from app.modules.register.routes import router as register_router
 from app.modules.temp.routes import router as temp_router
 
 # Inicialización de la persistencia: Crea las tablas si no existen al arrancar
@@ -46,7 +46,7 @@ async def read_root():
 
 
 # Registro de rutas modulares
-app.include_router(auth_router)
+app.include_router(register_router)
 app.include_router(courses_router)
 
 if environment.APP_ENV == "development":

@@ -39,9 +39,6 @@ class RequestAccountController:
         Returns:
             dict: Mensaje de éxito
         """
-        # Si es docente, mostramos un preview del código generado en consola
-        if role == AccountRoleEnum.DOCENTE and isinstance(data, TeacherRequestSchema):
-            RequestAccountController._print_teacher_subject_request(data)
 
         # 1. Verificar si ya existe una solicitud para este correo e instituto
         existing_request = (
@@ -50,8 +47,17 @@ class RequestAccountController:
                 UserAccounts.email == data.email,
                 UserAccounts.institute == data.institute,
             )
-            .first()
+            .one_or_none()
         )
+
+        if existing_request and existing_request.status == AccountStatusEnum.REJECTED:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "SOLICITUD_RECHAZADA",
+                    "message": "Tu solicitud anterior fue rechazada. Por favor, contacta al administrador para más información.",
+                },
+            )
 
         if existing_request is not None:
             raise HTTPException(
@@ -123,61 +129,3 @@ class RequestAccountController:
                     "message": "Ocurrió un error inesperado en el servidor",
                 },
             ) from None
-
-    @staticmethod
-    def _print_teacher_subject_request(data: TeacherRequestSchema):
-        """
-        Genera una representación visual en consola del curso solicitado.
-        Ejemplo de salida:
-        ════════════════════════════════════════════════════════════
-        SOLICITUD DE CREACIÓN DE ESPACIO (DOCENTE)
-        CÓDIGO GENERADO (SUBJECT): PRI-DDJ-A257
-        CURSO SOLICITADO: Desarrollo de juegos
-        GRUPOS SOLICITADOS: ['A257', 'B258']
-        INSTITUTO: principal
-        ════════════════════════════════════════════════════════════
-        """
-        try:
-            # Prefijo del instituto (3 primeras letras en mayúscula)
-            inst_prefix = str(data.institute.value)[:3].upper()
-
-            # Iniciales del curso (primeras letras de cada palabra)
-            words = data.course_full_name.split()
-            if len(words) >= 2:
-                course_initials = "".join([word[0] for word in words[:3]]).upper()
-            else:
-                course_initials = data.course_full_name[:3].upper()
-
-            # Obtener el primer grupo para el código
-            if data.groups:
-                if isinstance(data.groups, list):
-                    group = data.groups[0] if data.groups else "0"
-                else:
-                    group = str(data.groups)
-            else:
-                group = "0"
-
-            # Limpiar caracteres extraños (corchetes, comillas)
-            group = (
-                str(group)
-                .replace("[", "")
-                .replace("]", "")
-                .replace("'", "")
-                .replace('"', "")
-                .strip()
-            )
-
-            # Código completo: PRI-DDJ-A257
-            subject_code = f"{inst_prefix}-{course_initials}-{group}"
-
-            # Mostrar en consola
-            print("\n" + "═" * 60)
-            print("SOLICITUD DE CREACIÓN DE ESPACIO (DOCENTE)")
-            print(f"CÓDIGO GENERADO (SUBJECT): {subject_code}")
-            print(f"CURSO SOLICITADO: {data.course_full_name}")
-            print(f"GRUPOS SOLICITADOS: {data.groups}")
-            print(f"INSTITUTO: {data.institute.value}")
-            print("═" * 60 + "\n")
-
-        except Exception as e:
-            print(f"DEBUG LOG: Error al generar el preview del subject: {e}")

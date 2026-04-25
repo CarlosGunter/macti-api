@@ -5,7 +5,8 @@
 # que los datos de entrada cumplan con los tipos requeridos y para formatear
 # las respuestas JSON de salida de manera consistente.
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.status_enum import AccountStatusEnum
@@ -120,6 +121,7 @@ class CreateAccountSchema(BaseModel):
 
     user_id: int
     new_password: str
+    token: UUID4
 
 
 class CreateAccountResponse(BaseModel):
