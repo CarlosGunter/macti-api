@@ -13,7 +13,7 @@ from app.core.database import Base
 from app.shared.enums.status_enum import AccountStatusEnum
 
 if TYPE_CHECKING:
-    from app.shared.models.users_model import UserAccounts
+    from app.shared.models.users_model import Auth
 
 
 class UserCourses(Base):
@@ -33,7 +33,7 @@ class UserCourses(Base):
     # ========== RELACIÓN CON USUARIO ==========
     # Foreign Key a MCT_auth.id
     auth_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("MCT_auth.id"), nullable=False
+        Integer, ForeignKey("MCT_auth.id", ondelete="CASCADE"), nullable=False
     )
 
     # ========== METADATOS DEL CURSO ==========
@@ -52,9 +52,8 @@ class UserCourses(Base):
     )
 
     # ========== RELACIÓN INVERSA ==========
-    user: Mapped["UserAccounts"] = relationship(
-        "UserAccounts", back_populates="assigned_courses"
-    )
+    # Relación con Auth (antes UserAccounts)
+    auth: Mapped["Auth"] = relationship("Auth", back_populates="assigned_courses")
 
     def __repr__(self):
         """Retorna una representación legible del objeto."""
