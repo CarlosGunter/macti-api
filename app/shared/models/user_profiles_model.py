@@ -11,7 +11,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 
 if TYPE_CHECKING:
@@ -45,9 +44,6 @@ class UserProfile(Base):
     # Información personal del usuario
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    institute: Mapped[InstitutesEnum] = mapped_column(
-        Enum(InstitutesEnum, name="institutes_enum"), nullable=False
-    )
 
     # ========== ESTADO DE LA CUENTA ==========
     # PENDING -> APPROVED -> CREATED / REJECTED

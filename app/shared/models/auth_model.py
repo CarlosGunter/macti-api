@@ -8,11 +8,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 from pydantic import EmailStr
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from app.core.database import Base
+from app.shared.enums.institutes_enum import InstitutesEnum
 
 # TYPE_CHECKING evita importaciones circulares en tiempo de ejecución
 if TYPE_CHECKING:
@@ -36,6 +37,9 @@ class Auth(Base):
     # ========== DATOS BÁSICOS DEL USUARIO ==========
     email: Mapped[EmailStr] = mapped_column(
         String, nullable=False, unique=True, index=True
+    )
+    institute: Mapped[InstitutesEnum] = mapped_column(
+        Enum(InstitutesEnum, name="institutes_enum"), nullable=False
     )
 
     # ========== ESTADO DE LA CUENTA ==========
