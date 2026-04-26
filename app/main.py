@@ -9,9 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 from app.core.environment import environment
-from app.modules.courses.routes import router as courses_router
 from app.modules.register.routes import router as register_router
-from app.modules.temp.routes import router as temp_router
 from app.shared import models as _models  # noqa: F401
 
 # Inicialización de la persistencia: Crea las tablas si no existen al arrancar
@@ -44,7 +42,7 @@ async def read_root():
 
 # Registro de rutas modulares
 app.include_router(register_router)
-app.include_router(courses_router)
+# app.include_router(courses_router)
 
-if environment.APP_ENV == "development":
-    app.include_router(temp_router)
+# if environment.APP_ENV == "development":
+#     app.include_router(temp_router)
