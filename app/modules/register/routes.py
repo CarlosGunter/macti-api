@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.shared.enums.role_enum import AccountRoleEnum
 
-from .controllers.request_account import RequestAccountController
+from .controllers.account_requests import AccountRequestsController
 from .schemas import (
     AccountRequestResponse,
     StudentRequestSchema,
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/register", tags=["Registro"])
 async def request_student_account(
     body_info: StudentRequestSchema, db: Session = Depends(get_db)
 ):
-    return await RequestAccountController.request_account(
+    return await AccountRequestsController.request_account(
         role=AccountRoleEnum.ALUMNO, data=body_info, db=db
     )
 
@@ -44,7 +44,7 @@ async def request_student_account(
 async def request_teacher_account(
     body_info: TeacherRequestSchema, db: Session = Depends(get_db)
 ):
-    return await RequestAccountController.request_account(
+    return await AccountRequestsController.request_account(
         role=AccountRoleEnum.DOCENTE, data=body_info, db=db
     )
 

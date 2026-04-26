@@ -18,7 +18,7 @@ from app.shared.enums.role_enum import AccountRoleEnum
 from ..schemas import StudentRequestSchema, TeacherRequestSchema
 
 
-class RequestAccountController:
+class AccountRequestsController:
     """
     Controlador encargado de procesar las peticiones iniciales de registro de cuenta.
     Incluye lógica de validación de correo único por instituto y generación de logs.
@@ -44,9 +44,9 @@ class RequestAccountController:
         repository = RequestAccountRepository(db)
 
         try:
-            RequestAccountController._validate_no_duplicate_request(repository, data)
-            await RequestAccountController._validate_no_existing_keycloak_user(data)
-            RequestAccountController._create_request(repository, role, data)
+            AccountRequestsController._validate_no_duplicate_request(repository, data)
+            await AccountRequestsController._validate_no_existing_keycloak_user(data)
+            AccountRequestsController._create_request(repository, role, data)
             return {"message": "Solicitud de cuenta registrada correctamente."}
         except HTTPException:
             repository.rollback()
