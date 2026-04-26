@@ -12,6 +12,7 @@ from app.core.environment import environment
 from app.modules.courses.routes import router as courses_router
 from app.modules.register.routes import router as register_router
 from app.modules.temp.routes import router as temp_router
+from app.shared import models as _models  # noqa: F401
 
 # Inicialización de la persistencia: Crea las tablas si no existen al arrancar
 Base.metadata.create_all(bind=engine)
