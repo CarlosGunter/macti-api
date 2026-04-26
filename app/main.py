@@ -7,10 +7,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import app.shared.models.user_courses_model
-import app.shared.models.user_profiles_model
-import app.shared.models.users_model
-import app.shared.models.verification_tokens_model
 from app.core.database import Base, engine
 from app.core.environment import environment
 from app.modules.courses.routes import router as courses_router

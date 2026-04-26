@@ -13,19 +13,19 @@ from app.core.database import Base
 from app.shared.enums.status_enum import AccountStatusEnum
 
 if TYPE_CHECKING:
-    from app.shared.models.users_model import Auth
+    from app.shared.models.auth_model import Auth
 
 
-class UserCourses(Base):
+class TeacherCourseRequest(Base):
     """
     Representación en base de datos de los detalles académicos de una solicitud.
     Almacena la información necesaria para el aprovisionamiento de espacios
     especialmente para el rol de docente.
 
-    Tabla: MCT_user_courses (según imagen aprobada)
+    Tabla: MCT_teachers_courses (según imagen aprobada)
     """
 
-    __tablename__ = "MCT_user_courses"
+    __tablename__ = "MCT_teachers_courses"
 
     # ========== IDENTIFICACIÓN PRIMARIA ==========
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -57,4 +57,4 @@ class UserCourses(Base):
 
     def __repr__(self):
         """Retorna una representación legible del objeto."""
-        return f"<UserCourse(course='{self.course_full_name}', status='{self.status.value}')>"
+        return f"<TeacherCourseRequest(course='{self.course_full_name}', status='{self.status.value}')>"

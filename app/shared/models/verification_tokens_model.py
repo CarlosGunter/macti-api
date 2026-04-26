@@ -14,7 +14,7 @@ from sqlalchemy.sql import func
 from app.core.database import Base
 
 if TYPE_CHECKING:
-    from app.shared.models.users_model import Auth
+    from app.shared.models.auth_model import Auth
 
 
 class VerificationToken(Base):

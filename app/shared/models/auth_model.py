@@ -17,7 +17,7 @@ from app.core.database import Base
 # TYPE_CHECKING evita importaciones circulares en tiempo de ejecución
 if TYPE_CHECKING:
     from app.shared.models.JIDs_model import JIDs
-    from app.shared.models.user_courses_model import UserCourses
+    from app.shared.models.teacher_courses_model import TeacherCourseRequest
     from app.shared.models.user_profiles_model import UserProfile
     from app.shared.models.verification_tokens_model import VerificationToken
 
@@ -64,10 +64,10 @@ class Auth(Base):
         "JIDs", back_populates="auth", uselist=False, cascade="all, delete-orphan"
     )
 
-    # Relación 1:N con UserCourses (MCT_user_courses)
+    # Relación 1:N con TeacherCourseRequest (MCT_teacher_courses)
     # Un usuario puede tener múltiples cursos solicitados
-    assigned_courses: Mapped[list["UserCourses"]] = relationship(
-        "UserCourses", back_populates="auth", cascade="all, delete-orphan"
+    assigned_courses: Mapped[list["TeacherCourseRequest"]] = relationship(
+        "TeacherCourseRequest", back_populates="auth", cascade="all, delete-orphan"
     )
 
     # Relación 1:N con VerificationToken (MCT_verification_tokens)

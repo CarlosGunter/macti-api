@@ -15,7 +15,7 @@ from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.status_enum import AccountStatusEnum
 
 if TYPE_CHECKING:
-    from app.shared.models.users_model import Auth
+    from app.shared.models.auth_model import Auth
 
 
 class UserProfile(Base):
