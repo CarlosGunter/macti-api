@@ -8,9 +8,9 @@ from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.modules.auth.services.email_service import EmailService
-from app.modules.auth.services.kc_service import KeycloakService
-from app.modules.auth.services.moodle_service import MoodleService
+from app.modules.register.services.email_service import EmailService
+from app.modules.register.services.kc_service import KeycloakService
+from app.modules.register.services.moodle_service import MoodleService
 from app.shared.enums.status_enum import AccountStatusEnum
 from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
@@ -167,7 +167,7 @@ class ChangeStatusController:
     ):
         """Limpia los datos del usuario en BD."""
         db.query(VerificationToken).filter(
-            VerificationToken.account_id == account_request.id
+            VerificationToken.auth_id == account_request.id
         ).delete(synchronize_session=False)
         if current_status == AccountStatusEnum.CREATED:
             # Eliminación de usuarios en Keycloak y Moodle por rechazo administrativo
@@ -197,7 +197,7 @@ class ChangeStatusController:
         try:
             validation = (
                 db.query(VerificationToken)
-                .filter(VerificationToken.account_id == account_id)
+                .filter(VerificationToken.auth_id == account_id)
                 .first()
             )
 
@@ -208,7 +208,7 @@ class ChangeStatusController:
                 validation.is_used = 0
             else:
                 new_val = VerificationToken(
-                    account_id=account_id,
+                    auth_id=account_id,
                     token=token,
                     created_at=ahora,
                     expires_at=expira,
@@ -219,4 +219,13 @@ class ChangeStatusController:
             return {"success": True, "token": token}
         except Exception as e:
             db.rollback()
-            return {"success": False, "error": str(e)}
+            import traceback
+
+            print("=" * 60)
+            print("ERROR COMPLETO:")
+            traceback.print_exc()
+            print("=" * 60)
+            raise HTTPException(
+                status_code=500,
+                detail={"error_code": "INTERNAL_SERVER_ERROR", "message": str(e)},
+            ) from e

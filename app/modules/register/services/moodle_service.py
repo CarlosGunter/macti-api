@@ -239,7 +239,7 @@ class MoodleService:
             "courses[0][fullname]": display_name,
             "courses[0][shortname]": shortname,
             "courses[0][categoryid]": category_id,
-            "courses[0][idnumber]": group_name,
+            "courses[0][idnumber]": shortname,
             "courses[0][summary]": f"Docente: {teacher_name}",
             "courses[0][format]": "topics",
         }
@@ -256,3 +256,57 @@ class MoodleService:
 
         # Moodle retorna una lista; extraemos el primer curso creado
         return SimpleNamespace(course=result_response["data"][0], error=None)
+
+    @staticmethod
+    async def create_group(
+        course_id: int,
+        group_name: str,
+        institute: InstitutesEnum,
+        description: str | None = None,
+    ):
+        """
+        Crea un grupo en Moodle dentro de un curso existente.
+
+        Args:
+            course_id: ID del curso en Moodle donde se creará el grupo
+            group_name: Nombre del grupo a crear
+            institute: Instituto para obtener la configuración de Moodle
+            description: Descripción opcional del grupo
+
+        Returns:
+            SimpleNamespace con 'group' (datos del grupo creado) y 'error' (mensaje de error)
+        """
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
+
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "core_group_create_groups",
+            "moodlewsrestformat": "json",
+        }
+
+        # Estructura de datos requerida por el Web Service de Moodle
+        data = {
+            "groups[0][courseid]": course_id,
+            "groups[0][name]": group_name,
+            "groups[0][description]": description or f"Grupo {group_name}",
+        }
+
+        print(
+            f"DEBUG: Creando grupo '{group_name}' en curso {course_id} ({institute.value})"
+        )
+
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            data=data,
+            institute=institute,
+        )
+
+        if not result_response["success"]:
+            return SimpleNamespace(group=None, error=result_response["error_message"])
+
+        # Moodle retorna una lista con el grupo creado
+        result = result_response["data"]
+
+        return SimpleNamespace(group=result[0] if result else None, error=None)

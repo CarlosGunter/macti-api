@@ -5,6 +5,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
 from app.shared.models.users_model import UserAccounts
@@ -27,23 +28,14 @@ class GetUserInfoController:
         2. Verifica la expiración.
         3. Localiza la cuenta de usuario vinculada.
         """
+        lookup_stage = "token"
         try:
             # 1. Búsqueda del token en la base de datos
             validation = (
                 db.query(VerificationToken)
                 .filter(VerificationToken.token == token)
-                .first()
+                .one()
             )
-
-            # Error si el token no existe en el sistema
-            if not validation:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "error_code": "TOKEN_INVALIDO",
-                        "message": "El token proporcionado no existe o es incorrecto",
-                    },
-                )
 
             # 2. Validación de vigencia (Expiración)
             expires_at = validation.expires_at
@@ -57,21 +49,12 @@ class GetUserInfoController:
                 )
 
             # 3. Recuperación de la información del usuario
+            lookup_stage = "user"
             account_request = (
                 db.query(UserAccounts)
-                .filter(UserAccounts.id == validation.account_id)
-                .first()
+                .filter(UserAccounts.id == validation.auth_id)
+                .one()
             )
-
-            # Error de integridad: Token existe pero el usuario no
-            if not account_request:
-                raise HTTPException(
-                    status_code=404,
-                    detail={
-                        "error_code": "NO_ENCONTRADO",
-                        "message": "No se encontró un usuario vinculado a este token",
-                    },
-                )
 
             # Retorno de datos para el Front-end:
             # Permite pre-llenar los campos de registro en la interfaz de usuario.
@@ -82,10 +65,43 @@ class GetUserInfoController:
                 "last_name": account_request.last_name,
                 "institute": account_request.institute,
             }
-
         except HTTPException as httpe:
             # Propagación de excepciones controladas para la API
             raise httpe
+        except NoResultFound as exc:
+            if lookup_stage == "token":
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error_code": "TOKEN_INVALIDO",
+                        "message": "El token proporcionado no existe o es incorrecto",
+                    },
+                ) from exc
+
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error_code": "NO_ENCONTRADO",
+                    "message": "No se encontró un usuario vinculado a este token",
+                },
+            ) from exc
+        except MultipleResultsFound as exc:
+            if lookup_stage == "token":
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "error_code": "MULTIPLES_TOKENS",
+                        "message": "Error de integridad: existen múltiples registros para el token proporcionado.",
+                    },
+                ) from exc
+
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "MULTIPLES_USUARIOS",
+                    "message": "Error de integridad: se encontró más de un usuario vinculado al token.",
+                },
+            ) from exc
 
         except Exception as e:
             # Manejo de errores a nivel de infraestructura o base de datos

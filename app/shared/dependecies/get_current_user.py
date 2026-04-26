@@ -14,7 +14,7 @@ from fastapi.security import HTTPBearer
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -213,6 +213,14 @@ async def get_user_moodle_id(
         db.add(sync_user)
         db.commit()
         return moodle_id
+    except MultipleResultsFound as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_code": "MULTIPLES_USUARIOS",
+                "message": "Error de integridad: se encontró más de una cuenta para el mismo kc_id.",
+            },
+        ) from exc
 
 
 async def get_moodle_id_from_web_service(

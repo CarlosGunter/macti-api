@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.controllers.get_user_info import GetUserInfoController
-from app.modules.auth.controllers.list_account_requests_teacher import (
+from app.modules.register.controllers.get_user_info import GetUserInfoController
+from app.modules.register.controllers.list_account_requests_teacher import (
     AccountRequestsTeacherController,
 )
 from app.shared.dependecies.get_current_user import get_current_user
@@ -31,8 +31,8 @@ from .schema import (
     UserInfoResponse,
 )
 
-# Definición del router con el prefijo /auth para agrupar lógica de identidad
-router = APIRouter(prefix="/auth", tags=["auth"])
+# Definición del router con el prefijo /register para agrupar lógica de registro
+router = APIRouter(prefix="/register", tags=["Registro"])
 
 
 @router.post(
