@@ -14,8 +14,8 @@ router = APIRouter(prefix="/temp", tags=["temp"])
 
 
 @router.get(
-    "/bearer-test",
-    summary="Endpoint de prueba para verificar el token Bearer",
+    "/jwt-test",
+    summary="Endpoint de prueba para verificar el token JWT Bearer y obtener información del usuario actual",
 )
 async def bearer_test(current_user=Depends(get_current_user)):
     """
