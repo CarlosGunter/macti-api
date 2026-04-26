@@ -25,7 +25,9 @@ class StudentCourseRequest(Base):
         Enum(AccountStatusEnum), nullable=False
     )
 
-    auth: Mapped["Auth"] = relationship("Auth", back_populates="moodle_courses")
+    auth: Mapped["Auth"] = relationship(
+        "Auth", back_populates="student_course_requests"
+    )
 
     def __repr__(self):
         return f"<StudentCourseRequest(auth_id={self.auth_id}, moodle_course_id={self.moodle_course_id}, status={self.status.value})>"

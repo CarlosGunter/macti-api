@@ -53,7 +53,9 @@ class TeacherCourseRequest(Base):
 
     # ========== RELACIÓN INVERSA ==========
     # Relación con Auth (antes UserAccounts)
-    auth: Mapped["Auth"] = relationship("Auth", back_populates="assigned_courses")
+    auth: Mapped["Auth"] = relationship(
+        "Auth", back_populates="teacher_course_requests"
+    )
 
     def __repr__(self):
         """Retorna una representación legible del objeto."""

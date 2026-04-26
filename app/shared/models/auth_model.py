@@ -18,6 +18,7 @@ from app.shared.enums.institutes_enum import InstitutesEnum
 # TYPE_CHECKING evita importaciones circulares en tiempo de ejecución
 if TYPE_CHECKING:
     from app.shared.models.JIDs_model import JIDs
+    from app.shared.models.student_courses_model import StudentCourseRequest
     from app.shared.models.teacher_courses_model import TeacherCourseRequest
     from app.shared.models.user_profiles_model import UserProfile
     from app.shared.models.verification_tokens_model import VerificationToken
@@ -69,9 +70,15 @@ class Auth(Base):
     )
 
     # Relación 1:N con TeacherCourseRequest (MCT_teacher_courses)
-    # Un usuario puede tener múltiples cursos solicitados
-    assigned_courses: Mapped[list["TeacherCourseRequest"]] = relationship(
+    # Un usuario puede tener múltiples solicitudes de curso como docente
+    teacher_course_requests: Mapped[list["TeacherCourseRequest"]] = relationship(
         "TeacherCourseRequest", back_populates="auth", cascade="all, delete-orphan"
+    )
+
+    # Relación 1:N con StudentCourseRequest (MCT_student_courses)
+    # Un usuario puede tener múltiples solicitudes de curso como alumno
+    student_course_requests: Mapped[list["StudentCourseRequest"]] = relationship(
+        "StudentCourseRequest", back_populates="auth", cascade="all, delete-orphan"
     )
 
     # Relación 1:N con VerificationToken (MCT_verification_tokens)
