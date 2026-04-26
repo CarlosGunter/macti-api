@@ -55,11 +55,6 @@ class TeacherRequestSchema(AccountBaseSchema):
         default_factory=list,
         description="Lista de grupos a crear en Moodle. Puede estar vacía.",
     )
-    course_id: int | None = Field(
-        None,
-        ge=0,
-        description="ID opcional. Si se omite, se procesa como creación de curso nuevo.",
-    )
 
 
 class AccountRequestResponse(BaseModel):

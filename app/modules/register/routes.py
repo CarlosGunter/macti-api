@@ -19,7 +19,7 @@ from .controllers.change_status import ChangeStatusController
 from .controllers.create_account import CreateAccountController
 from .controllers.list_account_requests import ListAccountRequestsController
 from .controllers.request_account import RequestAccountController
-from .schema import (
+from .schemas import (
     AccountRequestResponse,
     ConfirmAccountResponse,
     ConfirmAccountSchema,
