@@ -4,16 +4,18 @@
 # Maneja la lógica inicial de registro para Alumnos y Docentes, validando duplicados
 # y generando códigos de identificación interna (Subjects) para personal académico.
 
+
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.modules.register.repositories.request_account_repository import (
+    RequestAccountRepository,
+)
+from app.modules.register.services.kc_service import KeycloakService
 from app.shared.enums.role_enum import AccountRoleEnum
-from app.shared.enums.status_enum import AccountStatusEnum
-from app.shared.models.user_courses_model import UserCourses
-from app.shared.models.users_model import UserAccounts
 
-from ..schema import StudentRequestSchema, TeacherRequestSchema
+from ..schemas import StudentRequestSchema, TeacherRequestSchema
 
 
 class RequestAccountController:
@@ -23,7 +25,7 @@ class RequestAccountController:
     """
 
     @staticmethod
-    def request_account(
+    async def request_account(
         role: AccountRoleEnum,
         data: StudentRequestSchema | TeacherRequestSchema,
         db: Session,
@@ -39,93 +41,73 @@ class RequestAccountController:
         Returns:
             dict: Mensaje de éxito
         """
+        repository = RequestAccountRepository(db)
 
-        # 1. Verificar si ya existe una solicitud para este correo e instituto
-        existing_request = (
-            db.query(UserAccounts)
-            .filter(
-                UserAccounts.email == data.email,
-                UserAccounts.institute == data.institute,
-            )
-            .one_or_none()
-        )
-
-        if existing_request and existing_request.status == AccountStatusEnum.REJECTED:
+        try:
+            RequestAccountController._validate_no_duplicate_request(repository, data)
+            await RequestAccountController._validate_no_existing_keycloak_user(data)
+            RequestAccountController._create_request(repository, role, data)
+            return {"message": "Solicitud de cuenta registrada correctamente."}
+        except HTTPException:
+            repository.rollback()
+            raise  # La excepción ya está manejada
+        except SQLAlchemyError as exc:
+            repository.rollback()
+            print(f"Error de base de datos: {exc}")  # Log detallado para debugging
             raise HTTPException(
-                status_code=400,
+                status_code=500,
                 detail={
-                    "error_code": "SOLICITUD_RECHAZADA",
-                    "message": "Tu solicitud anterior fue rechazada. Por favor, contacta al administrador para más información.",
+                    "error_code": "DB_ERROR",
+                    "message": "Ocurrió un error al guardar la solicitud de cuenta.",
                 },
-            )
+            ) from exc
+        except Exception as exc:
+            repository.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "ERROR_INTERNO",
+                    "message": "Ocurrió un error inesperado al procesar la solicitud.",
+                },
+            ) from exc
+
+    @staticmethod
+    def _validate_no_duplicate_request(
+        repository: RequestAccountRepository,
+        data: StudentRequestSchema | TeacherRequestSchema,
+    ) -> None:
+        existing_request = repository.get_by_email_and_institute(
+            data.email, data.institute
+        )
 
         if existing_request is not None:
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error_code": "EMAIL_EXISTENTE",
-                    "message": "El correo ya tiene una solicitud registrada en este instituto.",
+                    "error_code": "DUPLICADO",
+                    "message": "Ya existe una solicitud para este correo e instituto",
                 },
             )
 
-        try:
-            # Si course_id es None, lo ponemos como 0 (indica creación de curso nuevo)
-            course_id_value = data.course_id if data.course_id else 0
-
-            # 2. Crear el registro base de la cuenta en MCT_auth
-            db_account_request = UserAccounts(
-                name=data.name,
-                last_name=data.last_name,
-                email=data.email,
-                institute=data.institute,
-                role=role,
-                status=AccountStatusEnum.PENDING,
-                course_id=course_id_value,
+    @staticmethod
+    async def _validate_no_existing_keycloak_user(
+        data: StudentRequestSchema | TeacherRequestSchema,
+    ) -> None:
+        if await KeycloakService.user_exists(data.email, data.institute):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "EXISTE_KEYCLOAK",
+                    "message": "Ya tienes una cuenta activa. Inicia sesión para solicitar acceso a cursos.",
+                },
             )
 
-            db.add(db_account_request)
-            db.flush()  # Para obtener el ID generado sin hacer commit
-
-            # 3. Si es docente, guardar detalles del curso en MCT_user_courses
-            if role == AccountRoleEnum.DOCENTE and isinstance(
-                data, TeacherRequestSchema
-            ):
-                group_info = data.groups
-                # Guardamos los grupos como string separado por comas: "G1,G2,G3"
-                grupos_str = ",".join(group_info) if group_info else None
-
-                detalles_curso = UserCourses(
-                    auth_id=db_account_request.id,  # FK al usuario recién creado
-                    course_full_name=data.course_full_name,
-                    groups=grupos_str,
-                    status=AccountStatusEnum.PENDING,
-                )
-                db.add(detalles_curso)
-
-            # 4. Confirmar todo en la base de datos
-            db.commit()
-            db.refresh(db_account_request)
-
-            return {"message": "Solicitud de cuenta procesada exitosamente"}
-
-        except SQLAlchemyError as e:
-            db.rollback()
-            print(f"DATABASE ERROR: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "DB_ERROR",
-                    "message": "Error interno al registrar la solicitud en la base de datos",
-                },
-            ) from None
-
-        except Exception as e:
-            db.rollback()
-            print(f"CRITICAL ERROR: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "ERROR_DESCONOCIDO",
-                    "message": "Ocurrió un error inesperado en el servidor",
-                },
-            ) from None
+    @staticmethod
+    def _create_request(
+        repository: RequestAccountRepository,
+        role: AccountRoleEnum,
+        data: StudentRequestSchema | TeacherRequestSchema,
+    ) -> None:
+        db_request = repository.create_account_request(role=role, data=data)
+        repository.commit()
+        repository.refresh(db_request)

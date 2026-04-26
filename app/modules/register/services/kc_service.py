@@ -4,6 +4,7 @@
 # diferentes Realms de forma dinámica. Se encarga de la autenticación administrativa,
 # creación, eliminación y actualización de credenciales de los usuarios.
 
+
 import httpx
 
 from app.shared.config.kc_configs import keycloak_configs
@@ -164,3 +165,24 @@ class KeycloakService:
 
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    @classmethod
+    async def user_exists(cls, email: str, institute: InstitutesEnum) -> bool:
+        """
+        Verifica la existencia de un usuario en Keycloak por su correo electrónico.
+        Útil para validar duplicados antes de intentar crear una cuenta.
+        """
+        config = keycloak_configs[institute]
+        token = await cls._get_admin_token(institute)
+
+        user_api_url = (
+            f"{config.url}/admin/realms/{config.realm}/users?email={email}&exact=true"
+        )
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                user_api_url,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            users = response.json()
+            return len(users) > 0
