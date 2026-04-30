@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.enums.role_enum import AccountRoleEnum
 
 if TYPE_CHECKING:
     from app.shared.models.auth_model import Auth
@@ -44,14 +44,7 @@ class UserProfile(Base):
     # Información personal del usuario
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-
-    # ========== ESTADO DE LA CUENTA ==========
-    # PENDING -> APPROVED -> CREATED / REJECTED
-    status: Mapped[AccountStatusEnum] = mapped_column(
-        Enum(AccountStatusEnum, name="account_status_enum"),
-        default=AccountStatusEnum.PENDING,
-        nullable=False,
-    )
+    role: Mapped[AccountRoleEnum] = mapped_column(Enum(AccountRoleEnum), nullable=False)
 
     # Auditoría
     created_at: Mapped[datetime] = mapped_column(
