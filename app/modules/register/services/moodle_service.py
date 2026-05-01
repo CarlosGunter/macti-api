@@ -2,7 +2,7 @@
 Service for interacting with Moodle LMS API
 """
 
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
@@ -11,13 +11,57 @@ from app.shared.services.moodle_client import make_moodle_request
 from app.shared.services.moodle_service import MoodleService as BaseMoodleService
 
 
+@dataclass
+class CreateUserResult:
+    created: bool
+    id: int | None = None
+    error: str | None = None
+
+
+@dataclass
+class EnrollUserResult:
+    enrolled: bool
+    user_id: int | None = None
+    course_id: int | None = None
+    error: str | None = None
+    warning: str | None = None
+
+
+@dataclass
+class DeleteUserResult:
+    deleted: bool
+    user_id: int | None = None
+    error: str | None = None
+
+
+@dataclass
+class GetAdminsResult:
+    success: bool
+    error_message: str | None = None
+    admins: list = []
+
+
+@dataclass
+class CreateCourseResult:
+    course: dict | None = None
+    error: str | None = None
+
+
+@dataclass
+class CreateGroupResult:
+    group: dict | None = None
+    error: str | None = None
+
+
 class MoodleService:
     """
     Clase estática que centraliza las operaciones de lectura y escritura en Moodle.
     """
 
     @staticmethod
-    async def create_user(user_data: dict, institute: InstitutesEnum):
+    async def create_user(
+        user_data: dict, institute: InstitutesEnum
+    ) -> CreateUserResult:
         """
         Crea un nuevo usuario en la instancia de Moodle correspondiente.
         """
@@ -50,21 +94,20 @@ class MoodleService:
         )
 
         if not result_response["success"]:
-            return {
-                "created": False,
-                "error": result_response["error_message"],
-            }
+            return CreateUserResult(
+                created=False, error=result_response["error_message"]
+            )
 
         result = result_response["data"]
 
         # Moodle retorna una lista de diccionarios con los IDs de los usuarios creados.
         # Se extrae el 'id' del primer elemento (index 0).
-        return {"created": True, "id": result[0]["id"]}
+        return CreateUserResult(created=True, id=result[0]["id"])
 
     @staticmethod
     async def enroll_user(
         user_id: int, course_id: int, institute: InstitutesEnum, role_id: int = 5
-    ):
+    ) -> EnrollUserResult:
         """
         Matricula a un usuario existente en un curso específico de Moodle con un rol dinámico.
         """
@@ -95,10 +138,10 @@ class MoodleService:
         )
 
         if not result_response["success"]:
-            return {
-                "enrolled": False,
-                "error": f"Fallo de conexión/petición: {result_response['error_message']}",
-            }
+            return EnrollUserResult(
+                enrolled=False,
+                error=f"Fallo de conexión/petición: {result_response['error_message']}",
+            )
 
         result = result_response["data"]
 
@@ -109,22 +152,22 @@ class MoodleService:
                 print(
                     f"AVISO: Usuario {user_id} matriculado, pero Moodle no pudo enviar el email de aviso."
                 )
-                return {
-                    "user_id": user_id,
-                    "course_id": course_id,
-                    "enrolled": True,
-                    "warning": "Matrícula exitosa con error de notificación SMTP en Moodle",
-                }
+                return EnrollUserResult(
+                    user_id=user_id,
+                    course_id=course_id,
+                    enrolled=True,
+                    warning="Matrícula exitosa con error de notificación SMTP en Moodle",
+                )
 
-            return {
-                "enrolled": False,
-                "error": f"Error de Moodle: {result.get('message', 'Desconocido')}",
-            }
+            return EnrollUserResult(
+                enrolled=False,
+                error=f"Error de Moodle: {result.get('message', 'Desconocido')}",
+            )
 
-        return {"user_id": user_id, "course_id": course_id, "enrolled": True}
+        return EnrollUserResult(user_id=user_id, course_id=course_id, enrolled=True)
 
     @staticmethod
-    async def delete_user(user_id, institute: InstitutesEnum):
+    async def delete_user(user_id, institute: InstitutesEnum) -> DeleteUserResult:
         """
         Delete a user in Moodle using the REST API.
         """
@@ -148,12 +191,12 @@ class MoodleService:
         )
 
         if not result_response["success"]:
-            return {
-                "deleted": False,
-                "error": result_response["error_message"],
-            }
+            return DeleteUserResult(
+                deleted=False,
+                error=result_response["error_message"],
+            )
 
-        return {"deleted": True, "user_id": user_id}
+        return DeleteUserResult(deleted=True, user_id=user_id)
 
     @staticmethod
     async def get_user_roles(
@@ -180,7 +223,7 @@ class MoodleService:
         return list_roles
 
     @staticmethod
-    async def get_admins(institute: InstitutesEnum):
+    async def get_admins(institute: InstitutesEnum) -> GetAdminsResult:
         """
         Función auxiliar para obtener la lista de emails de administradores de un instituto.
         """
@@ -199,13 +242,13 @@ class MoodleService:
             institute=institute,
         )
         if not result_response["success"]:
-            return SimpleNamespace(
+            return GetAdminsResult(
                 success=False,
                 error_message=result_response["error_message"],
                 admins=[],
             )
 
-        return SimpleNamespace(
+        return GetAdminsResult(
             success=True,
             error_message=None,
             admins=result_response.get("data", []),
@@ -219,7 +262,7 @@ class MoodleService:
         group_name: str,
         shortname: str,
         category_id: int = 1,
-    ):
+    ) -> CreateCourseResult:
         """
         Automatiza la creación de un nuevo curso en Moodle.
         Genera el shortname automáticamente antes de realizar la petición.
@@ -252,10 +295,12 @@ class MoodleService:
         )
 
         if not result_response["success"]:
-            return SimpleNamespace(course=None, error=result_response["error_message"])
+            return CreateCourseResult(
+                course=None, error=result_response["error_message"]
+            )
 
         # Moodle retorna una lista; extraemos el primer curso creado
-        return SimpleNamespace(course=result_response["data"][0], error=None)
+        return CreateCourseResult(course=result_response["data"][0], error=None)
 
     @staticmethod
     async def create_group(
@@ -263,7 +308,7 @@ class MoodleService:
         group_name: str,
         institute: InstitutesEnum,
         description: str | None = None,
-    ):
+    ) -> CreateGroupResult:
         """
         Crea un grupo en Moodle dentro de un curso existente.
 
@@ -274,7 +319,7 @@ class MoodleService:
             description: Descripción opcional del grupo
 
         Returns:
-            SimpleNamespace con 'group' (datos del grupo creado) y 'error' (mensaje de error)
+            CreateGroupResult con 'group' (datos del grupo creado) y 'error' (mensaje de error)
         """
         config = MOODLE_CONFIG[institute]
         endpoint = config.moodle_url
@@ -304,9 +349,9 @@ class MoodleService:
         )
 
         if not result_response["success"]:
-            return SimpleNamespace(group=None, error=result_response["error_message"])
+            return CreateGroupResult(group=None, error=result_response["error_message"])
 
         # Moodle retorna una lista con el grupo creado
         result = result_response["data"]
 
-        return SimpleNamespace(group=result[0] if result else None, error=None)
+        return CreateGroupResult(group=result[0] if result else None, error=None)
