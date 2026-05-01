@@ -38,11 +38,11 @@ class TeacherCourseRequest(Base):
 
     # ========== METADATOS DEL CURSO ==========
     # Nombre completo del curso solicitado
-    course_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    course_full_name: Mapped[str] = mapped_column(String, nullable=False)
 
     # Grupos solicitados, almacenados como string separado por comas
     # Ejemplo: "G1,G2,G3"
-    groups: Mapped[str | None] = mapped_column(String, nullable=True)
+    groups: Mapped[str] = mapped_column(String, nullable=False)
 
     # ========== ESTADO DE LA SOLICITUD ==========
     status: Mapped[RequestStatusEnum] = mapped_column(
