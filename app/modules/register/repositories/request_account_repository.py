@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
-from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.student_courses_model import StudentCourseRequest
 from app.shared.models.teacher_courses_model import TeacherCourseRequest
@@ -45,7 +45,7 @@ class RequestAccountRepository:
             auth_id=db_request.id,
             name=data.name,
             last_name=data.last_name,
-            status=AccountStatusEnum.PENDING,
+            status=RequestStatusEnum.PENDING,
         )
         self.db.add(profile)
 
@@ -54,7 +54,7 @@ class RequestAccountRepository:
             student_course_request = StudentCourseRequest(
                 auth_id=db_request.id,
                 moodle_course_id=student_data.course_id,
-                status=AccountStatusEnum.PENDING,
+                status=RequestStatusEnum.PENDING,
             )
             self.db.add(student_course_request)
 
@@ -64,7 +64,7 @@ class RequestAccountRepository:
                 auth_id=db_request.id,
                 course_full_name=teacher_data.course_full_name,
                 groups=",".join(teacher_data.groups) if teacher_data.groups else None,
-                status=AccountStatusEnum.PENDING,
+                status=RequestStatusEnum.PENDING,
             )
             self.db.add(teacher_course_request)
 

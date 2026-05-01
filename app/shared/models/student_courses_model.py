@@ -4,7 +4,7 @@ from sqlalchemy import Enum, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 
 if TYPE_CHECKING:
     from app.shared.models.auth_model import Auth
@@ -21,8 +21,8 @@ class StudentCourseRequest(Base):
 
     moodle_course_id: Mapped[int] = mapped_column(Integer, nullable=True)
 
-    status: Mapped[AccountStatusEnum] = mapped_column(
-        Enum(AccountStatusEnum), nullable=False
+    status: Mapped[RequestStatusEnum] = mapped_column(
+        Enum(RequestStatusEnum), nullable=False
     )
 
     auth: Mapped["Auth"] = relationship(

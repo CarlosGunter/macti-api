@@ -7,22 +7,21 @@
 from enum import Enum
 
 
-class AccountStatusEnum(Enum):
+class RequestStatusEnum(Enum):
     """
-    Enumeración de los estados de una solicitud de cuenta.
+    Enumeración de los estados de una solicitud de curso.
 
-    Cada estado representa una etapa específica en el flujo de aprobación
-    y aprovisionamiento de identidad.
+    Cada estado representa una etapa específica en el proceso de revisión y aprobación de un curso solicitado por un docente o alumno.
     """
 
     # Estado inicial: La solicitud ha sido registrada y espera revisión administrativa.
     PENDING = "pending"
 
-    # La solicitud fue revisada y aceptada; se ha enviado el correo de validación al usuario.
+    # La solicitud fue revisada y aceptada por el equipo administrativo.
     APPROVED = "approved"
 
     # La solicitud no cumple con los requisitos y ha sido descartada.
     REJECTED = "rejected"
 
-    # Paso final: El usuario validó su token y la cuenta ha sido creada en Keycloak y Moodle.
-    CREATED = "created"
+    # El usuario ha sido inscrito al curso solicitado.
+    ENROLLED = "enrolled"

@@ -10,7 +10,7 @@ from sqlalchemy import Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 
 if TYPE_CHECKING:
     from app.shared.models.auth_model import Auth
@@ -45,9 +45,9 @@ class TeacherCourseRequest(Base):
     groups: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # ========== ESTADO DE LA SOLICITUD ==========
-    status: Mapped[AccountStatusEnum] = mapped_column(
-        Enum(AccountStatusEnum, name="account_status_enum"),
-        default=AccountStatusEnum.PENDING,
+    status: Mapped[RequestStatusEnum] = mapped_column(
+        Enum(RequestStatusEnum, name="account_status_enum"),
+        default=RequestStatusEnum.PENDING,
         nullable=False,
     )
 
