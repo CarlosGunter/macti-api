@@ -3,9 +3,18 @@
 # Utiliza TLS para garantizar que la comunicación con el servidor de correo sea cifrada.
 
 import smtplib
+from dataclasses import dataclass
 from email.message import EmailMessage
 
 from app.core.environment import environment
+
+
+@dataclass
+class SendValidationEmailResult:
+    success: bool
+    message: str | None = None
+    token: str | None = None
+    error: str | None = None
 
 
 class EmailService:
@@ -29,12 +38,12 @@ class EmailService:
         token: str = "",
         subject: str | None = None,
         body: str | None = None,
-    ):
+    ) -> SendValidationEmailResult:
         """
         Envía un correo electrónico de validación con un enlace de confirmación.
 
         Retorna:
-            Un diccionario con el estatus del envío ('success' o 'error').
+            Un dataclass con el estatus del envío.
         """
 
         # Enlace dinámico que apunta al front-end de Next.js
@@ -68,15 +77,15 @@ class EmailService:
                 smtp.login(EmailService.SMTP_USER, EmailService.SMTP_PASS)
                 smtp.send_message(msg)
 
-            return {
-                "success": True,
-                "message": f"Correo enviado exitosamente a {to_email}",
-                "token": token,
-            }
+            return SendValidationEmailResult(
+                success=True,
+                message=f"Correo enviado exitosamente a {to_email}",
+                token=token,
+            )
 
         except Exception as e:
             # Captura errores de autenticación, red o rechazo del servidor SMTP.
-            return {
-                "success": False,
-                "error": f"Error en el servidor de correo: {str(e)}",
-            }
+            return SendValidationEmailResult(
+                success=False,
+                error=f"Error en el servidor de correo: {str(e)}",
+            )
