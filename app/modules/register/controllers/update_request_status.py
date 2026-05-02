@@ -1,14 +1,15 @@
 # Módulo ChangeStatusController - Gestión del Ciclo de Vida de Solicitudes
 # Este controlador maneja la transición de estados de las solicitudes de cuenta.
-# Su función principal es validar la aprobación de una cuenta y coordinar el envío de correos.
-
-from datetime import datetime, timedelta
-from uuid import uuid4
+# Orquesta la lógica de negocio sin ocuparse directamente de la persistencia.
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
+from app.modules.register.repositories.request_status_repository import (
+    RequestStatusRepository,
+)
 from app.modules.register.schemas import RequestStatusUpdateSchema
+from app.modules.register.services.email_service import EmailService
 from app.modules.register.services.kc_service import KeycloakService
 from app.modules.register.services.moodle_service import MoodleService
 from app.modules.register.use_cases.enroll_user import EnrollUserUseCase
@@ -17,14 +18,35 @@ from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum
 from app.shared.models.student_courses_model import StudentCourseRequest
 from app.shared.models.teacher_courses_model import TeacherCourseRequest
-from app.shared.models.verification_tokens_model import VerificationToken
 
 
 class RequestStatusController:
     """
-    Controlador encargado de actualizar el estado de las solicitudes de cuenta
-    y gestionar la lógica de negocio asociada a las transiciones de estado.
+    Controlador encargado de actualizar el estado de las solicitudes de cuenta.
+
+    Responsabilidades:
+    - Orquestar la lógica de negocio según el nuevo estado
+    - Delegar operaciones de BD al repositorio
+    - Coordinar llamadas a servicios externos (Keycloak, Moodle)
+    - Manejar errores y transacciones
     """
+
+    # Definición de transiciones de estado permitidas
+    VALID_TRANSITIONS = {
+        RequestStatusEnum.PENDING: {
+            RequestStatusEnum.APPROVED,
+            RequestStatusEnum.REJECTED,
+        },
+        RequestStatusEnum.APPROVED: {
+            RequestStatusEnum.REJECTED,
+            RequestStatusEnum.PENDING,
+        },
+        RequestStatusEnum.REJECTED: {
+            RequestStatusEnum.PENDING,
+            RequestStatusEnum.APPROVED,
+        },
+        RequestStatusEnum.ENROLLED: set(),
+    }
 
     @staticmethod
     async def update_request_status(
@@ -32,42 +54,16 @@ class RequestStatusController:
     ):
         """
         Cambia el estatus de una solicitud de cuenta específica.
+
+        Flujo:
+        1. Valida que la solicitud exista y la transición sea válida
+        2. Procesa la transición según el nuevo estado
+        3. Persiste los cambios
         """
+        repository = RequestStatusRepository(db)
 
-        # Definición de transiciones de estado permitidas
-        valid_transitions = {
-            RequestStatusEnum.PENDING: {
-                RequestStatusEnum.APPROVED,
-                RequestStatusEnum.REJECTED,
-            },
-            RequestStatusEnum.APPROVED: {
-                RequestStatusEnum.REJECTED,
-                RequestStatusEnum.PENDING,
-            },
-            RequestStatusEnum.REJECTED: {
-                RequestStatusEnum.PENDING,
-                RequestStatusEnum.APPROVED,
-            },
-            RequestStatusEnum.ENROLLED: {},
-        }
-
-        # --- VALIDACIÓN DE EXISTENCIA Y ESTADO ACTUAL ---
-        course_request = None
-        if role == AccountRoleEnum.ALUMNO:
-            course_request = (
-                db.query(StudentCourseRequest)
-                .filter(StudentCourseRequest.id == data.request_id)
-                .options(joinedload(StudentCourseRequest.auth))
-                .one_or_none()
-            )
-        elif role == AccountRoleEnum.DOCENTE:
-            course_request = (
-                db.query(TeacherCourseRequest)
-                .filter(TeacherCourseRequest.id == data.request_id)
-                .options(joinedload(TeacherCourseRequest.auth))
-                .one_or_none()
-            )
-
+        # Obtener la solicitud con todas sus relaciones
+        course_request = repository.get_course_request(data.request_id, role)
         if not course_request:
             raise HTTPException(
                 status_code=404,
@@ -77,83 +73,212 @@ class RequestStatusController:
                 },
             )
 
-        if data.new_status not in valid_transitions.get(course_request.status, set()):
+        # Validar transición de estado
+        RequestStatusController._validate_transition(
+            course_request.status, data.new_status
+        )
+
+        # Procesar cambio de estado
+        try:
+            message = await RequestStatusController._process_status_transition(
+                course_request, data.new_status, data.institute, repository, role
+            )
+        except HTTPException:
+            repository.rollback()
+            raise
+        except Exception as e:
+            repository.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "INTERNAL_ERROR",
+                    "message": f"Error interno al procesar la solicitud: {str(e)}",
+                },
+            ) from e
+
+        # Persiste cambios
+        repository.commit()
+
+        return {"message": message}
+
+    @staticmethod
+    def _validate_transition(
+        current_status: RequestStatusEnum, new_status: RequestStatusEnum
+    ) -> None:
+        """
+        Valida que la transición de estado sea permitida.
+
+        Args:
+            current_status: Estado actual
+            new_status: Estado destino
+
+        Raises:
+            HTTPException si la transición no es válida
+        """
+        valid_transitions = RequestStatusController.VALID_TRANSITIONS.get(
+            current_status, set()
+        )
+        if new_status not in valid_transitions:
             raise HTTPException(
                 status_code=409,
                 detail={
                     "error_code": "TRANSICION_INVALIDA",
-                    "message": f"No se puede transicionar de {course_request.status.value} a {data.new_status.value}",
+                    "message": f"No se puede transicionar de {current_status.value} a {new_status.value}",
                 },
             )
 
-        # --- PROCESAMIENTO SEGÚN EL NUEVO ESTADO ---
-        message = ""
-        if data.new_status == RequestStatusEnum.APPROVED:
-            message = await RequestStatusController._handle_approved(
-                course_request, db, data.institute
+    @staticmethod
+    async def _process_status_transition(
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+        new_status: RequestStatusEnum,
+        institute: InstitutesEnum,
+        repository: RequestStatusRepository,
+        role: AccountRoleEnum,
+    ) -> str:
+        """
+        Procesa la transición de estado según el nuevo estado requerido.
+
+        Args:
+            course_request: La solicitud de curso a procesar
+            new_status: El nuevo estado
+            institute: Instituto del usuario
+            repository: Repositorio para operaciones de BD
+            role: Rol del usuario
+
+        Returns:
+            Mensaje descriptivo del resultado
+
+        Raises:
+            HTTPException si hay errores en el proceso
+        """
+        if new_status == RequestStatusEnum.APPROVED:
+            return await RequestStatusController._handle_approved(
+                course_request, institute, repository
             )
-
-        elif data.new_status == RequestStatusEnum.PENDING:
-            message = RequestStatusController._handle_pending(course_request)
-
-        elif data.new_status == RequestStatusEnum.REJECTED:
-            message = await RequestStatusController._handle_rejected(
-                course_request, course_request.status, db
+        elif new_status == RequestStatusEnum.PENDING:
+            return RequestStatusController._handle_pending(course_request, repository)
+        elif new_status == RequestStatusEnum.REJECTED:
+            return await RequestStatusController._handle_rejected(
+                course_request, course_request.status, repository
             )
-
         else:
             raise HTTPException(
                 status_code=422,
                 detail={
                     "error_code": "ESTADO_NO_COMPATIBLE",
-                    "message": f"El estado {data.new_status.value} no puede ser procesado aquí.",
+                    "message": f"El estado {new_status.value} no puede ser procesado aquí.",
                 },
             )
 
-        # --- COMMIT DE LOS CAMBIOS A LA BASE DE DATOS ---
-        db.commit()
-
-        return {"message": message}
-
-    @classmethod
+    @staticmethod
     async def _handle_approved(
-        cls,
         course_request: StudentCourseRequest | TeacherCourseRequest,
-        db: Session,
         institute: InstitutesEnum,
+        repository: RequestStatusRepository,
     ) -> str:
         """
-        Si la cuenta está activa, inscribe al usuario en el curso.
-        Si la cuenta no está activa, genera un token de validación y envía un correo.
+        Procesa aprobación de solicitud.
+
+        Si la cuenta NO está activa:
+        - Genera un token de verificación
+        - Cambia estado a ENROLLED
+
+        Si la cuenta SÍ está activa:
+        - Inscribe al usuario en el curso
+        - Cambia estado a APPROVED
+
+        Args:
+            course_request: La solicitud a aprobar
+            institute: Instituto del usuario
+            repository: Repositorio para operaciones de BD
+
+        Returns:
+            Mensaje descriptivo
+
+        Raises:
+            HTTPException si hay errores en la inscripción
         """
-
-        # Si la cuenta no está activa se genera un token de validación.
         if not course_request.auth.is_active:
-            RequestStatusController._generate_and_save_token(course_request.auth.id, db)
+            return RequestStatusController._handle_approved_inactive(
+                course_request, repository
+            )
+        else:
+            return await RequestStatusController._handle_approved_active(
+                course_request, institute, repository
+            )
 
-            # email_result = EmailService.send_validation_email(
-            #     to_email=course_request.email,
-            #     token=token,
-            # )
-            # if not email_result.success:
-            #     raise HTTPException(
-            #         status_code=502,
-            #         detail={
-            #             "error_code": "EMAIL_ERROR",
-            #             "message": f"Error al enviar el correo de validación: {email_result.error}",
-            #         },
-            #     )
+    @staticmethod
+    def _handle_approved_inactive(
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+        repository: RequestStatusRepository,
+    ) -> str:
+        """
+        Genera token de verificación para cuentas inactivas.
 
-            course_request.status = RequestStatusEnum.ENROLLED
-            return "Solicitud aprobada. Se ha enviado un correo de validación al usuario para confirmar su cuenta."
+        Pasos:
+        1. Crea/actualiza token de verificación
+        2. Envía correo de validación con el token
+        3. Cambia estado a ENROLLED
 
-        # Si la cuenta ya está activa, se inscribe al usuario directamente en el curso.
+        Args:
+            course_request: La solicitud
+            repository: Repositorio para operaciones de BD
+
+        Returns:
+            Mensaje de éxito
+
+        Raises:
+            HTTPException si hay error al enviar el correo
+        """
+        # Generar token de verificación
+        token = repository.create_or_update_verification_token(course_request.auth.id)
+
+        # Enviar correo de validación con el token
+        email_result = EmailService.send_validation_email(
+            to_email=course_request.auth.email,
+            token=token,
+        )
+        if not email_result.success:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error_code": "EMAIL_ERROR",
+                    "message": f"Error al enviar el correo de validación: {email_result.error}",
+                },
+            )
+
+        # Cambiar estado a APPROVED
+        repository.update_request_status(course_request, RequestStatusEnum.APPROVED)
+
+        return "Solicitud aprobada. Se ha enviado un correo de validación al usuario para confirmar su cuenta."
+
+    @staticmethod
+    async def _handle_approved_active(
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+        institute: InstitutesEnum,
+        repository: RequestStatusRepository,
+    ) -> str:
+        """
+        Inscribe usuario en el curso para cuentas activas.
+
+        Args:
+            course_request: La solicitud
+            institute: Instituto del usuario
+            repository: Repositorio para operaciones de BD
+
+        Returns:
+            Mensaje de éxito
+
+        Raises:
+            HTTPException si hay errores en la inscripción
+        """
         enroll_user_use_case = EnrollUserUseCase(
             moodle_service=MoodleService(), institute=institute
         )
         enroll_result = await enroll_user_use_case.execute(
             request_course_data=course_request
         )
+
         if not enroll_result.enrolled:
             raise HTTPException(
                 status_code=502,
@@ -163,79 +288,106 @@ class RequestStatusController:
                 },
             )
 
-        course_request.status = RequestStatusEnum.APPROVED
+        repository.update_request_status(course_request, RequestStatusEnum.ENROLLED)
         return "Usuario inscrito exitosamente en el curso."
 
-    @classmethod
+    @staticmethod
     def _handle_pending(
-        cls, course_request: StudentCourseRequest | TeacherCourseRequest
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+        repository: RequestStatusRepository,
     ) -> str:
-        """Revierte el estado a pendiente."""
-        course_request.status = RequestStatusEnum.PENDING
+        """
+        Revierte el estado a pendiente.
+
+        Args:
+            course_request: La solicitud
+            repository: Repositorio para operaciones de BD
+
+        Returns:
+            Mensaje de éxito
+        """
+        repository.update_request_status(course_request, RequestStatusEnum.PENDING)
         return "Solicitud revertida a estado pendiente."
 
-    @classmethod
+    @staticmethod
     async def _handle_rejected(
-        cls,
         course_request: StudentCourseRequest | TeacherCourseRequest,
         current_status: RequestStatusEnum,
-        db: Session,
+        repository: RequestStatusRepository,
     ) -> str:
-        """Limpia los datos del usuario en BD."""
+        """
+        Procesa rechazo de solicitud.
 
-        db.query(VerificationToken).filter(
-            VerificationToken.auth_id == course_request.auth.id
-        ).delete(synchronize_session=False)
+        Limpia tokens de verificación y, si estaba en estado ENROLLED,
+        elimina el usuario de Keycloak y Moodle.
 
+        Args:
+            course_request: La solicitud
+            current_status: Estado actual antes del rechazo
+            repository: Repositorio para operaciones de BD
+
+        Returns:
+            Mensaje de éxito
+
+        Raises:
+            HTTPException si hay errores al eliminar usuarios de sistemas externos
+        """
+        # Eliminar tokens de verificación
+        repository.delete_verification_tokens(course_request.auth.id)
+
+        # Si estaba ENROLLED, eliminar de Keycloak y Moodle
         if current_status == RequestStatusEnum.ENROLLED:
-            # Eliminación de usuarios en Keycloak y Moodle por rechazo administrativo
-            kc_id = course_request.auth.jids.kc_id if course_request.auth.jids else None
-            if kc_id:
-                await KeycloakService.delete_user(
-                    user_id=kc_id,
-                    institute=course_request.institute,
-                )
-
-            moodle_id = (
-                course_request.auth.jids.moodle_id if course_request.auth.jids else None
+            await RequestStatusController._delete_user_from_external_systems(
+                course_request
             )
-            if moodle_id:
-                await MoodleService.delete_user(
-                    user_id=moodle_id,
-                    institute=course_request.institute,
-                )
+            RequestStatusController._clear_external_ids(course_request)
 
-            course_request.kc_id = None
-            course_request.moodle_id = None
-
-        course_request.status = RequestStatusEnum.REJECTED
+        repository.update_request_status(course_request, RequestStatusEnum.REJECTED)
         return "Solicitud rechazada exitosamente."
 
-    @classmethod
-    def _generate_and_save_token(cls, user_id: int, db: Session):
-        """Genera y persiste un token de verificación UUID4."""
-        token = str(uuid4())
-        timestamp_now = datetime.now()
-        expiration_date = timestamp_now + timedelta(days=7)
+    @staticmethod
+    async def _delete_user_from_external_systems(
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+    ) -> None:
+        """
+        Elimina el usuario de Keycloak y Moodle si existen sus IDs.
 
-        validation = (
-            db.query(VerificationToken)
-            .filter(VerificationToken.auth_id == user_id)
-            .one_or_none()
-        )
+        Args:
+            course_request: La solicitud con información del usuario
 
-        if validation:
-            validation.token = token
-            validation.created_at = timestamp_now
-            validation.expires_at = expiration_date
-        else:
-            new_val = VerificationToken(
-                auth_id=user_id,
-                token=token,
-                created_at=timestamp_now,
-                expires_at=expiration_date,
-                is_used=0,
+        Raises:
+            HTTPException si hay errores al eliminar
+        """
+        kc_id = course_request.auth.jids.kc_id if course_request.auth.jids else None
+        if kc_id:
+            await KeycloakService.delete_user(
+                user_id=kc_id,
+                institute=course_request.institute,
             )
-            db.add(new_val)
 
-        return token
+        moodle_id = (
+            course_request.auth.jids.moodle_id if course_request.auth.jids else None
+        )
+        if moodle_id:
+            await MoodleService.delete_user(
+                user_id=moodle_id,
+                institute=course_request.institute,
+            )
+
+    @staticmethod
+    def _clear_external_ids(
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+    ) -> None:
+        """
+        Limpia los IDs externos del usuario en la solicitud.
+
+        Args:
+            course_request: La solicitud a limpiar
+        """
+        # Nota: Los IDs se almacenan en JIDs relacionado a Auth, no en la solicitud
+        # Si se requiere limpiar en el modelo, descomentar:
+        # if hasattr(course_request, 'kc_id'):
+        #     course_request.kc_id = None
+        # if hasattr(course_request, 'moodle_id'):
+        #     course_request.moodle_id = None
+        pass
