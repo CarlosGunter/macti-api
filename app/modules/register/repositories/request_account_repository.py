@@ -45,7 +45,7 @@ class RequestAccountRepository:
             auth_id=db_request.id,
             name=data.name,
             last_name=data.last_name,
-            status=RequestStatusEnum.PENDING,
+            role=role,
         )
         self.db.add(profile)
 

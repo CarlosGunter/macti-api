@@ -58,7 +58,7 @@ class AccountRequestsController:
                 status_code=500,
                 detail={
                     "error_code": "DB_ERROR",
-                    "message": "Ocurrió un error al guardar la solicitud de cuenta.",
+                    "message": f"Ocurrió un error al guardar la solicitud de cuenta: {str(exc)}",
                 },
             ) from exc
         except Exception as exc:
@@ -67,7 +67,7 @@ class AccountRequestsController:
                 status_code=500,
                 detail={
                     "error_code": "ERROR_INTERNO",
-                    "message": "Ocurrió un error inesperado al procesar la solicitud.",
+                    "message": f"Ocurrió un error inesperado al procesar la solicitud: {str(exc)}",
                 },
             ) from exc
 
