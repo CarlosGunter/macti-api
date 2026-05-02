@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.shared.config.kc_configs import keycloak_configs
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.JIDs_model import JIDs
 from app.shared.models.user_profiles_model import UserProfile
@@ -81,6 +82,7 @@ class IdentityRepository:
         profile = UserProfile(
             name=user_info.name,
             last_name=user_info.last_name,
+            role=AccountRoleEnum.ALUMNO,
         )
         jids = JIDs(kc_id=user_info.kc_id, moodle_id=moodle_id)
 
