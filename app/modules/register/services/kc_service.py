@@ -5,6 +5,8 @@
 # creación, eliminación y actualización de credenciales de los usuarios.
 
 
+from uuid import UUID
+
 import httpx
 
 from app.shared.config.kc_configs import keycloak_configs
@@ -117,7 +119,7 @@ class KeycloakService:
             return users[0] if users else {}
 
     @classmethod
-    async def delete_user(cls, user_id: str, institute: InstitutesEnum) -> bool:
+    async def delete_user(cls, user_id: UUID, institute: InstitutesEnum) -> bool:
         """
         Elimina de forma permanente un usuario en Keycloak.
         Utilizado principalmente en flujos de 'Rollback' cuando otros servicios (como Moodle)
@@ -140,7 +142,7 @@ class KeycloakService:
 
     @classmethod
     async def update_user_password(
-        cls, user_id: str, new_password: str, institute: InstitutesEnum
+        cls, user_id: UUID, new_password: str, institute: InstitutesEnum
     ) -> dict:
         """
         Realiza un 'Reset Password' administrativo para un usuario.

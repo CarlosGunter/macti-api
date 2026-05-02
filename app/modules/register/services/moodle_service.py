@@ -2,7 +2,7 @@
 Service for interacting with Moodle LMS API
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
@@ -38,12 +38,12 @@ class DeleteUserResult:
 class GetAdminsResult:
     success: bool
     error_message: str | None = None
-    admins: list = []
+    admins: list = field(default_factory=list)
 
 
 @dataclass
 class CreateCourseResult:
-    course: dict | None = None
+    course_ids: list[int] = field(default_factory=list)
     error: str | None = None
 
 
@@ -167,7 +167,7 @@ class MoodleService:
         return EnrollUserResult(user_id=user_id, course_id=course_id, enrolled=True)
 
     @staticmethod
-    async def delete_user(user_id, institute: InstitutesEnum) -> DeleteUserResult:
+    async def delete_user(user_id: int, institute: InstitutesEnum) -> DeleteUserResult:
         """
         Delete a user in Moodle using the REST API.
         """
@@ -255,37 +255,49 @@ class MoodleService:
         )
 
     @staticmethod
-    async def create_course(
+    async def create_courses(
         institute: InstitutesEnum,
         fullname: str,
-        teacher_name: str,
-        group_name: str,
-        shortname: str,
+        groups: list[str],
+        summary: str = "",
         category_id: int = 1,
     ) -> CreateCourseResult:
         """
-        Automatiza la creación de un nuevo curso en Moodle.
-        Genera el shortname automáticamente antes de realizar la petición.
+        Automatiza la creación de uno o varios cursos en Moodle en una sola llamada.
         """
         config = MOODLE_CONFIG[institute]
         endpoint = config.moodle_url
-
-        display_name = f"{fullname} - {group_name} ({teacher_name})"
-
         params = {
             "wstoken": config.moodle_token,
             "wsfunction": "core_course_create_courses",
             "moodlewsrestformat": "json",
         }
 
-        data = {
-            "courses[0][fullname]": display_name,
-            "courses[0][shortname]": shortname,
-            "courses[0][categoryid]": category_id,
-            "courses[0][idnumber]": shortname,
-            "courses[0][summary]": f"Docente: {teacher_name}",
-            "courses[0][format]": "topics",
-        }
+        # Lambda interno para generar el shortname por curso usando la lógica del proyecto
+        shortname_lambda = (  # noqa: E731
+            lambda group: (
+                f"{institute.value[:3].upper()}-"
+                f"{
+                    (
+                        ''.join([w[0] for w in fullname.split()[:3]]).upper()
+                        if len(fullname.split()) >= 2
+                        else fullname[:3].upper()
+                    )
+                }-"
+                f"{str(group).upper() if group else '0'}"
+            )
+        )
+
+        data = {}
+        for index, group in enumerate(groups):
+            course_shortname = shortname_lambda(group)
+
+            data[f"courses[{index}][fullname]"] = f"{fullname} - {group}"
+            data[f"courses[{index}][shortname]"] = course_shortname
+            data[f"courses[{index}][categoryid]"] = category_id
+            data[f"courses[{index}][idnumber]"] = course_shortname
+            data[f"courses[{index}][summary]"] = summary
+            data[f"courses[{index}][format]"] = "topics"
 
         result_response = await make_moodle_request(
             url=endpoint,
@@ -296,62 +308,20 @@ class MoodleService:
 
         if not result_response["success"]:
             return CreateCourseResult(
-                course=None, error=result_response["error_message"]
+                course_ids=[], error=result_response["error_message"]
             )
 
-        # Moodle retorna una lista; extraemos el primer curso creado
-        return CreateCourseResult(course=result_response["data"][0], error=None)
+        result = result_response.get("data", [])
+        if not isinstance(result, list):
+            return CreateCourseResult(
+                course_ids=[],
+                error="Respuesta inesperada de Moodle al crear cursos",
+            )
 
-    @staticmethod
-    async def create_group(
-        course_id: int,
-        group_name: str,
-        institute: InstitutesEnum,
-        description: str | None = None,
-    ) -> CreateGroupResult:
-        """
-        Crea un grupo en Moodle dentro de un curso existente.
+        course_ids = [
+            course["id"]
+            for course in result
+            if isinstance(course, dict) and "id" in course
+        ]
 
-        Args:
-            course_id: ID del curso en Moodle donde se creará el grupo
-            group_name: Nombre del grupo a crear
-            institute: Instituto para obtener la configuración de Moodle
-            description: Descripción opcional del grupo
-
-        Returns:
-            CreateGroupResult con 'group' (datos del grupo creado) y 'error' (mensaje de error)
-        """
-        config = MOODLE_CONFIG[institute]
-        endpoint = config.moodle_url
-
-        params = {
-            "wstoken": config.moodle_token,
-            "wsfunction": "core_group_create_groups",
-            "moodlewsrestformat": "json",
-        }
-
-        # Estructura de datos requerida por el Web Service de Moodle
-        data = {
-            "groups[0][courseid]": course_id,
-            "groups[0][name]": group_name,
-            "groups[0][description]": description or f"Grupo {group_name}",
-        }
-
-        print(
-            f"DEBUG: Creando grupo '{group_name}' en curso {course_id} ({institute.value})"
-        )
-
-        result_response = await make_moodle_request(
-            url=endpoint,
-            params=params,
-            data=data,
-            institute=institute,
-        )
-
-        if not result_response["success"]:
-            return CreateGroupResult(group=None, error=result_response["error_message"])
-
-        # Moodle retorna una lista con el grupo creado
-        result = result_response["data"]
-
-        return CreateGroupResult(group=result[0] if result else None, error=None)
+        return CreateCourseResult(course_ids=course_ids, error=None)

@@ -2,15 +2,20 @@
 # Este archivo define las rutas para el flujo de solicitudes, aprobación y
 # creación definitiva de cuentas de usuario.
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.register.controllers.update_request_status import (
+    RequestStatusController,
+)
 from app.shared.enums.role_enum import AccountRoleEnum
 
 from .controllers.account_requests import AccountRequestsController
 from .schemas import (
     AccountRequestResponse,
+    RequestStatusUpdateResponseSchema,
+    RequestStatusUpdateSchema,
     StudentRequestSchema,
     TeacherRequestSchema,
 )
@@ -90,13 +95,20 @@ async def request_teacher_account(
 #     )
 
 
-# @router.patch(
-#     "/change-status",
-#     summary="Cambiar estatus de una cuenta",
-#     response_model=ConfirmAccountResponse,
-# )
-# async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
-#     return await ChangeStatusController.change_status(data=body_info, db=db)
+@router.patch(
+    "/update-request-status/{role}",
+    summary="Cambiar estatus de una solicitud",
+    description="Endpoint para que el administrador pueda aprobar/rechazar solicitudes de cuenta.",
+    response_model=RequestStatusUpdateResponseSchema,
+)
+async def update_request_status(
+    body_info: RequestStatusUpdateSchema,
+    role: AccountRoleEnum = Path(..., description="Rol de la solicitud a actualizar"),
+    db=Depends(get_db),
+):
+    return await RequestStatusController.update_request_status(
+        data=body_info, role=role, db=db
+    )
 
 
 # @router.get(

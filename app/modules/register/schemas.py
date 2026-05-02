@@ -9,7 +9,7 @@
 from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 
 
 class AccountBaseSchema(BaseModel):
@@ -81,26 +81,36 @@ class AccountsResponse(BaseModel):
     name: str
     last_name: str
     email: EmailStr
-    status: AccountStatusEnum
+    status: RequestStatusEnum
     model_config = ConfigDict(from_attributes=True)
 
 
 ListAccountsResponse = list[AccountsResponse]
 
 
-class ConfirmAccountSchema(BaseModel):
+class RequestStatusUpdateSchema(BaseModel):
     """
-    Payload para la transición de estados por parte del administrador.
-
-    Recibe el ID de la solicitud y el nuevo estado definido por el Enum 'AccountStatusEnum'.
+    Payload para la transición de estados de solicitudes por parte del administrador.
     """
 
-    id: int
-    status: AccountStatusEnum
+    institute: InstitutesEnum
+    request_id: int
+    new_status: RequestStatusEnum
 
 
-class ConfirmAccountResponse(BaseModel):
-    """Confirmación de éxito tras la actualización de estatus de una cuenta."""
+class RequestStatusUpdateResponseSchema(BaseModel):
+    """
+    Modelo de respuesta tras actualizar el estado de una solicitud.
+    """
+
+    message: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RequestStatusUpdateResponse(BaseModel):
+    """
+    Confirmación de éxito tras la actualización de estatus de una solicitud de curso.
+    """
 
     message: str
     model_config = ConfigDict(from_attributes=True)
