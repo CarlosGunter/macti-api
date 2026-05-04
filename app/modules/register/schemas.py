@@ -9,6 +9,7 @@
 from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum
 
 
@@ -136,17 +137,38 @@ class CreateAccountResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CourseRequestInfo(BaseModel):
+    """
+    Información del curso asociado a la solicitud.
+    """
+
+    id: int
+    status: RequestStatusEnum
+    moodle_course_id: int | None = None  # Para alumnos
+    course_full_name: str | None = None  # Para docentes
+    groups: str | None = None  # Para docentes
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserInfoResponse(BaseModel):
     """
     Datos de contexto para la interfaz de confirmación.
 
     Permite al frontend mostrar al usuario sus datos registrados antes de
-    completar el proceso de creación de contraseña.
+    completar el proceso de creación de contraseña, incluyendo la información
+    del curso al que está solicitando unirse.
+
+    El campo 'role' permite al frontend determinar qué campos de 'course_request'
+    serán no-nulos:
+    - ALUMNO: moodle_course_id estará poblado, course_full_name y groups serán None
+    - DOCENTE: course_full_name y groups estarán poblados, moodle_course_id será None
     """
 
     id: int
     email: EmailStr
     name: str
     last_name: str
+    role: AccountRoleEnum
     institute: InstitutesEnum
+    course_request: CourseRequestInfo
     model_config = ConfigDict(from_attributes=True)

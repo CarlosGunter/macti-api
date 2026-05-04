@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.register.controllers.get_user_info import GetUserInfoController
 from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
@@ -18,6 +19,7 @@ from .schemas import (
     RequestStatusUpdateSchema,
     StudentRequestSchema,
     TeacherRequestSchema,
+    UserInfoResponse,
 )
 
 # Definición del router con el prefijo /register para agrupar lógica de registro
@@ -111,13 +113,14 @@ async def update_request_status(
     )
 
 
-# @router.get(
-#     "/user-info-by-token",
-#     summary="Obtener info de usuario por token",
-#     response_model=UserInfoResponse,
-# )
-# def confirm_email(token: str = Query(...), db=Depends(get_db)):
-#     return GetUserInfoController.get_user_info(token=token, db=db)
+@router.get(
+    "/user-info-by-token",
+    summary="Obtener info de usuario por token",
+    description="Endpoint para obtener la información de usuario asociada a un token de verificación. Usado en el flujo de confirmación de email.",
+    response_model=UserInfoResponse,
+)
+async def confirm_email(token: str, db: Session = Depends(get_db)):
+    return await GetUserInfoController.get_user_info(token=token, db=db)
 
 
 # @router.post(

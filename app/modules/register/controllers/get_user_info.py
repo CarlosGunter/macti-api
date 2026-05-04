@@ -5,11 +5,12 @@
 from datetime import datetime
 
 from fastapi import HTTPException
-from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
-from app.shared.models.users_model import UserAccounts
-from app.shared.models.verification_tokens_model import VerificationToken
+from app.modules.register.repositories.get_user_info_repository import (
+    GetUserInfoRepository,
+)
+from app.modules.register.schemas import CourseRequestInfo, UserInfoResponse
 
 
 class GetUserInfoController:
@@ -19,96 +20,154 @@ class GetUserInfoController:
     """
 
     @staticmethod
-    def get_user_info(token: str, db: Session):
+    async def get_user_info(token: str, db: Session) -> UserInfoResponse:
         """
         Recupera los datos básicos del usuario mediante un token.
 
         Flujo de validación:
         1. Busca el token en la tabla VerificationToken.
-        2. Verifica la expiración.
-        3. Localiza la cuenta de usuario vinculada.
+        2. Se anexan los datos del usuario asociado al token (ID de auth).
+        3. Verifica la expiración.
+        4. Retorna la información del usuario si el token es válido.
         """
-        lookup_stage = "token"
-        try:
-            # 1. Búsqueda del token en la base de datos
-            validation = (
-                db.query(VerificationToken)
-                .filter(VerificationToken.token == token)
-                .one()
+        repository = GetUserInfoRepository(db)
+
+        token_context = GetUserInfoController._get_token_context_or_raise(
+            repository, token
+        )
+        GetUserInfoController._validate_token_state(token_context)
+
+        return GetUserInfoController._build_response(token_context)
+
+    @staticmethod
+    def _get_token_context_or_raise(repository: GetUserInfoRepository, token: str):
+        if not token:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "TOKEN_REQUERIDO",
+                    "message": "El token de validación es obligatorio.",
+                },
             )
 
-            # 2. Validación de vigencia (Expiración)
-            expires_at = validation.expires_at
-            if expires_at and datetime.now() > expires_at:
-                raise HTTPException(
-                    status_code=403,
-                    detail={
-                        "error_code": "TOKEN_EXPIRADO",
-                        "message": "El token ha expirado. Por favor, solicite una nueva aprobación.",
-                    },
-                )
-
-            # 3. Recuperación de la información del usuario
-            lookup_stage = "user"
-            account_request = (
-                db.query(UserAccounts)
-                .filter(UserAccounts.id == validation.auth_id)
-                .one()
-            )
-
-            # Retorno de datos para el Front-end:
-            # Permite pre-llenar los campos de registro en la interfaz de usuario.
-            return {
-                "id": account_request.id,
-                "email": account_request.email,
-                "name": account_request.name,
-                "last_name": account_request.last_name,
-                "institute": account_request.institute,
-            }
-        except HTTPException as httpe:
-            # Propagación de excepciones controladas para la API
-            raise httpe
-        except NoResultFound as exc:
-            if lookup_stage == "token":
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "error_code": "TOKEN_INVALIDO",
-                        "message": "El token proporcionado no existe o es incorrecto",
-                    },
-                ) from exc
-
+        token_context = repository.get_token_context(token)
+        if token_context is None:
             raise HTTPException(
                 status_code=404,
                 detail={
-                    "error_code": "NO_ENCONTRADO",
-                    "message": "No se encontró un usuario vinculado a este token",
+                    "error_code": "TOKEN_NO_ENCONTRADO",
+                    "message": "No se encontró un token de verificación válido.",
                 },
-            ) from exc
-        except MultipleResultsFound as exc:
-            if lookup_stage == "token":
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "error_code": "MULTIPLES_TOKENS",
-                        "message": "Error de integridad: existen múltiples registros para el token proporcionado.",
-                    },
-                ) from exc
+            )
 
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "MULTIPLES_USUARIOS",
-                    "message": "Error de integridad: se encontró más de un usuario vinculado al token.",
-                },
-            ) from exc
+        return token_context
 
-        except Exception as e:
-            # Manejo de errores a nivel de infraestructura o base de datos
+    @staticmethod
+    def _validate_token_state(token_context) -> None:
+        now = datetime.now(token_context.created_at.tzinfo)
+        if token_context.is_used:
             raise HTTPException(
-                status_code=503,
+                status_code=409,
                 detail={
-                    "error_code": "DB_ERROR",
-                    "message": f"Error inesperado al consultar la base de datos: {e}",
+                    "error_code": "TOKEN_USADO",
+                    "message": "El token de verificación ya fue utilizado.",
                 },
-            ) from e
+            )
+
+        if token_context.expires_at < now:
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "error_code": "TOKEN_EXPIRADO",
+                    "message": "El token de verificación expiró.",
+                },
+            )
+
+        if token_context.auth is None or token_context.auth.profile is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "DATOS_INCOMPLETOS",
+                    "message": "El token no tiene un perfil de usuario asociado.",
+                },
+            )
+
+    @staticmethod
+    def _build_response(token_context) -> UserInfoResponse:
+        auth = token_context.auth
+        profile = auth.profile
+
+        # Obtener la solicitud de curso única del usuario
+        # Accedemos a las relaciones ya cargadas del token_context
+        course_request = GetUserInfoController._get_user_course_request(auth)
+
+        # Se prioriza la información del perfil, porque allí vive el nombre del usuario.
+        response_data = {
+            "id": auth.id,
+            "email": auth.email,
+            "name": profile.name,
+            "last_name": profile.last_name,
+            "role": profile.role,
+            "institute": auth.institute,
+            "course_request": course_request,
+        }
+
+        # Carga secundaria para dejar disponibles las relaciones usadas por el flujo.
+        # No se expone en la respuesta, pero evita lazy loading posterior.
+        _ = auth.jids
+
+        return UserInfoResponse(**response_data)
+
+    @staticmethod
+    def _get_user_course_request(auth) -> CourseRequestInfo:
+        """
+        Extrae la solicitud de curso del usuario y valida que exista exactamente una.
+
+        Args:
+            auth: El objeto Auth del usuario
+
+        Returns:
+            CourseRequestInfo con los datos de la solicitud
+
+        Raises:
+            HTTPException si no existe solicitud o hay múltiples solicitudes
+        """
+        student_requests = auth.student_course_requests or []
+        teacher_requests = auth.teacher_course_requests or []
+
+        total_requests = len(student_requests) + len(teacher_requests)
+
+        if total_requests == 0:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "NO_COURSE_REQUEST",
+                    "message": "El usuario no tiene una solicitud de curso asociada.",
+                },
+            )
+
+        if total_requests > 1:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error_code": "MULTIPLE_REQUESTS",
+                    "message": "El usuario tiene múltiples solicitudes de curso, lo cual viola la lógica del negocio.",
+                },
+            )
+
+        # Retornar la única solicitud encontrada
+        if student_requests:
+            request = student_requests[0]
+            return CourseRequestInfo(
+                id=request.id,
+                status=request.status,
+                moodle_course_id=request.moodle_course_id,
+            )
+        else:
+            request = teacher_requests[0]
+            return CourseRequestInfo(
+                id=request.id,
+                status=request.status,
+                course_full_name=request.course_full_name,
+                groups=request.groups,
+            )
