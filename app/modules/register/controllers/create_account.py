@@ -2,6 +2,8 @@
 # Coordina la creación de usuarios en Keycloak y Moodle, además de la
 # inscripción a cursos, creación de grupos y limpieza de tokens de verificación.
 
+from app.shared.models.user_courses_model import UserCourses
+from app.shared.models.users_model import UserAccounts
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
@@ -10,8 +12,6 @@ from app.modules.register.services.moodle_service import MoodleService
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import AccountStatusEnum
-from app.shared.models.user_courses_model import UserCourses
-from app.shared.models.users_model import UserAccounts
 from app.shared.models.verification_tokens_model import VerificationToken
 
 from ..schema import CreateAccountSchema
@@ -34,13 +34,14 @@ class CreateAccountController:
         Realiza el aprovisionamiento completo de una cuenta aprobada.
 
         Pasos:
-        1. Valida que la solicitud exista y esté en estado APPROVED.
-        2. Crea el usuario en Keycloak (o recupera su ID si ya existe).
-        3. Si es docente y course_id == 0:
-            a. Crea UN CURSO POR CADA GRUPO en Moodle.
-            b. Inscribe al docente en cada curso creado.
-        4. Si es alumno, inscribe al alumno en el curso existente.
-        5. Actualiza estados en BD local y elimina tokens temporales.
+        - Valida que la solicitud exista y esté en estado APPROVED.
+        - Verifica que exista un token de verificación asociado a la solicitud.
+        - Crea el usuario en Keycloak (o recupera su ID si ya existe).
+        - Si es docente:
+            - Crea UN CURSO POR CADA GRUPO en Moodle.
+            - Inscribe al docente en cada curso creado.
+        - Si es alumno, inscribe al alumno en el curso existente.
+        - Actualiza estados en BD local y elimina tokens temporales.
         """
 
         # ========== 1. VALIDACIÓN DE LA SOLICITUD ==========
@@ -137,8 +138,8 @@ class CreateAccountController:
         current_course_id = account_request.course_id
         created_courses = []  # Lista para almacenar los IDs de cursos creados
 
-        # Si es docente y course_id == 0, hay que crear curso(s) NUEVO(s)
-        if account_request.role == AccountRoleEnum.DOCENTE and current_course_id == 0:
+        # Si es docente, hay que crear curso(s) NUEVO(s)
+        if account_request.role == AccountRoleEnum.DOCENTE:
             # Buscar los detalles del curso solicitado
             course_detail = (
                 db.query(UserCourses)
