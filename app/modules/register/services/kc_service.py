@@ -132,7 +132,8 @@ class KeycloakService:
                     )
                     user_id = None
                     if created_user.found and created_user.user:
-                        user_id = created_user.user.get("id")
+                        raw_user_id = created_user.user.get("id")
+                        user_id = UUID(raw_user_id) if raw_user_id else None
                     return CreateUserResult(created=True, user_id=user_id)
                 else:
                     return CreateUserResult(created=False, error=response.text)
