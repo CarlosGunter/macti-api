@@ -22,40 +22,38 @@ class EnrollUserUseCase:
         self.institute = institute
 
     async def execute(
-        self, request_course_data: TeacherCourseRequest | StudentCourseRequest
+        self,
+        request_course_data: TeacherCourseRequest | StudentCourseRequest,
+        user_id: int | None = None,
     ) -> EnrollUserResult:
         """Ejecuta el flujo de inscripción de un usuario en un curso específico"""
 
-        role = (
-            request_course_data.auth.profile.role
-            if request_course_data.auth and request_course_data.auth.profile
-            else None
-        )
-        if role is None:
+        role = request_course_data.auth.profile.role
+
+        resolved_user_id = user_id
+        if resolved_user_id is None and request_course_data.auth.jids:
+            resolved_user_id = request_course_data.auth.jids.moodle_id
+
+        if resolved_user_id is None:
             return EnrollUserResult(
-                enrolled=False, error="Falta información de rol en la solicitud"
+                enrolled=False,
+                error="Falta el ID de Moodle del usuario para realizar la inscripción",
             )
 
         course_ids: list[int] = []
-
-        if (
-            isinstance(request_course_data, StudentCourseRequest)
-            and request_course_data.moodle_course_id is not None
-        ):
+        if isinstance(request_course_data, StudentCourseRequest):
             course_ids = [request_course_data.moodle_course_id]
 
-        # Para docentes, primero se crean los cursos
         if isinstance(request_course_data, TeacherCourseRequest):
             course_ids = (
                 await self._create_courses(request_course_data=request_course_data)
-                or []
-            )
+            ) or []
             if not course_ids:
                 return EnrollUserResult(
                     enrolled=False, error="Error al crear cursos en Moodle"
                 )
 
-        if not course_ids:
+        if not course_ids or len(course_ids) == 0:
             return EnrollUserResult(
                 enrolled=False,
                 error="No se pudo determinar el ID del curso para la inscripción",
@@ -65,7 +63,10 @@ class EnrollUserUseCase:
 
         for course_id in course_ids:
             enrolled = await self.moodle_service.enroll_user(
-                request_course_data.auth_id, course_id, self.institute, moodle_role
+                user_id=resolved_user_id,
+                course_id=course_id,
+                institute=self.institute,
+                role_id=moodle_role.value,
             )
 
             if not enrolled.enrolled:

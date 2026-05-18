@@ -4,16 +4,17 @@ Repositorio para `CreateAccountController`.
 Encapsula las consultas a la base de datos necesarias para el
 flujo de aprovisionamiento de cuentas (Keycloak + Moodle).
 """
-from typing import Optional
+
+from uuid import UUID
 
 from sqlalchemy.orm import Session, joinedload
 
+from app.shared.enums.status_enum import RequestStatusEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.JIDs_model import JIDs
-from app.shared.models.teacher_courses_model import TeacherCourseRequest
 from app.shared.models.student_courses_model import StudentCourseRequest
+from app.shared.models.teacher_courses_model import TeacherCourseRequest
 from app.shared.models.verification_tokens_model import VerificationToken
-from app.shared.enums.status_enum import RequestStatusEnum
 
 
 class CreateAccountRepository:
@@ -22,10 +23,10 @@ class CreateAccountRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_auth_with_relations(self, auth_id: int) -> Optional[Auth]:
+    def get_auth_with_relations(self, auth_id: int) -> Auth | None:
         """Obtiene el `Auth` con relaciones necesarias cargadas.
 
-        Carga: `profile`, `jids`, `verification_tokens`, `teacher_course_requests`,
+        Carga: `profile`, `jids`, `verification_token`, `teacher_course_requests`,
         `student_course_requests` para evitar lazy-loading durante el flujo.
         """
         return (
@@ -34,33 +35,33 @@ class CreateAccountRepository:
             .options(
                 joinedload(Auth.profile),
                 joinedload(Auth.jids),
-                joinedload(Auth.verification_tokens),
+                joinedload(Auth.verification_token),
                 joinedload(Auth.teacher_course_requests),
                 joinedload(Auth.student_course_requests),
             )
             .one_or_none()
         )
 
-    def get_pending_teacher_course(self, auth_id: int) -> Optional[TeacherCourseRequest]:
-        """Retorna la solicitud de docente pendiente (si existe)."""
+    def get_approved_teacher_course(self, auth_id: int) -> TeacherCourseRequest | None:
+        """Retorna la solicitud de docente aprobada (si existe)."""
         return (
             self.db.query(TeacherCourseRequest)
             .filter(
                 TeacherCourseRequest.auth_id == auth_id,
-                TeacherCourseRequest.status == RequestStatusEnum.PENDING,
+                TeacherCourseRequest.status == RequestStatusEnum.APPROVED,
             )
-            .first()
+            .one_or_none()
         )
 
-    def get_pending_student_course(self, auth_id: int) -> Optional[StudentCourseRequest]:
-        """Retorna la solicitud de alumno pendiente (si existe)."""
+    def get_approved_student_course(self, auth_id: int) -> StudentCourseRequest | None:
+        """Retorna la solicitud de alumno aprobada (si existe)."""
         return (
             self.db.query(StudentCourseRequest)
             .filter(
                 StudentCourseRequest.auth_id == auth_id,
-                StudentCourseRequest.status == RequestStatusEnum.PENDING,
+                StudentCourseRequest.status == RequestStatusEnum.APPROVED,
             )
-            .first()
+            .one_or_none()
         )
 
     def delete_verification_token(self, auth_id: int) -> None:
@@ -71,17 +72,30 @@ class CreateAccountRepository:
         token = (
             self.db.query(VerificationToken)
             .filter(VerificationToken.auth_id == auth_id)
-            .first()
+            .one_or_none()
         )
         if token:
             self.db.delete(token)
 
-    def ensure_jids(self, auth: Auth) -> JIDs:
-        """Asegura que exista un registro `JIDs` para el `Auth` y lo retorna."""
-        if auth.jids:
-            return auth.jids
+    def save_jids(self, auth_id: int, kc_id: UUID, moodle_id: int) -> JIDs:
+        """Crea o actualiza el registro de JIDs para el `Auth` dado."""
+        jids = self.db.query(JIDs).filter(JIDs.auth_id == auth_id).one_or_none()
+        if jids:
+            jids.kc_id = kc_id
+            jids.moodle_id = moodle_id
+        else:
+            jids = JIDs(auth_id=auth_id, kc_id=kc_id, moodle_id=moodle_id)
+            self.db.add(jids)
+        return jids
 
-        jid = JIDs(auth_id=auth.id)
-        self.db.add(jid)
-        # No commit here; quien llama hará commit al final del flujo
-        return jid
+    def commit(self) -> None:
+        """Persiste los cambios en la base de datos."""
+        self.db.commit()
+
+    def rollback(self) -> None:
+        """Revierte la transacción actual."""
+        self.db.rollback()
+
+    def refresh(self, instance: object) -> None:
+        """Refresca una instancia desde la base de datos."""
+        self.db.refresh(instance)
