@@ -3,6 +3,7 @@
 # Permite que el front-end recupere datos de forma segura durante el onboarding.
 
 from datetime import datetime
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ class GetUserInfoController:
     """
 
     @staticmethod
-    async def get_user_info(token: str, db: Session) -> UserInfoResponse:
+    async def get_user_info(token: UUID, db: Session) -> UserInfoResponse:
         """
         Recupera los datos básicos del usuario mediante un token.
 
@@ -40,7 +41,7 @@ class GetUserInfoController:
         return GetUserInfoController._build_response(token_context)
 
     @staticmethod
-    def _get_token_context_or_raise(repository: GetUserInfoRepository, token: str):
+    def _get_token_context_or_raise(repository: GetUserInfoRepository, token: UUID):
         if not token:
             raise HTTPException(
                 status_code=400,

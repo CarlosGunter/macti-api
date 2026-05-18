@@ -5,6 +5,7 @@
 import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
+from uuid import UUID
 
 from app.core.environment import environment
 
@@ -35,7 +36,7 @@ class EmailService:
     @staticmethod
     def send_validation_email(
         to_email: str,
-        token: str = "",
+        token: UUID,
         subject: str | None = None,
         body: str | None = None,
     ) -> SendValidationEmailResult:

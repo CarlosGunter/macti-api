@@ -3,6 +3,8 @@ Repositorio para obtener la información de usuario asociada a un token de
 verificación.
 """
 
+from uuid import UUID
+
 from sqlalchemy.orm import Session, joinedload
 
 from app.shared.models.auth_model import Auth
@@ -20,7 +22,7 @@ class GetUserInfoRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_token_context(self, token: str) -> VerificationToken | None:
+    def get_token_context(self, token: UUID) -> VerificationToken | None:
         """
         Obtiene el token con sus relaciones cargadas para evitar consultas
         perezosas al construir la respuesta.

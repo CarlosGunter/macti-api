@@ -4,7 +4,7 @@ con el ciclo de vida de las solicitudes de cuenta (cambios de estado).
 """
 
 from datetime import datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -86,7 +86,7 @@ class RequestStatusRepository:
             VerificationToken.auth_id == auth_id
         ).delete(synchronize_session=False)
 
-    def create_or_update_verification_token(self, auth_id: int) -> str:
+    def create_or_update_verification_token(self, auth_id: int) -> UUID:
         """
         Crea o actualiza un token de verificación para un usuario.
 
@@ -96,7 +96,7 @@ class RequestStatusRepository:
         Returns:
             El token generado
         """
-        token = str(uuid4())
+        token = uuid4()
         timestamp_now = datetime.now()
         expiration_date = timestamp_now + timedelta(days=7)
 
