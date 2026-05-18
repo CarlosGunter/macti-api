@@ -14,7 +14,7 @@ from app.shared.services.moodle_service import MoodleService as BaseMoodleServic
 @dataclass
 class CreateUserResult:
     created: bool
-    id: int | None = None
+    user_id: int | None = None
     error: str | None = None
 
 
@@ -99,10 +99,19 @@ class MoodleService:
             )
 
         result = result_response["data"]
+        user_id = (
+            result[0].get("id")
+            if isinstance(result, list) and len(result) > 0
+            else None
+        )
+        user_id = int(user_id) if user_id is not None else None
 
+        if user_id is None:
+            return CreateUserResult(
+                created=False, error="ID de usuario no retornado por Moodle"
+            )
         # Moodle retorna una lista de diccionarios con los IDs de los usuarios creados.
-        # Se extrae el 'id' del primer elemento (index 0).
-        return CreateUserResult(created=True, id=result[0]["id"])
+        return CreateUserResult(created=True, user_id=user_id)
 
     @staticmethod
     async def enroll_user(
@@ -123,8 +132,6 @@ class MoodleService:
             "enrolments[0][roleid]": role_id,
             "enrolments[0][userid]": user_id,
             "enrolments[0][courseid]": course_id,
-            "enrolments[0][timestart]": 0,
-            "enrolments[0][timeend]": 0,
             "enrolments[0][suspend]": 0,
         }
 
