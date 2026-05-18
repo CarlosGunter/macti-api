@@ -3,6 +3,7 @@
 # creación definitiva de cuentas de usuario.
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.orm import Session
@@ -71,7 +72,9 @@ async def request_teacher_account(
 )
 async def update_request_status(
     body_info: RequestStatusUpdateSchema,
-    role: Annotated[AccountRoleEnum, Path(description="Rol de la solicitud a actualizar")],
+    role: Annotated[
+        AccountRoleEnum, Path(description="Rol de la solicitud a actualizar")
+    ],
     db: Annotated[Session, Depends(get_db)],
 ):
     return await RequestStatusController.update_request_status(
@@ -85,7 +88,7 @@ async def update_request_status(
     description="Endpoint para obtener la información de usuario asociada a un token de verificación. Usado en el flujo de confirmación de email.",
     response_model=UserInfoResponse,
 )
-async def confirm_email(token: str, db: Annotated[Session, Depends(get_db)]):
+async def confirm_email(token: UUID, db: Annotated[Session, Depends(get_db)]):
     return await GetUserInfoController.get_user_info(token=token, db=db)
 
 
@@ -94,6 +97,7 @@ async def confirm_email(token: str, db: Annotated[Session, Depends(get_db)]):
     summary="Finalizar creación de cuenta",
     response_model=CreateAccountResponse,
 )
-async def create_account(body_info: CreateAccountSchema, db: Annotated[Session, Depends(get_db)]):
-    # El controlador es asíncrono (usa await)
+async def create_account(
+    body_info: CreateAccountSchema, db: Annotated[Session, Depends(get_db)]
+):
     return await CreateAccountController.create_account(data=body_info, db=db)
