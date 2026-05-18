@@ -93,7 +93,8 @@ class AccountRequestsController:
     async def _validate_no_existing_keycloak_user(
         data: StudentRequestSchema | TeacherRequestSchema,
     ) -> None:
-        if await KeycloakService.user_exists(data.email, data.institute):
+        verify_existence = await KeycloakService.user_exists(data.email, data.institute)
+        if verify_existence.exists:
             raise HTTPException(
                 status_code=400,
                 detail={
