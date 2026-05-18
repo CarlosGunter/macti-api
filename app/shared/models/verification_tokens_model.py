@@ -6,8 +6,10 @@
 
 from datetime import datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import UUID as ALCHEMY_UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -32,23 +34,28 @@ class VerificationToken(Base):
 
     # Vinculación con la cuenta de usuario
     auth_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("MCT_auth.id", ondelete="CASCADE"), nullable=False
+        Integer,
+        ForeignKey("MCT_auth.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
 
     # El token UUID único que se envía en el enlace de correo
-    token: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    token: Mapped[UUID] = mapped_column(ALCHEMY_UUID, nullable=False, unique=True)
 
     # Trazabilidad temporal para auditoría y expiración
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Estado del token (False: Disponible, True: Utilizado)
-    is_used: Mapped[bool] = mapped_column(Integer, default=0)
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Relación bidireccional con el modelo de autenticación
-    auth: Mapped["Auth"] = relationship("Auth", back_populates="verification_tokens")
+    # Relación bidireccional con el modelo de autenticación (1:1)
+    auth: Mapped["Auth"] = relationship("Auth", back_populates="verification_token")
 
     def __repr__(self):
         """Representación legible para logs de depuración."""

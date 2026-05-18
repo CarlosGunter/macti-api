@@ -45,10 +45,10 @@ class JIDs(Base):
 
     # ========== IDENTIFICADORES DE INTEGRACIÓN EXTERNA ==========
     # kc_id: UUID de Keycloak (identidad centralizada IAM)
-    kc_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    kc_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
 
     # moodle_id: ID numérico del usuario en Moodle (LMS)
-    moodle_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    moodle_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # jupyter_id: ID del usuario en Jupyter Hub (entorno de ejecución)
     jupyter_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

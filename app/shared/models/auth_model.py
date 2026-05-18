@@ -54,9 +54,8 @@ class Auth(Base):
 
     # ========== RELACIONES CON OTRAS TABLAS ==========
 
-    # Relación 1:1 con UserProfile (MCT_user_profiles)
-    # uselist=False indica que es una relación uno a uno
-    profile: Mapped[Optional["UserProfile"]] = relationship(
+    # Relación 1:1 obligatoria con UserProfile (MCT_user_profiles)
+    profile: Mapped["UserProfile"] = relationship(
         "UserProfile",
         back_populates="auth",
         uselist=False,
@@ -81,9 +80,13 @@ class Auth(Base):
         "StudentCourseRequest", back_populates="auth", cascade="all, delete-orphan"
     )
 
-    # Relación 1:N con VerificationToken (MCT_verification_tokens)
-    verification_tokens: Mapped[list["VerificationToken"]] = relationship(
-        "VerificationToken", back_populates="auth", cascade="all, delete-orphan"
+    # Relación 1:1 con VerificationToken (MCT_verification_tokens)
+    # uselist=False asegura unicidad por diseño de negocio
+    verification_token: Mapped[Optional["VerificationToken"]] = relationship(
+        "VerificationToken",
+        back_populates="auth",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
     @validates("email")
