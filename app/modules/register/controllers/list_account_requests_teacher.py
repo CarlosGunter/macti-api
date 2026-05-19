@@ -3,6 +3,7 @@
 # con permisos de administrador definidos en las configuraciones de Moodle
 # pueden acceder a esta funcionalidad.
 
+
 from fastapi import HTTPException
 from sqlalchemy import case, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,8 +13,7 @@ from app.modules.register.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
-from app.shared.enums.status_enum import AccountStatusEnum
-from app.shared.models.users_model import UserAccounts
+from app.shared.enums.status_enum import RequestStatusEnum
 
 
 class AccountRequestsTeacherController:
@@ -27,7 +27,7 @@ class AccountRequestsTeacherController:
         db: Session,
         institute: InstitutesEnum,
         user_info: CurrentUserReturn,
-        status: AccountStatusEnum | None = None,
+        status: RequestStatusEnum | None = None,
     ):
         """
         Obtiene la lista de solicitudes de cuenta de docentes filtradas por instituto.
@@ -60,10 +60,10 @@ class AccountRequestsTeacherController:
         try:
             # Lógica de ordenamiento: PENDING siempre aparece al principio (prioridad 0)
             status_order = case(
-                (UserAccounts.status == AccountStatusEnum.PENDING, 0),
-                (UserAccounts.status == AccountStatusEnum.APPROVED, 1),
-                (UserAccounts.status == AccountStatusEnum.REJECTED, 2),
-                (UserAccounts.status == AccountStatusEnum.CREATED, 3),
+                (UserAccounts.status == RequestStatusEnum.PENDING, 0),
+                (UserAccounts.status == RequestStatusEnum.APPROVED, 1),
+                (UserAccounts.status == RequestStatusEnum.REJECTED, 2),
+                (UserAccounts.status == RequestStatusEnum.ENROLLED, 3),
                 else_=4,
             )
 

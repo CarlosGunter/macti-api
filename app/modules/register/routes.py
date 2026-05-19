@@ -5,22 +5,29 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.modules.register.controllers.create_account import CreateAccountController
 from app.modules.register.controllers.get_user_info import GetUserInfoController
+from app.modules.register.controllers.list_account_requests import (
+    ListAccountRequestsController,
+)
 from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
+from app.shared.dependecies.get_current_user import CurrentUserReturn, get_current_user
+from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 
 from .controllers.account_requests import AccountRequestsController
 from .schemas import (
     AccountRequestResponse,
     CreateAccountResponse,
     CreateAccountSchema,
+    ListAccountsResponse,
     RequestStatusUpdateResponseSchema,
     RequestStatusUpdateSchema,
     StudentRequestSchema,
@@ -62,6 +69,51 @@ async def request_teacher_account(
     return await AccountRequestsController.request_account(
         role=AccountRoleEnum.DOCENTE, data=body_info, db=db
     )
+
+
+@router.get(
+    "/list-account-requests/students",
+    summary="Listar solicitudes de cuenta de alumnos por curso",
+    response_model=ListAccountsResponse,
+)
+async def list_accounts_requests(
+    db: Annotated[Session, Depends(get_db)],
+    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    institute: InstitutesEnum = Query(..., description="Instituto"),
+    course_id: int = Query(..., description="ID del curso en Moodle"),
+    status: RequestStatusEnum | None = Query(
+        None, description="Estatus de las solicitudes a filtrar"
+    ),
+):
+    return await ListAccountRequestsController.list_accounts_requests(
+        db=db,
+        course_id=course_id,
+        institute=institute,
+        status=status,
+        user_info=user_info,
+    )
+
+
+# @router.get(
+#     "/list-account-requests/teachers",
+#     summary="Listar solicitudes de cuenta de docentes",
+#     description="Endpoint para listar solicitudes de cuenta de docentes. Solo accesible para roles de gestión.",
+#     response_model=ListAccountsResponse,
+# )
+# async def list_teacher_accounts_requests(
+#     db: Annotated[Session, Depends(get_db)],
+#     user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+#     institute: InstitutesEnum = Query(..., description="Instituto"),
+#     status: RequestStatusEnum | None = Query(
+#         None, description="Estatus de las solicitudes a filtrar"
+#     ),
+# ):
+#     return await AccountRequestsTeacherController.list_teacher_accounts_requests(
+#         institute=institute,
+#         status=status,
+#         user_info=user_info,
+#         db=db,
+#     )
 
 
 @router.patch(
