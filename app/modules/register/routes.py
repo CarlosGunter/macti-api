@@ -14,6 +14,9 @@ from app.modules.register.controllers.get_user_info import GetUserInfoController
 from app.modules.register.controllers.list_account_requests import (
     ListAccountRequestsController,
 )
+from app.modules.register.controllers.list_account_requests_teacher import (
+    AccountRequestsTeacherController,
+)
 from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
@@ -28,6 +31,7 @@ from .schemas import (
     CreateAccountResponse,
     CreateAccountSchema,
     ListAccountsResponse,
+    ListTeacherAccountsResponse,
     RequestStatusUpdateResponseSchema,
     RequestStatusUpdateSchema,
     StudentRequestSchema,
@@ -94,26 +98,26 @@ async def list_accounts_requests(
     )
 
 
-# @router.get(
-#     "/list-account-requests/teachers",
-#     summary="Listar solicitudes de cuenta de docentes",
-#     description="Endpoint para listar solicitudes de cuenta de docentes. Solo accesible para roles de gestión.",
-#     response_model=ListAccountsResponse,
-# )
-# async def list_teacher_accounts_requests(
-#     db: Annotated[Session, Depends(get_db)],
-#     user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
-#     institute: InstitutesEnum = Query(..., description="Instituto"),
-#     status: RequestStatusEnum | None = Query(
-#         None, description="Estatus de las solicitudes a filtrar"
-#     ),
-# ):
-#     return await AccountRequestsTeacherController.list_teacher_accounts_requests(
-#         institute=institute,
-#         status=status,
-#         user_info=user_info,
-#         db=db,
-#     )
+@router.get(
+    "/list-account-requests/teachers",
+    summary="Listar solicitudes de cuenta de docentes",
+    description="Endpoint para listar solicitudes de cuenta de docentes. Solo accesible para roles de gestión.",
+    response_model=ListTeacherAccountsResponse,
+)
+async def list_teacher_accounts_requests(
+    db: Annotated[Session, Depends(get_db)],
+    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    institute: InstitutesEnum = Query(..., description="Instituto"),
+    status: RequestStatusEnum | None = Query(
+        None, description="Estatus de las solicitudes a filtrar"
+    ),
+):
+    return await AccountRequestsTeacherController.list_teacher_accounts_requests(
+        institute=institute,
+        status=status,
+        user_info=user_info,
+        db=db,
+    )
 
 
 @router.patch(

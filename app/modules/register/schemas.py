@@ -89,6 +89,39 @@ class AccountsResponse(BaseModel):
 ListAccountsResponse = list[AccountsResponse]
 
 
+class TeacherRequestUserResponse(BaseModel):
+    """Datos públicos del usuario docente asociado a la solicitud."""
+
+    id: int
+    name: str
+    last_name: str
+    email: EmailStr
+    role: AccountRoleEnum
+    institute: InstitutesEnum
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TeacherRequestCourseResponse(BaseModel):
+    """Datos de la solicitud de curso del docente."""
+
+    id: int
+    status: RequestStatusEnum
+    course_full_name: str
+    groups: list[str]
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TeacherRequestAccountResponse(BaseModel):
+    """Respuesta agrupada por usuario y solicitud de curso."""
+
+    user: TeacherRequestUserResponse
+    courses: TeacherRequestCourseResponse
+    model_config = ConfigDict(from_attributes=True)
+
+
+ListTeacherAccountsResponse = list[TeacherRequestAccountResponse]
+
+
 class RequestStatusUpdateSchema(BaseModel):
     """
     Payload para la transición de estados de solicitudes por parte del administrador.
