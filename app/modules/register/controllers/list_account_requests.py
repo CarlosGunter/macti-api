@@ -1,7 +1,6 @@
 """Controlador para listar solicitudes de cuenta visibles para un usuario."""
 
 from fastapi import HTTPException
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.modules.register.repositories.list_account_requests_repository import (
@@ -44,40 +43,22 @@ class ListAccountRequestsController:
         """
         repository = ListAccountRequestsRepository(db)
 
-        try:
-            user_roles = await ListAccountRequestsController._get_user_roles_or_raise(
-                course_id=course_id,
-                institute=institute,
-                user_info=user_info,
-            )
-            internal_roles = ListAccountRequestsController._get_internal_roles_or_raise(
-                user_roles=user_roles,
-            )
+        user_roles = await ListAccountRequestsController._get_user_roles_or_raise(
+            course_id=course_id,
+            institute=institute,
+            user_info=user_info,
+        )
+        internal_roles = ListAccountRequestsController._get_internal_roles_or_raise(
+            user_roles=user_roles,
+        )
 
-            return ListAccountRequestsController._list_account_requests_or_raise(
-                repository=repository,
-                course_id=course_id,
-                institute=institute,
-                internal_roles=internal_roles,
-                status=status,
-            )
-        except HTTPException:
-            raise
-
-        except SQLAlchemyError as exc:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "DB_ERROR",
-                    "message": "Error al obtener solicitudes de la base de datos",
-                },
-            ) from exc
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            ) from e
+        return ListAccountRequestsController._list_account_requests_or_raise(
+            repository=repository,
+            course_id=course_id,
+            institute=institute,
+            internal_roles=internal_roles,
+            status=status,
+        )
 
     @staticmethod
     async def _get_user_roles_or_raise(
@@ -96,8 +77,8 @@ class ListAccountRequestsController:
             raise HTTPException(
                 status_code=403,
                 detail={
-                    "error_code": "SIN_PERMISOS",
-                    "message": "Sin privilegios para ver las solicitudes de este curso.",
+                    "error_code": "SIN_ROLES",
+                    "message": "No tiene roles asignados en Moodle para este curso, por lo que no puede ver las solicitudes de cuenta.",
                 },
             )
 
@@ -123,7 +104,7 @@ class ListAccountRequestsController:
                 status_code=403,
                 detail={
                     "error_code": "SIN_PERMISOS",
-                    "message": "No tiene roles válidos para ver solicitudes en este curso.",
+                    "message": "No tienes permisos para ver las solicitudes de cuenta en este curso.",
                 },
             )
 
@@ -138,9 +119,18 @@ class ListAccountRequestsController:
         status: RequestStatusEnum | None,
     ) -> list[dict[str, object]]:
         """Delega al repositorio la consulta de solicitudes visibles."""
-        return repository.list_student_account_requests(
-            course_id=course_id,
-            institute=institute,
-            internal_roles=internal_roles,
-            status=status,
-        )
+        try:
+            return repository.list_student_account_requests(
+                course_id=course_id,
+                institute=institute,
+                internal_roles=internal_roles,
+                status=status,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "OBTENCION_SOLICITUDES_FALLIDA",
+                    "message": "Hubo un error al obtener las solicitudes de cuenta. Intente nuevamente más tarde.",
+                },
+            ) from exc
