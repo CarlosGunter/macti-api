@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.modules.register.repositories.list_account_requests_teacher_repository import (
@@ -30,36 +29,19 @@ class AccountRequestsTeacherController:
 
         repository = ListTeacherAccountRequestsRepository(db)
 
-        try:
-            admins = await AccountRequestsTeacherController._get_admins_or_raise(
-                institute=institute
-            )
-            AccountRequestsTeacherController._validate_admin_access(
-                user_info=user_info,
-                admins=admins,
-            )
-            rows = AccountRequestsTeacherController._get_teacher_requests_or_raise(
-                repository=repository,
-                institute=institute,
-                status=status,
-            )
-            return AccountRequestsTeacherController._build_response(rows)
-        except HTTPException:
-            raise
-        except SQLAlchemyError as exc:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "DB_ERROR",
-                    "message": "Error al obtener solicitudes de la base de datos",
-                },
-            ) from exc
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            ) from e
+        admins = await AccountRequestsTeacherController._get_admins_or_raise(
+            institute=institute
+        )
+        AccountRequestsTeacherController._validate_admin_access(
+            user_info=user_info,
+            admins=admins,
+        )
+        rows = AccountRequestsTeacherController._get_teacher_requests_or_raise(
+            repository=repository,
+            institute=institute,
+            status=status,
+        )
+        return AccountRequestsTeacherController._build_response(rows)
 
     @staticmethod
     async def _get_admins_or_raise(
