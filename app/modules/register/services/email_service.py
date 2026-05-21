@@ -14,7 +14,7 @@ from app.core.environment import environment
 class SendValidationEmailResult:
     success: bool
     message: str | None = None
-    token: str | None = None
+    token: UUID | None = None
     error: str | None = None
 
 
@@ -52,7 +52,7 @@ class EmailService:
         confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
 
         msg = EmailMessage()
-        msg["Subject"] = subject or "¡Cuenta Aprobada! Confirma tu correo"
+        msg["Subject"] = subject or "¡Cuenta MACTI Aprobada! Confirma tu correo"
         msg["From"] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
         msg["To"] = to_email
 
