@@ -31,6 +31,7 @@ class EmailService:
     SMTP_USER = environment.SMTP_USER
     SMTP_PASS = environment.SMTP_PASS
     FROM_ADDRESS = environment.FROM_ADDRESS
+    FRONTEND_URL = environment.FRONTEND_URL
     FROM_NAME = "MACTI Proto"
 
     @staticmethod
@@ -47,9 +48,10 @@ class EmailService:
             Un dataclass con el estatus del envío.
         """
 
-        # Enlace dinámico que apunta al front-end de Next.js
-        # NOTA: En producción, 'localhost:3000' debe ser reemplazado por el dominio real.
-        confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
+        # Enlace dinámico que apunta al front-end de Next.js.
+        confirm_link = (
+            f"{EmailService.FRONTEND_URL}/registro/confirmacion?token={token}"
+        )
 
         msg = EmailMessage()
         msg["Subject"] = subject or "¡Cuenta MACTI Aprobada! Confirma tu correo"
