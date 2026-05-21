@@ -81,7 +81,7 @@ class RequestStatusController:
         # Procesar cambio de estado
         try:
             message = await RequestStatusController._process_status_transition(
-                course_request, data.new_status, data.institute, repository, role
+                course_request, data.new_status, data.institute, repository
             )
         except HTTPException:
             repository.rollback()
@@ -133,7 +133,6 @@ class RequestStatusController:
         new_status: RequestStatusEnum,
         institute: InstitutesEnum,
         repository: RequestStatusRepository,
-        role: AccountRoleEnum,
     ) -> str:
         """
         Procesa la transición de estado según el nuevo estado requerido.
