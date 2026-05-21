@@ -1,27 +1,23 @@
-# Módulo ListAccountRequestsController - Gestión de Visibilidad de Solicitudes
-# Este controlador filtra y lista las solicitudes de cuenta según los privilegios
-# del usuario en Moodle, aplicando un mapeo de roles y ordenamiento por estatus.
+"""Controlador para listar solicitudes de cuenta visibles para un usuario."""
 
 from fastapi import HTTPException
-from sqlalchemy import case, select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.modules.register.repositories.list_account_requests_repository import (
+    ListAccountRequestsRepository,
+)
+from app.modules.register.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUserReturn
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.role_moodle_enum import RoleEnum
-
-from ....shared.enums.status_enum import AccountStatusEnum
-from ....shared.models.users_model import UserAccounts
-from ..services.moodle_service import MoodleService
+from app.shared.enums.status_enum import RequestStatusEnum
 
 
 class ListAccountRequestsController:
     """
-    Controlador para la consulta y filtrado de solicitudes de creación de cuenta.
-    Asegura que solo usuarios con roles de gestión (Manager/Teacher) puedan visualizar
-    solicitudes de niveles inferiores.
+    Controlador encargado de orquestar la consulta de solicitudes de cuenta
+    visibles para el usuario actual.
     """
 
     @staticmethod
@@ -30,25 +26,47 @@ class ListAccountRequestsController:
         course_id: int,
         institute: InstitutesEnum,
         user_info: CurrentUserReturn,
-        status: AccountStatusEnum | None = None,
-    ):
+        status: RequestStatusEnum | None = None,
+    ) -> list[dict[str, object]]:
         """
-        Obtiene la lista de solicitudes de cuenta filtradas por curso e instituto.
+        Obtiene solicitudes de cuenta filtradas por curso, instituto y estado.
 
-        Lógica de Negocio:
-        1. Consulta roles en Moodle.
-        2. Mapea roles a la jerarquía interna.
-        3. Filtra y ordena resultados por prioridad de estatus.
+        Args:
+            db: Sesión de base de datos.
+            course_id: Identificador del curso en Moodle.
+            institute: Instituto al que pertenece la solicitud.
+            user_info: Datos del usuario autenticado.
+            status: Filtro opcional por estatus.
+
+        Returns:
+            Lista de solicitudes visibles para el usuario.
         """
+        repository = ListAccountRequestsRepository(db)
 
-        # Mapeo de visibilidad: Define qué solicitudes puede ver cada rol de Moodle
-        role_mapping: dict[RoleEnum, AccountRoleEnum] = {
-            RoleEnum.MANAGER: AccountRoleEnum.ALUMNO,
-            RoleEnum.TEACHER: AccountRoleEnum.ALUMNO,
-            RoleEnum.EDITING_TEACHER: AccountRoleEnum.ALUMNO,
-        }
+        user_roles = await ListAccountRequestsController._get_user_roles_or_raise(
+            course_id=course_id,
+            institute=institute,
+            user_info=user_info,
+        )
+        internal_roles = ListAccountRequestsController._get_internal_roles_or_raise(
+            user_roles=user_roles,
+        )
 
-        # Validación de identidad externa: Consulta roles en tiempo real en Moodle
+        return ListAccountRequestsController._list_account_requests_or_raise(
+            repository=repository,
+            course_id=course_id,
+            institute=institute,
+            internal_roles=internal_roles,
+            status=status,
+        )
+
+    @staticmethod
+    async def _get_user_roles_or_raise(
+        course_id: int,
+        institute: InstitutesEnum,
+        user_info: CurrentUserReturn,
+    ) -> list[RoleEnum]:
+        """Recupera los roles Moodle del usuario y valida que existan."""
         user_roles = await MoodleService.get_user_roles(
             institute=institute,
             course_id=course_id,
@@ -59,12 +77,24 @@ class ListAccountRequestsController:
             raise HTTPException(
                 status_code=403,
                 detail={
-                    "error_code": "SIN_PERMISOS",
-                    "message": "Sin privilegios para ver las solicitudes de este curso.",
+                    "error_code": "SIN_ROLES",
+                    "message": "No tiene roles asignados en Moodle para este curso, por lo que no puede ver las solicitudes de cuenta.",
                 },
             )
 
-        # Determinar qué roles internos puede listar el usuario actual
+        return user_roles
+
+    @staticmethod
+    def _get_internal_roles_or_raise(
+        user_roles: list[RoleEnum],
+    ) -> list[AccountRoleEnum]:
+        """Convierte los roles de Moodle a los roles internos visibles."""
+        role_mapping: dict[RoleEnum, AccountRoleEnum] = {
+            RoleEnum.MANAGER: AccountRoleEnum.ALUMNO,
+            RoleEnum.TEACHER: AccountRoleEnum.ALUMNO,
+            RoleEnum.EDITING_TEACHER: AccountRoleEnum.ALUMNO,
+        }
+
         internal_roles = [
             role_mapping[role] for role in user_roles if role in role_mapping
         ]
@@ -74,60 +104,33 @@ class ListAccountRequestsController:
                 status_code=403,
                 detail={
                     "error_code": "SIN_PERMISOS",
-                    "message": "No tiene roles válidos para ver solicitudes en este curso.",
+                    "message": "No tienes permisos para ver las solicitudes de cuenta en este curso.",
                 },
             )
 
+        return internal_roles
+
+    @staticmethod
+    def _list_account_requests_or_raise(
+        repository: ListAccountRequestsRepository,
+        course_id: int,
+        institute: InstitutesEnum,
+        internal_roles: list[AccountRoleEnum],
+        status: RequestStatusEnum | None,
+    ) -> list[dict[str, object]]:
+        """Delega al repositorio la consulta de solicitudes visibles."""
         try:
-            # Lógica de ordenamiento: PENDING siempre aparece al principio (prioridad 0)
-            status_order = case(
-                (UserAccounts.status == AccountStatusEnum.PENDING, 0),
-                (UserAccounts.status == AccountStatusEnum.APPROVED, 1),
-                (UserAccounts.status == AccountStatusEnum.REJECTED, 2),
-                (UserAccounts.status == AccountStatusEnum.CREATED, 3),
-                else_=4,
+            return repository.list_student_account_requests(
+                course_id=course_id,
+                institute=institute,
+                internal_roles=internal_roles,
+                status=status,
             )
-
-            # Construcción dinámica de filtros de consulta
-            filters = [
-                UserAccounts.course_id == course_id,
-                UserAccounts.institute == institute,
-                UserAccounts.role.in_(internal_roles),
-            ]
-
-            if status is not None:
-                filters.append(UserAccounts.status == status)
-
-            # Ejecución de la consulta optimizada
-            stmt = (
-                select(
-                    UserAccounts.id,
-                    UserAccounts.name,
-                    UserAccounts.last_name,
-                    UserAccounts.email,
-                    UserAccounts.status,
-                    UserAccounts.role,
-                )
-                .where(*filters)
-                .order_by(status_order, UserAccounts.status)
-            )
-
-            result = db.execute(stmt)
-            rows = result.mappings().all()
-
-            return [dict(r) for r in rows]
-
-        except SQLAlchemyError as exc:
+        except Exception as exc:
             raise HTTPException(
                 status_code=500,
                 detail={
-                    "error_code": "DB_ERROR",
-                    "message": "Error al obtener solicitudes de la base de datos",
+                    "error_code": "OBTENCION_SOLICITUDES_FALLIDA",
+                    "message": "Hubo un error al obtener las solicitudes de cuenta. Intente nuevamente más tarde.",
                 },
             ) from exc
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail={"error_code": "ERROR_DESCONOCIDO", "message": str(e)},
-            ) from e

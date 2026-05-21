@@ -3,9 +3,19 @@
 # Utiliza TLS para garantizar que la comunicación con el servidor de correo sea cifrada.
 
 import smtplib
+from dataclasses import dataclass
 from email.message import EmailMessage
+from uuid import UUID
 
 from app.core.environment import environment
+
+
+@dataclass
+class SendValidationEmailResult:
+    success: bool
+    message: str | None = None
+    token: UUID | None = None
+    error: str | None = None
 
 
 class EmailService:
@@ -21,28 +31,30 @@ class EmailService:
     SMTP_USER = environment.SMTP_USER
     SMTP_PASS = environment.SMTP_PASS
     FROM_ADDRESS = environment.FROM_ADDRESS
+    FRONTEND_URL = environment.FRONTEND_URL
     FROM_NAME = "MACTI Proto"
 
     @staticmethod
     def send_validation_email(
         to_email: str,
-        token: str = "",
+        token: UUID,
         subject: str | None = None,
         body: str | None = None,
-    ):
+    ) -> SendValidationEmailResult:
         """
         Envía un correo electrónico de validación con un enlace de confirmación.
 
         Retorna:
-            Un diccionario con el estatus del envío ('success' o 'error').
+            Un dataclass con el estatus del envío.
         """
 
-        # Enlace dinámico que apunta al front-end de Next.js
-        # NOTA: En producción, 'localhost:3000' debe ser reemplazado por el dominio real.
-        confirm_link = f"http://localhost:3000/registro/confirmacion?token={token}"
+        # Enlace dinámico que apunta al front-end de Next.js.
+        confirm_link = (
+            f"{EmailService.FRONTEND_URL}/registro/confirmacion?token={token}"
+        )
 
         msg = EmailMessage()
-        msg["Subject"] = subject or "¡Cuenta Aprobada! Confirma tu correo"
+        msg["Subject"] = subject or "¡Cuenta MACTI Aprobada! Confirma tu correo"
         msg["From"] = f"{EmailService.FROM_NAME} <{EmailService.FROM_ADDRESS}>"
         msg["To"] = to_email
 
@@ -68,15 +80,15 @@ class EmailService:
                 smtp.login(EmailService.SMTP_USER, EmailService.SMTP_PASS)
                 smtp.send_message(msg)
 
-            return {
-                "success": True,
-                "message": f"Correo enviado exitosamente a {to_email}",
-                "token": token,
-            }
+            return SendValidationEmailResult(
+                success=True,
+                message=f"Correo enviado exitosamente a {to_email}",
+                token=token,
+            )
 
         except Exception as e:
             # Captura errores de autenticación, red o rechazo del servidor SMTP.
-            return {
-                "success": False,
-                "error": f"Error en el servidor de correo: {str(e)}",
-            }
+            return SendValidationEmailResult(
+                success=False,
+                error=f"Error en el servidor de correo: {str(e)}",
+            )

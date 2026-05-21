@@ -2,68 +2,111 @@
 # Coordina la creación de usuarios en Keycloak y Moodle, además de la
 # inscripción a cursos, creación de grupos y limpieza de tokens de verificación.
 
-from fastapi import HTTPException
-from sqlalchemy.orm import Session, joinedload
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from app.modules.register.repositories.create_account_repository import (
+    CreateAccountRepository,
+)
 from app.modules.register.services.kc_service import KeycloakService
 from app.modules.register.services.moodle_service import MoodleService
-from app.shared.enums.institutes_enum import InstitutesEnum
+from app.modules.register.use_cases.enroll_user import EnrollUserUseCase
 from app.shared.enums.role_enum import AccountRoleEnum
-from app.shared.enums.status_enum import AccountStatusEnum
-from app.shared.models.user_courses_model import UserCourses
-from app.shared.models.users_model import UserAccounts
-from app.shared.models.verification_tokens_model import VerificationToken
+from app.shared.enums.status_enum import RequestStatusEnum
+from app.shared.models.auth_model import Auth
+from app.shared.models.student_courses_model import StudentCourseRequest
+from app.shared.models.teacher_courses_model import TeacherCourseRequest
 
-from ..schema import CreateAccountSchema
+from ..schemas import CreateAccountSchema
 
 
 class CreateAccountController:
-    """
-    Controlador encargado del flujo de alta definitiva de usuarios.
+    """Controlador que orquesta el aprovisionamiento final de una cuenta.
 
-    Orquesta la integración con:
-    - Keycloak: para identidad (IAM)
-    - Moodle: para cursos y aprendizaje (LMS)
-
-    Asegura consistencia entre ambos sistemas con rollback en caso de error.
+    Separa responsabilidades en funciones privadas para claridad y testabilidad.
     """
 
     @staticmethod
-    async def create_account(data: CreateAccountSchema, db: Session):
+    async def create_account(data: CreateAccountSchema, db: Session) -> dict[str, Any]:
+        """Flujo principal de creación de cuenta.
+
+        Args:
+            data: `CreateAccountSchema` con `user_id`, `new_password` y `token`.
+            db: Sesión de SQLAlchemy.
+
+        Returns:
+            Diccionario con IDs creados y mensaje de éxito.
         """
-        Realiza el aprovisionamiento completo de una cuenta aprobada.
+        repo = CreateAccountRepository(db)
 
-        Pasos:
-        1. Valida que la solicitud exista y esté en estado APPROVED.
-        2. Crea el usuario en Keycloak (o recupera su ID si ya existe).
-        3. Si es docente y course_id == 0:
-            a. Crea UN CURSO POR CADA GRUPO en Moodle.
-            b. Inscribe al docente en cada curso creado.
-        4. Si es alumno, inscribe al alumno en el curso existente.
-        5. Actualiza estados en BD local y elimina tokens temporales.
-        """
-
-        # ========== 1. VALIDACIÓN DE LA SOLICITUD ==========
-        account_request = (
-            db.query(UserAccounts)
-            .filter(UserAccounts.id == data.user_id)
-            .options(joinedload(UserAccounts.verification_tokens))
-            .one_or_none()
-        )
-
-        if account_request is None:
+        auth = repo.get_auth_with_relations(data.user_id)
+        if auth is None:
             raise HTTPException(
                 status_code=404,
                 detail={
-                    "error_code": "NO_ENCONTRADO",
-                    "message": "Solicitud no encontrada",
+                    "error_code": "USUARIO_NO_ENCONTRADO",
+                    "message": "No se encontró una solicitud de cuenta con el ID proporcionado",
                 },
             )
 
-        if (
-            account_request.verification_tokens is None
-            or len(account_request.verification_tokens) == 0
-        ):
+        CreateAccountController._validate_verification_tokens(auth, data.token)
+        CreateAccountController._validate_request_approved(auth)
+
+        # KEYCLOAK
+        kc_user_id = await CreateAccountController._recover_existing_kc(auth)
+        if not kc_user_id:
+            kc_user_id = await CreateAccountController._create_user_kc_or_raise(
+                auth, data.new_password
+            )
+
+        # MOODLE - crear usuario y delegar la resolución de cursos al caso de uso
+        moodle_user_id = await CreateAccountController._create_moodle_user_or_raise(
+            auth
+        )
+        approved_request = CreateAccountController._get_approved_course_request(auth)
+        enroll_user_use_case = EnrollUserUseCase(
+            moodle_service=MoodleService(), institute=auth.institute
+        )
+        enroll_result = await enroll_user_use_case.execute(
+            request_course_data=approved_request,
+            user_id=moodle_user_id,
+        )
+        if not enroll_result.enrolled:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error_code": "INSCRIPCION_ERROR",
+                    "message": f"Error al inscribir al usuario en el curso: {enroll_result.error}",
+                },
+            )
+
+        # Finalizar: actualizar estados y limpiar token
+        CreateAccountController._finalize_transaction(
+            repo=repo, auth=auth, kc_user_id=kc_user_id, moodle_user_id=moodle_user_id
+        )
+
+        return {"message": "Cuenta creada exitosamente"}
+
+    @staticmethod
+    def _validate_verification_tokens(auth: Auth, token: UUID) -> None:
+        """Valida el token único de verificación asociado al `Auth`.
+
+        Requisitos:
+        - Existe exactamente un `verification_token` asociado (relación 1:1).
+        - El `token` proporcionado (UUID) coincide con `verification_token.token`.
+        - `verification_token.is_used` es `False`.
+        - `verification_token.expires_at` es posterior al instante actual (UTC).
+
+        Errores lanzados (HTTP 400):
+        - `TOKEN_NO_ENCONTRADO` si no existe token asociado.
+        - `TOKEN_INVALIDO` si el token no coincide, está usado o expirado.
+        """
+
+        if auth.verification_token is None:
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -72,188 +115,140 @@ class CreateAccountController:
                 },
             )
 
-        if account_request.status != AccountStatusEnum.APPROVED:
+        if auth.verification_token.token != token:
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error_code": "STATUS_INVALIDO",
-                    "message": "La solicitud debe estar aprobada para crear la cuenta",
+                    "error_code": "TOKEN_INVALIDO",
+                    "message": "El token de verificación proporcionado no es válido para esta solicitud",
                 },
             )
 
-        # ========== 2. KEYCLOAK - CREACIÓN DE IDENTIDAD ==========
+        if auth.verification_token.is_used:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "TOKEN_INVALIDO",
+                    "message": "El token de verificación ya ha sido utilizado",
+                },
+            )
+
+        if auth.verification_token.expires_at < datetime.now(
+            tz=auth.verification_token.expires_at.tzinfo
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "TOKEN_INVALIDO",
+                    "message": "El token de verificación ha expirado",
+                },
+            )
+
+    @staticmethod
+    def _validate_request_approved(auth: Auth) -> None:
+        """Valida que exista una solicitud de curso aprobada para este usuario.
+
+        Según el flujo:
+        - El usuario solo puede tener una solicitud pendiente.
+        - El modelo permite múltiples solicitudes futuras.
+        - Se valida que en este punto solo exista una solicitud aprobada.
+        """
+        all_requests = auth.student_course_requests + auth.teacher_course_requests
+
+        if len(all_requests) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "ESTADO_SOLICITUD_INVALIDO",
+                    "message": "Se requiere exactamente una solicitud de curso para esta cuenta",
+                },
+            )
+
+        if all_requests[0].status != RequestStatusEnum.APPROVED:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "ESTADO_SOLICITUD_INVALIDO",
+                    "message": "La solicitud de curso no está aprobada para esta cuenta",
+                },
+            )
+
+    @staticmethod
+    async def _create_user_kc_or_raise(auth: Auth, password: str) -> UUID:
+        """Crea el usuario en Keycloak o recupera su ID si ya existe.
+
+        Divide la lógica para reducir complejidad cognitiva.
+        """
+        profile = auth.profile
+
         kc_result = await KeycloakService.create_user(
             {
-                "name": account_request.name,
-                "last_name": account_request.last_name,
-                "email": account_request.email,
-                "password": data.new_password,
+                "name": profile.name,
+                "last_name": profile.last_name,
+                "email": auth.email,
+                "password": password,
             },
-            institute=account_request.institute,
+            institute=auth.institute,
         )
 
-        if not kc_result.get("created"):
-            error_msg = str(kc_result.get("error", ""))
+        if not kc_result.user_id:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "error_code": "KC_ERROR",
+                    "message": f"Error en Keycloak: {kc_result.error}",
+                },
+            )
 
-            # PARCHE: Si el usuario ya existe en Keycloak, recuperamos su ID
-            if (
-                "User exists with same username" in error_msg
-                or "User exists" in error_msg
-            ):
-                print(
-                    f"⚠️ Usuario {account_request.email} ya existe en Keycloak. Recuperando ID..."
-                )
+        return kc_result.user_id
 
-                existing_user = await KeycloakService.get_user_by_email(
-                    email=account_request.email, institute=account_request.institute
-                )
+    @staticmethod
+    async def _recover_existing_kc(auth: Auth) -> UUID | None:
+        """Recupera un usuario existente en Keycloak por correo y guarda su ID.
 
-                if existing_user and existing_user.get("id"):
-                    account_request.kc_id = str(existing_user["id"])
-                    print(f"✅ ID de Keycloak recuperado: {account_request.kc_id}")
-                else:
-                    raise HTTPException(
-                        status_code=502,
-                        detail={
-                            "error_code": "KC_ERROR",
-                            "message": "Usuario existe en Keycloak pero no se pudo recuperar su ID",
-                        },
-                    )
-            else:
-                raise HTTPException(
-                    status_code=502,
-                    detail={
-                        "error_code": "KC_ERROR",
-                        "message": f"Error en Keycloak: {kc_result.get('error')}",
-                    },
-                )
+        Busca el usuario por email en Keycloak y almacena su `kc_id` en el
+        registro `JIDs` asociado al `auth`. Lanza `HTTPException` si no se
+        puede recuperar el ID.
+        """
+        existing_user = await KeycloakService.get_user_by_email(
+            email=auth.email, institute=auth.institute
+        )
+
+        return (
+            UUID(existing_user.user.get("id"))
+            if existing_user.found and existing_user.user
+            else None
+        )
+
+    @staticmethod
+    def _get_approved_course_request(
+        auth: Auth,
+    ) -> StudentCourseRequest | TeacherCourseRequest:
+        """Recupera la solicitud de curso aprobada que define el contexto de matrícula."""
+        if auth.profile.role == AccountRoleEnum.ALUMNO:
+            return auth.student_course_requests[0]
         else:
-            # Guardar el UUID de Keycloak como string
-            kc_user_id = kc_result.get("user_id")
-            if kc_user_id:
-                account_request.kc_id = str(kc_user_id)
+            return auth.teacher_course_requests[0]
 
-        # ========== 3. MOODLE - GESTIÓN DE CURSOS ==========
-        current_course_id = account_request.course_id
-        created_courses = []  # Lista para almacenar los IDs de cursos creados
+    @staticmethod
+    async def _create_moodle_user_or_raise(auth: Auth) -> int:
+        """Crea el usuario en Moodle; lanza y permite rollback si falla.
 
-        # Si es docente y course_id == 0, hay que crear curso(s) NUEVO(s)
-        if account_request.role == AccountRoleEnum.DOCENTE and current_course_id == 0:
-            # Buscar los detalles del curso solicitado
-            course_detail = (
-                db.query(UserCourses)
-                .filter(
-                    UserCourses.auth_id == account_request.id,
-                    UserCourses.status == AccountStatusEnum.PENDING,
-                )
-                .first()
-            )
+        Crea el usuario en la instancia de Moodle y almacena el `moodle_id`
+        en el registro `JIDs` del `auth`. Si no existe `JIDs`, lo crea.
+        """
+        profile = auth.profile
 
-            if course_detail and course_detail.course_full_name:
-                # Parsear los grupos (vienen como string "A334,A554")
-                groups_str = course_detail.groups or ""
-                groups_list = (
-                    [g.strip() for g in groups_str.split(",") if g.strip()]
-                    if groups_str
-                    else ["0"]
-                )
+        moodle_result = await MoodleService.create_user(
+            user_data={
+                "name": profile.name,
+                "last_name": profile.last_name,
+                "email": auth.email,
+            },
+            institute=auth.institute,
+        )
 
-                # CREAR UN CURSO POR CADA GRUPO
-                for group_name in groups_list:
-                    # Generar shortname único para este curso
-                    shortname = CreateAccountController._create_course_shortname(
-                        institute=account_request.institute,
-                        fullname=course_detail.course_full_name,
-                        group=group_name,
-                    )
-
-                    print(
-                        f"🆕 Creando curso: {course_detail.course_full_name} - Grupo: {group_name}"
-                    )
-                    print(f"   Shortname: {shortname}")
-
-                    # Crear el curso en Moodle
-                    moodle_course_res = await MoodleService.create_course(
-                        institute=account_request.institute,
-                        fullname=course_detail.course_full_name,
-                        teacher_name=f"{account_request.name} {account_request.last_name}",
-                        shortname=shortname,
-                        group_name=group_name,
-                    )
-
-                    if moodle_course_res.error:
-                        # ROLLBACK: Si falla algún curso, borramos el usuario de Keycloak
-                        if account_request.kc_id:
-                            await KeycloakService.delete_user(
-                                str(account_request.kc_id), account_request.institute
-                            )
-                        raise HTTPException(
-                            status_code=502,
-                            detail={
-                                "error_code": "COURSE_CREATION_FAILED",
-                                "message": f"Error creando curso para grupo {group_name}: {moodle_course_res.error}",
-                            },
-                        )
-
-                    # Si el curso se creó correctamente, guardamos su ID
-                    if moodle_course_res.course and "id" in moodle_course_res.course:
-                        course_id = moodle_course_res.course["id"]
-                        created_courses.append(course_id)
-                        print(
-                            f"✅ Curso creado: ID {course_id} - {course_detail.course_full_name} ({group_name})"
-                        )
-
-                # Guardar el primer curso como referencia en account_request
-                if created_courses:
-                    account_request.course_id = created_courses[0]
-                    current_course_id = created_courses[0]
-
-                # Marcar el detalle del curso como APPROVED
-                course_detail.status = AccountStatusEnum.APPROVED
-
-        # Validación final: debe existir un course_id para continuar
-        if current_course_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "DATA_INCOMPLETE",
-                    "message": "ID de curso nulo",
-                },
-            )
-
-        # ========== 4. MOODLE - CREACIÓN DE USUARIO ==========
-        try:
-            moodle_result = await MoodleService.create_user(
-                user_data={
-                    "name": account_request.name,
-                    "last_name": account_request.last_name,
-                    "email": account_request.email,
-                    "course_id": current_course_id,
-                },
-                institute=account_request.institute,
-            )
-        except Exception as e:
-            # ROLLBACK: Si Moodle falla, borramos el usuario de Keycloak
-            if account_request.kc_id:
-                await KeycloakService.delete_user(
-                    user_id=str(account_request.kc_id),
-                    institute=account_request.institute,
-                )
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "MOODLE_CONNECTION_ERROR",
-                    "message": f"No se pudo conectar con Moodle: {str(e)}",
-                },
-            ) from e
-
-        if not moodle_result.get("created"):
-            # ROLLBACK: Fallo controlado en Moodle
-            if account_request.kc_id:
-                await KeycloakService.delete_user(
-                    user_id=str(account_request.kc_id),
-                    institute=account_request.institute,
-                )
+        if not moodle_result.user_id:
             raise HTTPException(
                 status_code=502,
                 detail={
@@ -262,100 +257,24 @@ class CreateAccountController:
                 },
             )
 
-        # Guardar el ID de Moodle
-        account_request.moodle_id = moodle_result.get("id")
-        m_user_id = account_request.moodle_id
+        return moodle_result.user_id
 
-        # ========== 5. INSCRIPCIÓN AUTOMÁTICA ==========
-        if m_user_id is not None:
-            if account_request.role == AccountRoleEnum.DOCENTE:
-                moodle_role = 3  # editingteacher
+    @staticmethod
+    def _finalize_transaction(
+        repo: CreateAccountRepository, auth: Auth, kc_user_id: UUID, moodle_user_id: int
+    ) -> None:
+        """Actualiza estados locales, elimina tokens y persiste la transacción."""
 
-                # Inscribir al docente en TODOS los cursos creados
-                courses_to_enroll = (
-                    created_courses if created_courses else [current_course_id]
-                )
-
-                for course_id in courses_to_enroll:
-                    await MoodleService.enroll_user(
-                        user_id=m_user_id,
-                        course_id=course_id,
-                        institute=account_request.institute,
-                        role_id=moodle_role,
-                    )
-                    print(f"✅ Docente inscrito en curso {course_id}")
-            else:
-                moodle_role = 5  # student
-                await MoodleService.enroll_user(
-                    user_id=m_user_id,
-                    course_id=current_course_id,
-                    institute=account_request.institute,
-                    role_id=moodle_role,
-                )
-
-        # Actualizar el registro del curso a APPROVED
-        course_record = (
-            db.query(UserCourses)
-            .filter(
-                UserCourses.auth_id == account_request.id,
-                UserCourses.status == AccountStatusEnum.PENDING,
-            )
-            .first()
+        # Guardar IDs de servicios externos en JIDs
+        jid_entry = repo.save_jids(
+            auth_id=auth.id,
+            kc_id=kc_user_id,
+            moodle_id=moodle_user_id,
         )
-        if course_record:
-            course_record.status = AccountStatusEnum.APPROVED
 
-        # ========== 6. FINALIZACIÓN Y LIMPIEZA ==========
-        # Cambiar estado global a CREATED
-        account_request.status = AccountStatusEnum.CREATED
+        # Eliminar token
+        repo.delete_verification_token(auth.id)
 
-        # Eliminar token de verificación (ya fue usado)
-        token_record = (
-            db.query(VerificationToken)
-            .filter(VerificationToken.auth_id == account_request.id)
-            .first()
-        )
-        if token_record:
-            db.delete(token_record)
-
-        # Guardar todo en la BD
-        db.commit()
-        db.refresh(account_request)
-
-        return {
-            "message": "Cuenta creada exitosamente",
-            "kc_id": account_request.kc_id,
-            "moodle_id": account_request.moodle_id,
-            "moodle_course_id": current_course_id,
-            "created_courses": created_courses
-            if created_courses
-            else [current_course_id],
-        }
-
-    @classmethod
-    def _create_course_shortname(
-        cls, institute: InstitutesEnum, fullname: str, group: str
-    ) -> str:
-        """
-        Genera el nombre corto oficial (Subject) siguiendo la lógica del proyecto.
-
-        Ejemplo:
-            institute = PRINCIPAL
-            fullname = "Desarrollo WEB"
-            group = "A334"
-            Resultado: PRI-DWE-A334
-        """
-        # Prefijo del instituto: 3 primeras letras en mayúscula
-        inst_prefix = str(institute.value)[:3].upper()
-
-        # Iniciales del curso: primera letra de cada palabra (máximo 3)
-        words = fullname.split()
-        if len(words) >= 2:
-            course_initials = "".join([word[0] for word in words[:3]]).upper()
-        else:
-            course_initials = fullname[:3].upper()
-
-        # Sufijo del grupo
-        group_suffix = str(group).upper() if group else "0"
-
-        return f"{inst_prefix}-{course_initials}-{group_suffix}"
+        # Persistir
+        repo.commit()
+        repo.refresh(jid_entry)

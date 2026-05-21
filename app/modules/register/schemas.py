@@ -9,7 +9,8 @@
 from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field
 
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.enums.status_enum import AccountStatusEnum
+from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 
 
 class AccountBaseSchema(BaseModel):
@@ -55,11 +56,6 @@ class TeacherRequestSchema(AccountBaseSchema):
         default_factory=list,
         description="Lista de grupos a crear en Moodle. Puede estar vacía.",
     )
-    course_id: int | None = Field(
-        None,
-        ge=0,
-        description="ID opcional. Si se omite, se procesa como creación de curso nuevo.",
-    )
 
 
 class AccountRequestResponse(BaseModel):
@@ -86,26 +82,69 @@ class AccountsResponse(BaseModel):
     name: str
     last_name: str
     email: EmailStr
-    status: AccountStatusEnum
+    status: RequestStatusEnum
     model_config = ConfigDict(from_attributes=True)
 
 
 ListAccountsResponse = list[AccountsResponse]
 
 
-class ConfirmAccountSchema(BaseModel):
-    """
-    Payload para la transición de estados por parte del administrador.
-
-    Recibe el ID de la solicitud y el nuevo estado definido por el Enum 'AccountStatusEnum'.
-    """
+class TeacherRequestUserResponse(BaseModel):
+    """Datos públicos del usuario docente asociado a la solicitud."""
 
     id: int
-    status: AccountStatusEnum
+    name: str
+    last_name: str
+    email: EmailStr
+    role: AccountRoleEnum
+    institute: InstitutesEnum
+    model_config = ConfigDict(from_attributes=True)
 
 
-class ConfirmAccountResponse(BaseModel):
-    """Confirmación de éxito tras la actualización de estatus de una cuenta."""
+class TeacherRequestCourseResponse(BaseModel):
+    """Datos de la solicitud de curso del docente."""
+
+    id: int
+    status: RequestStatusEnum
+    course_full_name: str
+    groups: list[str]
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TeacherRequestAccountResponse(BaseModel):
+    """Respuesta agrupada por usuario y solicitud de curso."""
+
+    user: TeacherRequestUserResponse
+    courses: TeacherRequestCourseResponse
+    model_config = ConfigDict(from_attributes=True)
+
+
+ListTeacherAccountsResponse = list[TeacherRequestAccountResponse]
+
+
+class RequestStatusUpdateSchema(BaseModel):
+    """
+    Payload para la transición de estados de solicitudes por parte del administrador.
+    """
+
+    institute: InstitutesEnum
+    request_id: int
+    new_status: RequestStatusEnum
+
+
+class RequestStatusUpdateResponseSchema(BaseModel):
+    """
+    Modelo de respuesta tras actualizar el estado de una solicitud.
+    """
+
+    message: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RequestStatusUpdateResponse(BaseModel):
+    """
+    Confirmación de éxito tras la actualización de estatus de una solicitud de curso.
+    """
 
     message: str
     model_config = ConfigDict(from_attributes=True)
@@ -131,17 +170,38 @@ class CreateAccountResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CourseRequestInfo(BaseModel):
+    """
+    Información del curso asociado a la solicitud.
+    """
+
+    id: int
+    status: RequestStatusEnum
+    moodle_course_id: int | None = None  # Para alumnos
+    course_full_name: str | None = None  # Para docentes
+    groups: str | None = None  # Para docentes
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserInfoResponse(BaseModel):
     """
     Datos de contexto para la interfaz de confirmación.
 
     Permite al frontend mostrar al usuario sus datos registrados antes de
-    completar el proceso de creación de contraseña.
+    completar el proceso de creación de contraseña, incluyendo la información
+    del curso al que está solicitando unirse.
+
+    El campo 'role' permite al frontend determinar qué campos de 'course_request'
+    serán no-nulos:
+    - ALUMNO: moodle_course_id estará poblado, course_full_name y groups serán None
+    - DOCENTE: course_full_name y groups estarán poblados, moodle_course_id será None
     """
 
     id: int
     email: EmailStr
     name: str
     last_name: str
+    role: AccountRoleEnum
     institute: InstitutesEnum
+    course_request: CourseRequestInfo
     model_config = ConfigDict(from_attributes=True)

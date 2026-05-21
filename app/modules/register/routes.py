@@ -2,30 +2,38 @@
 # Este archivo define las rutas para el flujo de solicitudes, aprobación y
 # creación definitiva de cuentas de usuario.
 
-from fastapi import APIRouter, Depends, Query, status
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.register.controllers.create_account import CreateAccountController
 from app.modules.register.controllers.get_user_info import GetUserInfoController
+from app.modules.register.controllers.list_account_requests import (
+    ListAccountRequestsController,
+)
 from app.modules.register.controllers.list_account_requests_teacher import (
     AccountRequestsTeacherController,
 )
-from app.shared.dependecies.get_current_user import get_current_user
+from app.modules.register.controllers.update_request_status import (
+    RequestStatusController,
+)
+from app.shared.dependecies.get_current_user import CurrentUserReturn, get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
+from app.shared.enums.status_enum import RequestStatusEnum
 
-from ...shared.enums.status_enum import AccountStatusEnum
-from .controllers.change_status import ChangeStatusController
-from .controllers.create_account import CreateAccountController
-from .controllers.list_account_requests import ListAccountRequestsController
-from .controllers.request_account import RequestAccountController
-from .schema import (
+from .controllers.account_requests import AccountRequestsController
+from .schemas import (
     AccountRequestResponse,
-    ConfirmAccountResponse,
-    ConfirmAccountSchema,
     CreateAccountResponse,
     CreateAccountSchema,
     ListAccountsResponse,
+    ListTeacherAccountsResponse,
+    RequestStatusUpdateResponseSchema,
+    RequestStatusUpdateSchema,
     StudentRequestSchema,
     TeacherRequestSchema,
     UserInfoResponse,
@@ -43,10 +51,10 @@ router = APIRouter(prefix="/register", tags=["Registro"])
     status_code=status.HTTP_201_CREATED,
 )
 async def request_student_account(
-    body_info: StudentRequestSchema, db: Session = Depends(get_db)
+    body_info: StudentRequestSchema,
+    db: Annotated[Session, Depends(get_db)],
 ):
-    # El controlador es síncrono (sin await)
-    return RequestAccountController.request_account(
+    return await AccountRequestsController.request_account(
         role=AccountRoleEnum.ALUMNO, data=body_info, db=db
     )
 
@@ -59,10 +67,10 @@ async def request_student_account(
     status_code=status.HTTP_201_CREATED,
 )
 async def request_teacher_account(
-    body_info: TeacherRequestSchema, db: Session = Depends(get_db)
+    body_info: TeacherRequestSchema,
+    db: Annotated[Session, Depends(get_db)],
 ):
-    # El controlador es síncrono (sin await)
-    return RequestAccountController.request_account(
+    return await AccountRequestsController.request_account(
         role=AccountRoleEnum.DOCENTE, data=body_info, db=db
     )
 
@@ -73,11 +81,13 @@ async def request_teacher_account(
     response_model=ListAccountsResponse,
 )
 async def list_accounts_requests(
-    course_id: int = Query(..., description="ID del curso en Moodle"),
+    db: Annotated[Session, Depends(get_db)],
+    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
     institute: InstitutesEnum = Query(..., description="Instituto"),
-    status: AccountStatusEnum | None = Query(None),
-    db=Depends(get_db),
-    user_info=Depends(get_current_user),
+    course_id: int = Query(..., description="ID del curso en Moodle"),
+    status: RequestStatusEnum | None = Query(
+        None, description="Estatus de las solicitudes a filtrar"
+    ),
 ):
     return await ListAccountRequestsController.list_accounts_requests(
         db=db,
@@ -92,13 +102,15 @@ async def list_accounts_requests(
     "/list-account-requests/teachers",
     summary="Listar solicitudes de cuenta de docentes",
     description="Endpoint para listar solicitudes de cuenta de docentes. Solo accesible para roles de gestión.",
-    response_model=ListAccountsResponse,
+    response_model=ListTeacherAccountsResponse,
 )
 async def list_teacher_accounts_requests(
+    db: Annotated[Session, Depends(get_db)],
+    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
     institute: InstitutesEnum = Query(..., description="Instituto"),
-    status: AccountStatusEnum | None = Query(None),
-    db=Depends(get_db),
-    user_info=Depends(get_current_user),
+    status: RequestStatusEnum | None = Query(
+        None, description="Estatus de las solicitudes a filtrar"
+    ),
 ):
     return await AccountRequestsTeacherController.list_teacher_accounts_requests(
         institute=institute,
@@ -109,21 +121,31 @@ async def list_teacher_accounts_requests(
 
 
 @router.patch(
-    "/change-status",
-    summary="Cambiar estatus de una cuenta",
-    response_model=ConfirmAccountResponse,
+    "/update-request-status/{role}",
+    summary="Cambiar estatus de una solicitud",
+    description="Endpoint para que el administrador pueda aprobar/rechazar solicitudes de cuenta.",
+    response_model=RequestStatusUpdateResponseSchema,
 )
-async def confirm_account(body_info: ConfirmAccountSchema, db=Depends(get_db)):
-    return await ChangeStatusController.change_status(data=body_info, db=db)
+async def update_request_status(
+    body_info: RequestStatusUpdateSchema,
+    role: Annotated[
+        AccountRoleEnum, Path(description="Rol de la solicitud a actualizar")
+    ],
+    db: Annotated[Session, Depends(get_db)],
+):
+    return await RequestStatusController.update_request_status(
+        data=body_info, role=role, db=db
+    )
 
 
 @router.get(
     "/user-info-by-token",
     summary="Obtener info de usuario por token",
+    description="Endpoint para obtener la información de usuario asociada a un token de verificación. Usado en el flujo de confirmación de email.",
     response_model=UserInfoResponse,
 )
-def confirm_email(token: str = Query(...), db=Depends(get_db)):
-    return GetUserInfoController.get_user_info(token=token, db=db)
+async def confirm_email(token: UUID, db: Annotated[Session, Depends(get_db)]):
+    return await GetUserInfoController.get_user_info(token=token, db=db)
 
 
 @router.post(
@@ -131,6 +153,7 @@ def confirm_email(token: str = Query(...), db=Depends(get_db)):
     summary="Finalizar creación de cuenta",
     response_model=CreateAccountResponse,
 )
-async def create_account(body_info: CreateAccountSchema, db=Depends(get_db)):
-    # El controlador es asíncrono (usa await)
+async def create_account(
+    body_info: CreateAccountSchema, db: Annotated[Session, Depends(get_db)]
+):
     return await CreateAccountController.create_account(data=body_info, db=db)
