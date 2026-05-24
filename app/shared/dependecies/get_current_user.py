@@ -50,9 +50,12 @@ class CurrentUser(BaseModel):
 
 
 class CurrentUserReturn(CurrentUser):
-    """Extensión del modelo de usuario que incluye su vinculación con Moodle."""
+    """Extensión del modelo de usuario con IDs internos de MACTI y Moodle."""
 
-    moodle_id: int
+    moodle_id: int = Field(..., description="ID del usuario en Moodle")
+    auth_id: int | None = Field(
+        ..., description="ID interno del usuario en la tabla de autenticación"
+    )
 
 
 class IdentityRepository:
@@ -61,22 +64,19 @@ class IdentityRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_moodle_id_by_kc_id(self, kc_id: UUID) -> int | None:
-        """Retorna el moodle_id vinculado al kc_id o None si no existe relación."""
-        stmt = select(JIDs.moodle_id).where(JIDs.kc_id == kc_id)
-        rows = self.db.execute(stmt).scalars().all()
+    def get_ids_by_kc_id(self, kc_id: UUID) -> tuple[int | None, int | None]:
+        """Retorna el moodle_id y auth_id vinculados al kc_id o None si no existe relación."""
+        stmt = select(JIDs.moodle_id, JIDs.auth_id).where(JIDs.kc_id == kc_id)
+        result = self.db.execute(stmt).one_or_none()
 
-        if len(rows) > 1:
-            raise MultipleResultsFound(
-                "Se encontró más de un registro JIDs para el mismo kc_id"
-            )
+        if result is None:
+            return (None, None)
 
-        moodle_id = rows[0] if rows else None
-        return moodle_id
+        return (result.moodle_id, result.auth_id)
 
     def create_identity(
         self, user_info: CurrentUser, institute: InstitutesEnum, moodle_id: int
-    ) -> None:
+    ) -> int:
         """Crea identidad local completa (Auth + Profile + JIDs) para usuario sincronizado."""
         auth = Auth(email=user_info.email, institute=institute)
         profile = UserProfile(
@@ -91,6 +91,8 @@ class IdentityRepository:
 
         self.db.add(auth)
         self.db.commit()
+        self.db.refresh(auth)
+        return auth.id
 
 
 async def get_current_user(
@@ -123,11 +125,12 @@ async def get_current_user(
             )
 
         user_kc_parsed = CurrentUser(**payload)
-        moodle_id = await get_user_moodle_id(user_kc_parsed, db, institute)
+        moodle_id, auth_id = await get_user_moodle_id(user_kc_parsed, db, institute)
 
-        # Retorna el objeto unificado con IDs de Keycloak y Moodle
+        # Retorna el objeto unificado con IDs de Keycloak, MACTI y Moodle
         data = user_kc_parsed.model_dump()
         data["moodle_id"] = moodle_id
+        data["auth_id"] = auth_id
         return CurrentUserReturn(**data)
 
     except ExpiredSignatureError as e:
@@ -143,7 +146,7 @@ async def get_current_user(
 
 async def get_user_moodle_id(
     user_info: CurrentUser, db: Session, institute: InstitutesEnum
-) -> int:
+) -> tuple[int, int | None]:
     """
     Obtiene el ID de Moodle asociado al usuario.
     Si el usuario existe en Keycloak pero no en la BD local de MACTI,
@@ -152,17 +155,17 @@ async def get_user_moodle_id(
     repository = IdentityRepository(db)
 
     try:
-        moodle_id = repository.get_moodle_id_by_kc_id(user_info.kc_id)
+        moodle_id, auth_id = repository.get_ids_by_kc_id(user_info.kc_id)
         if moodle_id is not None:
-            return moodle_id
+            return moodle_id, auth_id
 
         # Caso de sincronización: El usuario existe en Moodle/Keycloak pero no en MACTI.
         # Se recupera su perfil de Moodle y se crea el registro local.
         moodle_id = await get_moodle_id_from_web_service(institute, user_info.email)
-        repository.create_identity(
+        auth_id = repository.create_identity(
             user_info=user_info, institute=institute, moodle_id=moodle_id
         )
-        return moodle_id
+        return moodle_id, auth_id
 
     except MultipleResultsFound as exc:
         raise HTTPException(
