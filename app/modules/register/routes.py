@@ -76,10 +76,8 @@ async def request_authenticated_student_account(
     body_info: AuthenticatedStudentRequestSchema,
     db: Annotated[Session, Depends(get_db)],
     user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
-    institute: Annotated[InstitutesEnum, Query(..., description="Instituto")],
 ) -> dict[str, str]:
     """Registra una solicitud de curso usando la identidad autenticada del alumno."""
-    _ = institute
     return await AuthenticatedStudentRequestController.request_student_course(
         data=body_info,
         db=db,
@@ -114,10 +112,8 @@ async def request_authenticated_teacher_account(
     body_info: AuthenticatedTeacherRequestSchema,
     db: Annotated[Session, Depends(get_db)],
     user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
-    institute: Annotated[InstitutesEnum, Query(..., description="Instituto")],
 ) -> dict[str, str]:
     """Registra una solicitud de nuevo curso usando la identidad autenticada del docente."""
-    _ = institute
     return await AuthenticatedTeacherRequestController.request_teacher_course(
         data=body_info,
         db=db,
