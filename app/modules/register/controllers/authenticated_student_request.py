@@ -8,7 +8,6 @@ from app.modules.register.repositories.authenticated_student_request_repository 
     AuthenticatedStudentRequestRepository,
 )
 from app.shared.dependecies.get_current_user import CurrentUserReturn
-from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.student_courses_model import StudentCourseRequest
 
@@ -30,7 +29,6 @@ class AuthenticatedStudentRequestController:
             repository=repository,
             user_info=user_info,
         )
-        AuthenticatedStudentRequestController._validate_student_profile(auth)
         AuthenticatedStudentRequestController._validate_no_duplicate_course_request(
             repository=repository,
             auth=auth,
@@ -74,27 +72,6 @@ class AuthenticatedStudentRequestController:
             )
 
         return auth
-
-    @staticmethod
-    def _validate_student_profile(auth: Auth) -> None:
-        """Valida que el usuario autenticado tenga perfil de alumno."""
-        if auth.profile is None:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error_code": "DATOS_INCOMPLETOS",
-                    "message": "El usuario autenticado no tiene un perfil asociado.",
-                },
-            )
-
-        if auth.profile.role != AccountRoleEnum.ALUMNO:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error_code": "ACCESO_DENEGADO",
-                    "message": "Solo un alumno puede solicitar la unión a un curso desde este endpoint.",
-                },
-            )
 
     @staticmethod
     def _validate_no_duplicate_course_request(
