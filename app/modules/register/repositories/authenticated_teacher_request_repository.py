@@ -21,11 +21,7 @@ class AuthenticatedTeacherRequestRepository:
         return (
             self.db.query(Auth)
             .filter(Auth.id == auth_id)
-            .options(
-                joinedload(Auth.profile),
-                joinedload(Auth.teacher_course_requests),
-                joinedload(Auth.student_course_requests),
-            )
+            .options(joinedload(Auth.profile))
             .one_or_none()
         )
 

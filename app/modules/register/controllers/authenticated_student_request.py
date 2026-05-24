@@ -52,16 +52,8 @@ class AuthenticatedStudentRequestController:
         user_info: CurrentUserReturn,
     ) -> Auth:
         """Recupera el `Auth` asociado al usuario autenticado o retorna HTTP 404."""
-        if user_info.auth_id is None:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error_code": "USUARIO_NO_ENCONTRADO",
-                    "message": "No se pudo resolver la identidad del usuario autenticado.",
-                },
-            )
-
         auth = repository.get_auth_with_relations(user_info.auth_id)
+
         if auth is None:
             raise HTTPException(
                 status_code=404,
