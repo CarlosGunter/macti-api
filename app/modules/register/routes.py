@@ -10,6 +10,9 @@ from app.core.database import get_db
 from app.modules.register.controllers.authenticated_student_request import (
     AuthenticatedStudentRequestController,
 )
+from app.modules.register.controllers.authenticated_teacher_request import (
+    AuthenticatedTeacherRequestController,
+)
 from app.modules.register.controllers.create_account import CreateAccountController
 from app.modules.register.controllers.get_user_info import GetUserInfoController
 from app.modules.register.controllers.list_account_requests import (
@@ -30,6 +33,7 @@ from .controllers.account_requests import AccountRequestsController
 from .schemas import (
     AccountRequestResponse,
     AuthenticatedStudentRequestSchema,
+    AuthenticatedTeacherRequestSchema,
     CreateAccountResponse,
     CreateAccountSchema,
     ListAccountsResponse,
@@ -96,6 +100,28 @@ async def request_teacher_account(
 ):
     return await AccountRequestsController.request_account(
         role=AccountRoleEnum.DOCENTE, data=body_info, db=db
+    )
+
+
+@router.post(
+    "/request-account/teacher/authenticated",
+    summary="Crear una solicitud de nuevo curso para DOCENTE autenticado",
+    description="Endpoint para que un docente autenticado solicite un nuevo curso usando su identidad actual.",
+    response_model=AccountRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def request_authenticated_teacher_account(
+    body_info: AuthenticatedTeacherRequestSchema,
+    db: Annotated[Session, Depends(get_db)],
+    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    institute: Annotated[InstitutesEnum, Query(..., description="Instituto")],
+) -> dict[str, str]:
+    """Registra una solicitud de nuevo curso usando la identidad autenticada del docente."""
+    _ = institute
+    return await AuthenticatedTeacherRequestController.request_teacher_course(
+        data=body_info,
+        db=db,
+        user_info=user_info,
     )
 
 

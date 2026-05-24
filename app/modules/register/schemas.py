@@ -62,6 +62,20 @@ class TeacherRequestSchema(AccountBaseSchema):
     )
 
 
+class AuthenticatedTeacherRequestSchema(BaseModel):
+    """Esquema para una solicitud de nuevo curso por un docente autenticado."""
+
+    course_full_name: str = Field(
+        ...,
+        min_length=1,
+        description="Nombre completo del nuevo curso solicitado por el docente",
+    )
+    groups: list[str] = Field(
+        default_factory=list,
+        description="Lista de grupos a crear en Moodle. Puede estar vacía.",
+    )
+
+
 class AccountRequestResponse(BaseModel):
     """
     Modelo de respuesta tras el registro de una solicitud.
