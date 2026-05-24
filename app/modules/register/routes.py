@@ -1,6 +1,4 @@
-# Módulo APIRouter de Autenticación y Registro - Proyecto MACTI
-# Este archivo define las rutas para el flujo de solicitudes, aprobación y
-# creación definitiva de cuentas de usuario.
+"""Rutas del módulo de registro y solicitudes de curso."""
 
 from typing import Annotated
 from uuid import UUID
@@ -9,6 +7,9 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.modules.register.controllers.authenticated_student_request import (
+    AuthenticatedStudentRequestController,
+)
 from app.modules.register.controllers.create_account import CreateAccountController
 from app.modules.register.controllers.get_user_info import GetUserInfoController
 from app.modules.register.controllers.list_account_requests import (
@@ -28,6 +29,7 @@ from app.shared.enums.status_enum import RequestStatusEnum
 from .controllers.account_requests import AccountRequestsController
 from .schemas import (
     AccountRequestResponse,
+    AuthenticatedStudentRequestSchema,
     CreateAccountResponse,
     CreateAccountSchema,
     ListAccountsResponse,
@@ -56,6 +58,28 @@ async def request_student_account(
 ):
     return await AccountRequestsController.request_account(
         role=AccountRoleEnum.ALUMNO, data=body_info, db=db
+    )
+
+
+@router.post(
+    "/request-account/student/authenticated",
+    summary="Crear una solicitud de curso para ALUMNO autenticado",
+    description="Endpoint para que un alumno autenticado solicite un curso usando su identidad actual.",
+    response_model=AccountRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def request_authenticated_student_account(
+    body_info: AuthenticatedStudentRequestSchema,
+    db: Annotated[Session, Depends(get_db)],
+    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    institute: Annotated[InstitutesEnum, Query(..., description="Instituto")],
+) -> dict[str, str]:
+    """Registra una solicitud de curso usando la identidad autenticada del alumno."""
+    _ = institute
+    return await AuthenticatedStudentRequestController.request_student_course(
+        data=body_info,
+        db=db,
+        user_info=user_info,
     )
 
 

@@ -1,10 +1,4 @@
-# Módulo de Esquemas Pydantic - Proyecto MACTI
-#
-# Este módulo define las estructuras de datos (Modelos de Validación) para la
-# comunicación entre el Front-end y el Backend. Utiliza Pydantic para asegurar
-# que los datos de entrada cumplan con los tipos requeridos y para formatear
-# las respuestas JSON de salida de manera consistente.
-
+"""Esquemas Pydantic usados por el módulo de registro."""
 
 from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field
 
@@ -39,6 +33,16 @@ class StudentRequestSchema(AccountBaseSchema):
         ...,
         gt=0,
         description="El ID del curso es obligatorio para la inscripción de alumnos",
+    )
+
+
+class AuthenticatedStudentRequestSchema(BaseModel):
+    """Esquema para una solicitud de curso de un alumno ya autenticado."""
+
+    course_id: int = Field(
+        ...,
+        gt=0,
+        description="ID del curso al que el alumno autenticado desea unirse",
     )
 
 
