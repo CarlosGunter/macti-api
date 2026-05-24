@@ -53,7 +53,7 @@ class CurrentUserReturn(CurrentUser):
     """Extensión del modelo de usuario con IDs internos de MACTI y Moodle."""
 
     moodle_id: int = Field(..., description="ID del usuario en Moodle")
-    auth_id: int | None = Field(
+    auth_id: int = Field(
         ..., description="ID interno del usuario en la tabla de autenticación"
     )
 
@@ -64,13 +64,13 @@ class IdentityRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_ids_by_kc_id(self, kc_id: UUID) -> tuple[int | None, int | None]:
+    def get_ids_by_kc_id(self, kc_id: UUID) -> tuple[int, int] | None:
         """Retorna el moodle_id y auth_id vinculados al kc_id o None si no existe relación."""
         stmt = select(JIDs.moodle_id, JIDs.auth_id).where(JIDs.kc_id == kc_id)
         result = self.db.execute(stmt).one_or_none()
 
         if result is None:
-            return (None, None)
+            return None
 
         return (result.moodle_id, result.auth_id)
 
@@ -129,8 +129,7 @@ async def get_current_user(
 
         # Retorna el objeto unificado con IDs de Keycloak, MACTI y Moodle
         data = user_kc_parsed.model_dump()
-        data["moodle_id"] = moodle_id
-        data["auth_id"] = auth_id
+        data.update({"moodle_id": moodle_id, "auth_id": auth_id})
         return CurrentUserReturn(**data)
 
     except ExpiredSignatureError as e:
@@ -146,7 +145,7 @@ async def get_current_user(
 
 async def get_user_moodle_id(
     user_info: CurrentUser, db: Session, institute: InstitutesEnum
-) -> tuple[int, int | None]:
+) -> tuple[int, int]:
     """
     Obtiene el ID de Moodle asociado al usuario.
     Si el usuario existe en Keycloak pero no en la BD local de MACTI,
@@ -155,9 +154,9 @@ async def get_user_moodle_id(
     repository = IdentityRepository(db)
 
     try:
-        moodle_id, auth_id = repository.get_ids_by_kc_id(user_info.kc_id)
-        if moodle_id is not None:
-            return moodle_id, auth_id
+        result = repository.get_ids_by_kc_id(user_info.kc_id)
+        if result:
+            return result
 
         # Caso de sincronización: El usuario existe en Moodle/Keycloak pero no en MACTI.
         # Se recupera su perfil de Moodle y se crea el registro local.
