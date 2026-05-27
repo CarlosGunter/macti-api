@@ -4,10 +4,47 @@
 # diferentes Realms de forma dinámica. Se encarga de la autenticación administrativa,
 # creación, eliminación y actualización de credenciales de los usuarios.
 
+
+from dataclasses import dataclass
+from typing import Any
+from uuid import UUID
+
 import httpx
 
 from app.shared.config.kc_configs import keycloak_configs
 from app.shared.enums.institutes_enum import InstitutesEnum
+
+
+@dataclass
+class CreateUserResult:
+    created: bool
+    user_id: UUID | None = None
+    error: str | None = None
+
+
+@dataclass
+class GetUserResult:
+    found: bool
+    user: dict[str, Any] | None = None
+    error: str | None = None
+
+
+@dataclass
+class DeleteUserResult:
+    deleted: bool
+    user_id: UUID | None = None
+    error: str | None = None
+
+
+@dataclass
+class UpdatePasswordResult:
+    success: bool
+    error: str | None = None
+
+
+@dataclass
+class UserExistsResult:
+    exists: bool
 
 
 class KeycloakService:
@@ -49,7 +86,9 @@ class KeycloakService:
             raise Exception(error_message) from e
 
     @classmethod
-    async def create_user(cls, user_data: dict, institute: InstitutesEnum) -> dict:
+    async def create_user(
+        cls, user_data: dict, institute: InstitutesEnum
+    ) -> CreateUserResult:
         """
         Registra un nuevo usuario en el Realm de Keycloak del instituto indicado.
 
@@ -91,32 +130,45 @@ class KeycloakService:
                     created_user = await cls.get_user_by_email(
                         user_data["email"], institute
                     )
-                    return {"created": True, "user_id": created_user.get("id")}
+                    user_id = None
+                    if created_user.found and created_user.user:
+                        raw_user_id = created_user.user.get("id")
+                        user_id = UUID(raw_user_id) if raw_user_id else None
+                    return CreateUserResult(created=True, user_id=user_id)
                 else:
-                    return {"created": False, "error": response.text}
+                    return CreateUserResult(created=False, error=response.text)
         except Exception as e:
-            return {"created": False, "error": str(e)}
+            return CreateUserResult(created=False, error=str(e))
 
     @classmethod
-    async def get_user_by_email(cls, email: str, institute: InstitutesEnum) -> dict:
+    async def get_user_by_email(
+        cls, email: str, institute: InstitutesEnum
+    ) -> GetUserResult:
         """
         Busca la información detallada de un usuario mediante su correo electrónico.
         Útil para recuperar el ID interno de Keycloak tras una creación exitosa.
         """
-        config = keycloak_configs[institute]
-        token = await cls._get_admin_token(institute)
-        users_api_url = f"{config.url}/admin/realms/{config.realm}/users"
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                users_api_url,
-                params={"email": email},
-                headers={"Authorization": f"Bearer {token}"},
-            )
-            users = response.json()
-            return users[0] if users else {}
+        try:
+            config = keycloak_configs[institute]
+            token = await cls._get_admin_token(institute)
+            users_api_url = f"{config.url}/admin/realms/{config.realm}/users"
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    users_api_url,
+                    params={"email": email},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                users = response.json()
+                if users:
+                    return GetUserResult(found=True, user=users[0])
+                return GetUserResult(found=False, user=None)
+        except Exception as e:
+            return GetUserResult(found=False, user=None, error=str(e))
 
     @classmethod
-    async def delete_user(cls, user_id: str, institute: InstitutesEnum) -> bool:
+    async def delete_user(
+        cls, user_id: UUID, institute: InstitutesEnum
+    ) -> DeleteUserResult:
         """
         Elimina de forma permanente un usuario en Keycloak.
         Utilizado principalmente en flujos de 'Rollback' cuando otros servicios (como Moodle)
@@ -132,15 +184,19 @@ class KeycloakService:
                 response = await client.delete(
                     url, headers={"Authorization": f"Bearer {token}"}
                 )
-                return response.status_code in [200, 204]
+                if response.status_code in [200, 204]:
+                    return DeleteUserResult(deleted=True, user_id=user_id)
+                return DeleteUserResult(
+                    deleted=False, user_id=user_id, error=response.text
+                )
         except Exception as e:
             print(f"Error deleting Keycloak user {user_id}: {e}")
-            return False
+            return DeleteUserResult(deleted=False, user_id=user_id, error=str(e))
 
     @classmethod
     async def update_user_password(
-        cls, user_id: str, new_password: str, institute: InstitutesEnum
-    ) -> dict:
+        cls, user_id: UUID, new_password: str, institute: InstitutesEnum
+    ) -> UpdatePasswordResult:
         """
         Realiza un 'Reset Password' administrativo para un usuario.
         Permite establecer una nueva contraseña sin necesidad de conocer la anterior.
@@ -158,9 +214,35 @@ class KeycloakService:
                 )
 
                 if response.status_code == 204:
-                    return {"success": True}
+                    return UpdatePasswordResult(success=True)
                 else:
-                    return {"success": False, "error": response.text}
+                    return UpdatePasswordResult(success=False, error=response.text)
 
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return UpdatePasswordResult(success=False, error=str(e))
+
+    @classmethod
+    async def user_exists(
+        cls, email: str, institute: InstitutesEnum
+    ) -> UserExistsResult:
+        """
+        Verifica la existencia de un usuario en Keycloak por su correo electrónico.
+        Útil para validar duplicados antes de intentar crear una cuenta.
+        """
+        config = keycloak_configs[institute]
+        token = await cls._get_admin_token(institute)
+
+        user_api_url = (
+            f"{config.url}/admin/realms/{config.realm}/users?email={email}&exact=true"
+        )
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    user_api_url,
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                users = response.json()
+                return UserExistsResult(exists=len(users) > 0)
+        except Exception:
+            return UserExistsResult(exists=False)

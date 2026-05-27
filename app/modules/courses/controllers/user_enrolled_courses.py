@@ -6,13 +6,14 @@
 # Moodle, añadiendo metadatos de roles por cada curso obtenido.
 
 from fastapi import HTTPException
-from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
+from app.modules.courses.repositories.user_enrolled_courses_repository import (
+    UserEnrolledCoursesRepository,
+)
 from app.modules.courses.services.moodle_service import MoodleService
 from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.models.users_model import UserAccounts
 from app.shared.services.moodle_service import MoodleService as SharedMoodleService
 
 
@@ -35,77 +36,64 @@ class UserEnrolledCoursesController:
         3. Enriquecimiento: Para cada curso, consulta el rol (teacher, student, etc.).
         """
         # 1. Obtención de identidad cruzada (Keycloak ID -> Moodle ID)
-        user_id = await UserEnrolledCoursesController._get_moodle_id_from_user_info(
-            user_info, db
+        repo = UserEnrolledCoursesRepository(db)
+        user_id = await UserEnrolledCoursesController._resolve_moodle_id(
+            repo, user_info
         )
 
         # 2. Consulta de cursos en el LMS
-        enrolled_courses_result = await MoodleService.get_enrolled_courses(
-            institute=institute, user_id=user_id
+        enrolled_courses = await UserEnrolledCoursesController._fetch_enrolled_courses(
+            institute, user_id
         )
-
-        if enrolled_courses_result.error:
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error_code": "MOODLE_ERROR",
-                    "message": f"No se pudieron obtener los cursos para el usuario {user_id} en {institute.value}",
-                },
-            )
 
         # 3. Inyección de roles específicos por curso
-        enrolled_courses_result.enrolled_courses = (
-            await UserEnrolledCoursesController._add_role_to_courses(
-                institute=institute,
-                courses=enrolled_courses_result.enrolled_courses,
-                user_id=user_id,
-            )
+        enriched = await UserEnrolledCoursesController._add_role_to_courses(
+            institute=institute, courses=enrolled_courses, user_id=user_id
         )
 
-        return enrolled_courses_result.enrolled_courses
+        return enriched
 
     @classmethod
-    async def _get_moodle_id_from_user_info(
-        cls, user_info: CurrentUser, db: Session
+    async def _resolve_moodle_id(
+        cls, repo: UserEnrolledCoursesRepository, user_info: CurrentUser
     ) -> int:
-        """
-        Método interno para resolver la vinculación de cuentas.
+        """Resuelve el `moodle_id` local a partir del `kc_id` del request.
 
-        Busca en la tabla UserAccounts el registro que coincida con el UUID de Keycloak.
-        Lanza excepciones controladas si el usuario no existe o no ha sido sincronizado
-        con Moodle aún.
+        Usa el repositorio para obtener todas las filas asociadas y gestiona
+        los casos: 0 resultados, múltiples resultados o resultado sin `moodle_id`.
         """
         kc_id = user_info.kc_id
 
-        try:
-            query = db.query(UserAccounts).filter(UserAccounts.kc_id == kc_id).one()
-
-            if not query.moodle_id:
-                raise HTTPException(
-                    status_code=404,
-                    detail={
-                        "error_code": "MOODLE_NO_ENCONTRADO",
-                        "message": "El usuario existe localmente pero no tiene una cuenta vinculada en Moodle.",
-                    },
-                )
-            return query.moodle_id
-
-        except NoResultFound:
+        matches = repo.get_jids_by_kc_id(kc_id)
+        if not matches:
             raise HTTPException(
                 status_code=404,
                 detail={
-                    "error_code": "NO_ENCONTRADO",
+                    "error_code": "MOODLE_NO_ENCONTRADO",
                     "message": "La identidad de Keycloak no corresponde a ningún usuario en MACTI.",
                 },
-            ) from NoResultFound
-        except MultipleResultsFound:
+            )
+
+        if len(matches) > 1:
             raise HTTPException(
                 status_code=500,
                 detail={
                     "error_code": "MULTIPLES_RESULTADOS",
                     "message": "Error de integridad: se encontró más de una cuenta para esta identidad.",
                 },
-            ) from MultipleResultsFound
+            )
+
+        entry = matches[0]
+        if not entry.auth or entry.moodle_id is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error_code": "MOODLE_NO_ENCONTRADO",
+                    "message": "El usuario existe localmente pero no tiene una cuenta vinculada en Moodle.",
+                },
+            )
+
+        return entry.moodle_id
 
     @classmethod
     async def _add_role_to_courses(
@@ -118,17 +106,40 @@ class UserEnrolledCoursesController:
         dentro de ese contexto académico. Si falla, asigna por defecto el rol 'student'.
         """
         for course in courses:
-            get_user_profile = await SharedMoodleService.get_user_profile(
-                institute=institute, user_id=user_id, course_id=course["id"]
-            )
+            try:
+                get_user_profile = await SharedMoodleService.get_user_profile(
+                    institute=institute, user_id=user_id, course_id=course["id"]
+                )
 
-            # Extraemos los shortnames de los roles (ej: 'editingteacher', 'student')
-            course["role"] = (
-                [role["shortname"] for role in get_user_profile.user_profile["roles"]]
-                if get_user_profile.error is None
-                and get_user_profile.user_profile
-                and get_user_profile.user_profile.get("roles")
-                else ["student"]
-            )
+                if (
+                    get_user_profile.error
+                    or not get_user_profile.user_profile
+                    or not get_user_profile.user_profile.get("roles")
+                ):
+                    course["role"] = ["student"]
+                else:
+                    course["role"] = [
+                        role["shortname"]
+                        for role in get_user_profile.user_profile["roles"]
+                    ]
+            except Exception:
+                course["role"] = ["student"]
 
         return courses
+
+    @staticmethod
+    async def _fetch_enrolled_courses(institute: InstitutesEnum, user_id: int) -> list:
+        """Llama a la capa de servicio de Moodle y normaliza respuesta o lanza HTTPException."""
+        result = await MoodleService.get_enrolled_courses(
+            institute=institute, user_id=user_id
+        )
+        if getattr(result, "error", None):
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_code": "MOODLE_ERROR",
+                    "message": f"No se pudieron obtener los cursos para el usuario {user_id} en {institute.value}",
+                },
+            )
+
+        return getattr(result, "enrolled_courses", [])

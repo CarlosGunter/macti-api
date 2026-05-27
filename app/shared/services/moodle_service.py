@@ -90,3 +90,120 @@ class MoodleService:
             user_profile=user_profile,
             error=None,
         )
+
+    @staticmethod
+    async def get_user_by_email(email: str, institute: InstitutesEnum) -> int | None:
+        """
+        Reutiliza la función existente para obtener únicamente el ID del usuario.
+        """
+        res = await MoodleService.get_user_profile_by_email(institute, email)
+        if res.error is None and res.user_profile:
+            return res.user_profile.get("id")
+        return None
+
+    @staticmethod
+    async def get_course_by_shortname(
+        shortname: str, institute: InstitutesEnum
+    ) -> int | None:
+        """
+        Busca un curso por su nombre corto y devuelve su ID en Moodle.
+        """
+        config = MOODLE_CONFIG[institute]
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "core_course_get_courses_by_field",
+            "moodlewsrestformat": "json",
+        }
+        data = {"field": "shortname", "value": shortname}
+
+        result = await make_moodle_request(
+            url=config.moodle_url,
+            params=params,
+            data=data,
+            institute=institute,
+        )
+
+        if (
+            result["success"]
+            and result["data"]
+            and len(result["data"].get("courses", [])) > 0
+        ):
+            return result["data"]["courses"][0]["id"]
+        return None
+
+    @staticmethod
+    async def get_assignment_id_by_name(
+        course_id: int, assignment_name: str, institute: InstitutesEnum
+    ) -> int | None:
+        """
+        Busca el ID de una tarea específica dentro de un curso utilizando su nombre exacto.
+        """
+        config = MOODLE_CONFIG[institute]
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "mod_assign_get_assignments",
+            "moodlewsrestformat": "json",
+        }
+        data = {"courseids[0]": course_id}
+
+        result = await make_moodle_request(
+            url=config.moodle_url,
+            params=params,
+            data=data,
+            institute=institute,
+        )
+
+        if result["success"] and result["data"] and "courses" in result["data"]:
+            for course in result["data"]["courses"]:
+                if course["id"] == course_id:
+                    for assign in course.get("assignments", []):
+                        if (
+                            assign["name"].strip().lower()
+                            == assignment_name.strip().lower()
+                        ):
+                            return assign["id"]
+        return None
+
+    @staticmethod
+    async def update_grade(
+        institute: InstitutesEnum,
+        course_id: int,  # noqa: ARG004
+        assignment_id: int,
+        moodle_userid: int,
+        grade: float,
+    ) -> dict:
+        """
+        Actualiza o inserta la calificación de un usuario en una tarea específica.
+        """
+        config = MOODLE_CONFIG[institute]
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "mod_assign_save_grade",
+            "moodlewsrestformat": "json",
+        }
+        data = {
+            "assignmentid": assignment_id,
+            "userid": moodle_userid,
+            "grade": grade,
+            "attemptnumber": -1,
+            "addattempt": 0,
+            "workflowstate": "graded",
+            "applytoall": 1,
+        }
+
+        result = await make_moodle_request(
+            url=config.moodle_url,
+            params=params,
+            data=data,
+            institute=institute,
+        )
+
+        if result["success"]:
+            return {"success": True, "data": result.get("data")}
+
+        return {
+            "success": False,
+            "error_message": result.get(
+                "error_message", "Error desconocido al actualizar calificación"
+            ),
+        }
