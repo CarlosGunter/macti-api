@@ -57,39 +57,3 @@ class MoodleService:
             courses=result["data"],
             error=None,
         )
-
-    @staticmethod
-    async def get_enrolled_courses(institute: InstitutesEnum, user_id: int):
-        """
-        Consulta los cursos en los que un usuario específico está inscrito.
-
-        A diferencia del listado global, esta consulta ('core_enrol_get_users_courses')
-        requiere un 'userid' y retorna únicamente los cursos vinculados a ese perfil.
-
-        Retorna:
-            SimpleNamespace: Con los atributos .enrolled_courses (lista) y .error (str o None).
-        """
-        config = MOODLE_CONFIG[institute]
-        params = {
-            "wstoken": config.moodle_token,
-            "wsfunction": "core_enrol_get_users_courses",
-            "moodlewsrestformat": "json",
-            "userid": user_id,
-        }
-
-        result = await make_moodle_request(
-            url=config.moodle_url,
-            params=params,
-            institute=institute,
-        )
-
-        if not result["success"]:
-            return SimpleNamespace(
-                enrolled_courses=[],
-                error=result["error_message"],
-            )
-
-        return SimpleNamespace(
-            enrolled_courses=result["data"],
-            error=None,
-        )

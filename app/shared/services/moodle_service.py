@@ -90,3 +90,73 @@ class MoodleService:
             user_profile=user_profile,
             error=None,
         )
+
+    @staticmethod
+    async def get_enrolled_courses(institute: InstitutesEnum, user_id: int):
+        """
+        Consulta los cursos en los que un usuario específico está inscrito.
+
+        A diferencia del listado global, esta consulta ('core_enrol_get_users_courses')
+        requiere un 'userid' y retorna únicamente los cursos vinculados a ese perfil.
+
+        Retorna:
+            SimpleNamespace: Con los atributos .enrolled_courses (lista) y .error (str o None).
+        """
+        config = MOODLE_CONFIG[institute]
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "core_enrol_get_users_courses",
+            "moodlewsrestformat": "json",
+            "userid": user_id,
+        }
+
+        result = await make_moodle_request(
+            url=config.moodle_url,
+            params=params,
+            institute=institute,
+        )
+
+        if not result["success"]:
+            return SimpleNamespace(
+                enrolled_courses=[],
+                error=result["error_message"],
+            )
+
+        return SimpleNamespace(
+            enrolled_courses=result["data"],
+            error=None,
+        )
+
+    @staticmethod
+    async def is_user_enrolled_in_course(
+        institute: InstitutesEnum, user_id: int, course_id: int
+    ):
+        """
+        Verifica si un usuario ya está inscrito en un curso específico de Moodle.
+
+        Retorna:
+            SimpleNamespace: Con los atributos .is_enrolled (bool) y .error (str o None).
+        """
+        enrolled_courses_result = await MoodleService.get_enrolled_courses(
+            institute=institute, user_id=user_id
+        )
+
+        if enrolled_courses_result.error:
+            return SimpleNamespace(
+                is_enrolled=False, error=enrolled_courses_result.error
+            )
+
+        enrolled_courses = getattr(enrolled_courses_result, "enrolled_courses", [])
+
+        for course in enrolled_courses:
+            if not isinstance(course, dict):
+                continue
+
+            enrolled_course_id = course.get("id", course.get("courseid"))
+            if enrolled_course_id is None:
+                continue
+
+            if int(enrolled_course_id) == int(course_id):
+                return SimpleNamespace(is_enrolled=True, error=None)
+
+        return SimpleNamespace(is_enrolled=False, error=None)

@@ -120,6 +120,22 @@ class MoodleService:
         """
         Matricula a un usuario existente en un curso específico de Moodle con un rol dinámico.
         """
+        enrollment_status = await BaseMoodleService.is_user_enrolled_in_course(
+            institute=institute, user_id=user_id, course_id=course_id
+        )
+
+        if enrollment_status.error:
+            return EnrollUserResult(
+                enrolled=False,
+                error=enrollment_status.error,
+            )
+
+        if enrollment_status.is_enrolled:
+            return EnrollUserResult(
+                enrolled=False,
+                error="El usuario ya está inscrito en este curso",
+            )
+
         config = MOODLE_CONFIG[institute]
         endpoint = config.moodle_url
         params = {
