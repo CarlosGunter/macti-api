@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 from app.modules.register.services.moodle_service import MoodleService
 from app.shared.enums.institutes_enum import InstitutesEnum
-from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.models.student_courses_model import StudentCourseRequest
 from app.shared.models.teacher_courses_model import TeacherCourseRequest
@@ -27,8 +26,6 @@ class EnrollUserUseCase:
         user_id: int | None = None,
     ) -> EnrollUserResult:
         """Ejecuta el flujo de inscripción de un usuario en un curso específico"""
-
-        role = request_course_data.auth.profile.role
 
         resolved_user_id = user_id
         if resolved_user_id is None and request_course_data.auth.jids:
@@ -59,7 +56,7 @@ class EnrollUserUseCase:
                 error="No se pudo determinar el ID del curso para la inscripción",
             )
 
-        moodle_role = self._get_moodle_role_from_account(role)
+        moodle_role = self._get_moodle_role_from_account(request_course_data)
 
         for course_id in course_ids:
             enrolled = await self.moodle_service.enroll_user(
@@ -74,13 +71,15 @@ class EnrollUserUseCase:
 
         return EnrollUserResult(enrolled=True, error=None)
 
-    def _get_moodle_role_from_account(self, role: AccountRoleEnum) -> RoleEnum:
+    def _get_moodle_role_from_account(
+        self, request_course_data: TeacherCourseRequest | StudentCourseRequest
+    ) -> RoleEnum:
         """Mapea el rol de la aplicación al rol correspondiente en Moodle"""
 
-        if role == AccountRoleEnum.ALUMNO:
+        if isinstance(request_course_data, TeacherCourseRequest):
+            return RoleEnum.EDITING_TEACHER
+        if isinstance(request_course_data, StudentCourseRequest):
             return RoleEnum.STUDENT
-        if role == AccountRoleEnum.DOCENTE:
-            return RoleEnum.TEACHER
 
     async def _create_courses(
         self, request_course_data: TeacherCourseRequest
