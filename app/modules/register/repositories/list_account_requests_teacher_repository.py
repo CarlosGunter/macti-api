@@ -92,7 +92,6 @@ class ListTeacherAccountRequestsRepository:
         """Construye los filtros base de la consulta."""
         filters: list[ColumnElement[bool]] = [
             Auth.institute == institute,
-            UserProfile.role == AccountRoleEnum.DOCENTE,
         ]
 
         if status is not None:
