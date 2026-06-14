@@ -24,7 +24,7 @@ from app.modules.register.controllers.list_account_requests_teacher import (
 from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
-from app.shared.dependecies.get_current_user import CurrentUser, get_current_user
+from app.shared.dependecies.auth_current_user import CurrentUser, get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum

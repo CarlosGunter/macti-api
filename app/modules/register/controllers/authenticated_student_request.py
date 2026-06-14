@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.modules.register.repositories.authenticated_student_request_repository import (
     AuthenticatedStudentRequestRepository,
 )
-from app.shared.dependecies.get_current_user import CurrentUser
+from app.shared.dependecies.auth_current_user import CurrentUser
 from app.shared.models.auth_model import Auth
 from app.shared.models.student_courses_model import StudentCourseRequest
 

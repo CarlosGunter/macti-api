@@ -7,7 +7,7 @@ from app.modules.register.repositories.list_account_requests_repository import (
     ListAccountRequestsRepository,
 )
 from app.modules.register.services.moodle_service import MoodleService
-from app.shared.dependecies.get_current_user import CurrentUser
+from app.shared.dependecies.auth_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.role_moodle_enum import RoleEnum

@@ -8,7 +8,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 
-from app.shared.dependecies.get_current_user import get_current_user
+from app.shared.dependecies.auth_current_user import get_current_user
 
 router = APIRouter(prefix="/temp", tags=["temp"])
 

@@ -10,7 +10,7 @@ from app.modules.register.repositories.list_account_requests_teacher_repository 
     ListTeacherAccountRequestsRepository,
 )
 from app.modules.register.services.moodle_service import MoodleService
-from app.shared.dependecies.get_current_user import CurrentUser
+from app.shared.dependecies.auth_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.status_enum import RequestStatusEnum
 
