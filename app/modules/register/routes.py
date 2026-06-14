@@ -178,9 +178,13 @@ async def update_request_status(
         AccountRoleEnum, Path(description="Rol de la solicitud a actualizar")
     ],
     db: Annotated[Session, Depends(get_db)],
+    _: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    institute: InstitutesEnum = Query(
+        ..., description="Instituto al que pertenece la solicitud"
+    ),
 ):
     return await RequestStatusController.update_request_status(
-        data=body_info, role=role, db=db
+        data=body_info, role=role, db=db, institute=institute
     )
 
 

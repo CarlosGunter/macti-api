@@ -50,7 +50,10 @@ class RequestStatusController:
 
     @staticmethod
     async def update_request_status(
-        data: RequestStatusUpdateSchema, role: AccountRoleEnum, db: Session
+        data: RequestStatusUpdateSchema,
+        role: AccountRoleEnum,
+        db: Session,
+        institute: InstitutesEnum,
     ):
         """
         Cambia el estatus de una solicitud de cuenta específica.
@@ -81,7 +84,7 @@ class RequestStatusController:
         # Procesar cambio de estado
         try:
             message = await RequestStatusController._process_status_transition(
-                course_request, data.new_status, data.institute, repository
+                course_request, data.new_status, institute, repository
             )
         except HTTPException:
             repository.rollback()
