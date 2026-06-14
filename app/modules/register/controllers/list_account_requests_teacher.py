@@ -10,7 +10,7 @@ from app.modules.register.repositories.list_account_requests_teacher_repository 
     ListTeacherAccountRequestsRepository,
 )
 from app.modules.register.services.moodle_service import MoodleService
-from app.shared.dependecies.get_current_user import CurrentUserReturn
+from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.status_enum import RequestStatusEnum
 
@@ -22,7 +22,7 @@ class AccountRequestsTeacherController:
     async def list_teacher_accounts_requests(
         db: Session,
         institute: InstitutesEnum,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
         status: RequestStatusEnum | None = None,
     ) -> list[dict[str, object]]:
         """Obtiene la lista de solicitudes de docentes visibles para un administrador."""
@@ -62,7 +62,7 @@ class AccountRequestsTeacherController:
 
     @staticmethod
     def _validate_admin_access(
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
         admins: Sequence[dict[str, Any]],
     ) -> None:
         """Valida que el usuario autenticado pertenezca a la lista de administradores."""

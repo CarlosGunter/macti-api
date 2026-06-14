@@ -7,7 +7,7 @@ from app.modules.register.repositories.list_account_requests_repository import (
     ListAccountRequestsRepository,
 )
 from app.modules.register.services.moodle_service import MoodleService
-from app.shared.dependecies.get_current_user import CurrentUserReturn
+from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.role_moodle_enum import RoleEnum
@@ -25,7 +25,7 @@ class ListAccountRequestsController:
         db: Session,
         course_id: int,
         institute: InstitutesEnum,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
         status: RequestStatusEnum | None = None,
     ) -> list[dict[str, object]]:
         """
@@ -64,7 +64,7 @@ class ListAccountRequestsController:
     async def _get_user_roles_or_raise(
         course_id: int,
         institute: InstitutesEnum,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> list[RoleEnum]:
         """Recupera los roles Moodle del usuario y valida que existan."""
         user_roles = await MoodleService.get_user_roles(

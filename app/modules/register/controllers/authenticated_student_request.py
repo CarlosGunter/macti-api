@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.modules.register.repositories.authenticated_student_request_repository import (
     AuthenticatedStudentRequestRepository,
 )
-from app.shared.dependecies.get_current_user import CurrentUserReturn
+from app.shared.dependecies.get_current_user import CurrentUser
 from app.shared.models.auth_model import Auth
 from app.shared.models.student_courses_model import StudentCourseRequest
 
@@ -21,7 +21,7 @@ class AuthenticatedStudentRequestController:
     async def request_student_course(
         data: AuthenticatedStudentRequestSchema,
         db: Session,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> dict[str, str]:
         """Orquesta la creación de una solicitud de curso para un alumno autenticado."""
         repository = AuthenticatedStudentRequestRepository(db)
@@ -49,7 +49,7 @@ class AuthenticatedStudentRequestController:
     @staticmethod
     def _get_auth_or_raise(
         repository: AuthenticatedStudentRequestRepository,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> Auth:
         """Recupera el `Auth` asociado al usuario autenticado o retorna HTTP 404."""
         auth = repository.get_auth_with_relations(user_info.auth_id)

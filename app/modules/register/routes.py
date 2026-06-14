@@ -24,7 +24,7 @@ from app.modules.register.controllers.list_account_requests_teacher import (
 from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
-from app.shared.dependecies.get_current_user import CurrentUserReturn, get_current_user
+from app.shared.dependecies.get_current_user import CurrentUser, get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum
@@ -75,7 +75,7 @@ async def request_student_account(
 async def request_authenticated_student_account(
     body_info: AuthenticatedStudentRequestSchema,
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    user_info: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> dict[str, str]:
     """Registra una solicitud de curso usando la identidad autenticada del alumno."""
     return await AuthenticatedStudentRequestController.request_student_course(
@@ -111,7 +111,7 @@ async def request_teacher_account(
 async def request_authenticated_teacher_account(
     body_info: AuthenticatedTeacherRequestSchema,
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    user_info: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> dict[str, str]:
     """Registra una solicitud de nuevo curso usando la identidad autenticada del docente."""
     return await AuthenticatedTeacherRequestController.request_teacher_course(
@@ -128,7 +128,7 @@ async def request_authenticated_teacher_account(
 )
 async def list_accounts_requests(
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    user_info: Annotated[CurrentUser, Depends(get_current_user)],
     institute: InstitutesEnum = Query(..., description="Instituto"),
     course_id: int = Query(..., description="ID del curso en Moodle"),
     status: RequestStatusEnum | None = Query(
@@ -152,7 +152,7 @@ async def list_accounts_requests(
 )
 async def list_teacher_accounts_requests(
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    user_info: Annotated[CurrentUser, Depends(get_current_user)],
     institute: InstitutesEnum = Query(..., description="Instituto"),
     status: RequestStatusEnum | None = Query(
         None, description="Estatus de las solicitudes a filtrar"
@@ -178,7 +178,7 @@ async def update_request_status(
         AccountRoleEnum, Path(description="Rol de la solicitud a actualizar")
     ],
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    _: Annotated[CurrentUser, Depends(get_current_user)],
     institute: InstitutesEnum = Query(
         ..., description="Instituto al que pertenece la solicitud"
     ),
