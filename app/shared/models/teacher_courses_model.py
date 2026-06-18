@@ -46,7 +46,7 @@ class TeacherCourseRequest(Base):
 
     # ========== ESTADO DE LA SOLICITUD ==========
     status: Mapped[RequestStatusEnum] = mapped_column(
-        Enum(RequestStatusEnum, name="account_status_enum"),
+        Enum(RequestStatusEnum, name="request_status"),
         default=RequestStatusEnum.PENDING,
         nullable=False,
     )

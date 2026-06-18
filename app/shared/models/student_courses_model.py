@@ -22,7 +22,9 @@ class StudentCourseRequest(Base):
     moodle_course_id: Mapped[int] = mapped_column(Integer, nullable=True)
 
     status: Mapped[RequestStatusEnum] = mapped_column(
-        Enum(RequestStatusEnum), nullable=False
+        Enum(RequestStatusEnum, name="request_status"),
+        default=RequestStatusEnum.PENDING,
+        nullable=False,
     )
 
     auth: Mapped["Auth"] = relationship(
