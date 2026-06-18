@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.db.database import get_db
 from app.shared.config.kc_configs import keycloak_configs
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
