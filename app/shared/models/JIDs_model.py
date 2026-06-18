@@ -44,14 +44,20 @@ class JIDs(Base):
     )
 
     # ========== IDENTIFICADORES DE INTEGRACIÓN EXTERNA ==========
+    # SE AGREGÓ: unique=True e index=True para asegurar unicidad y optimizar búsquedas
+
     # kc_id: UUID de Keycloak (identidad centralizada IAM)
-    kc_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    kc_id: Mapped[UUID] = mapped_column(Uuid, nullable=False, unique=True, index=True)
 
     # moodle_id: ID numérico del usuario en Moodle (LMS)
-    moodle_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    moodle_id: Mapped[int] = mapped_column(
+        Integer, nullable=False, unique=True, index=True
+    )
 
     # jupyter_id: ID del usuario en Jupyter Hub (entorno de ejecución)
-    jupyter_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    jupyter_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, unique=True, index=True
+    )
 
     # ========== RELACIÓN INVERSA ==========
     # Relación 1:1 con Auth (un usuario tiene un solo registro de JIDs)

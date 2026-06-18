@@ -36,9 +36,8 @@ class Auth(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     # ========== DATOS BÁSICOS DEL USUARIO ==========
-    email: Mapped[EmailStr] = mapped_column(
-        String, nullable=False, unique=True, index=True
-    )
+    # SE QUITÓ LA RESTRICCIÓN unique=True
+    email: Mapped[EmailStr] = mapped_column(String, nullable=False, index=True)
     institute: Mapped[InstitutesEnum] = mapped_column(
         Enum(InstitutesEnum, name="institutes_enum"), nullable=False
     )
