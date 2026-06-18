@@ -2,11 +2,19 @@
 Service for interacting with Moodle LMS API - Project MACTI
 """
 
+from dataclasses import dataclass, field
 from types import SimpleNamespace
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.services.moodle_client import make_moodle_request
+
+
+@dataclass
+class GetAdminsResult:
+    success: bool
+    error_message: str | None = None
+    admins: list = field(default_factory=list)
 
 
 class MoodleService:
@@ -207,3 +215,35 @@ class MoodleService:
                 "error_message", "Error desconocido al actualizar calificación"
             ),
         }
+
+    @staticmethod
+    async def get_admins(institute: InstitutesEnum) -> GetAdminsResult:
+        """
+        Función auxiliar para obtener la lista de emails de administradores de un instituto.
+        """
+        config = MOODLE_CONFIG[institute]
+        endpoint = config.moodle_url
+
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "local_sitemanagers_get_site_managers",
+            "moodlewsrestformat": "json",
+        }
+
+        result_response = await make_moodle_request(
+            url=endpoint,
+            params=params,
+            institute=institute,
+        )
+        if not result_response["success"]:
+            return GetAdminsResult(
+                success=False,
+                error_message=result_response["error_message"],
+                admins=[],
+            )
+
+        return GetAdminsResult(
+            success=True,
+            error_message=None,
+            admins=result_response.get("data", []),
+        )

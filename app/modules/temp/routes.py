@@ -5,10 +5,12 @@
 # verificación de integridad de tokens JWT y consultas directas a servicios externos.
 # Nota: Este módulo debería ser deshabilitado o protegido en entornos de producción.
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.encoders import jsonable_encoder
 
 from app.shared.dependecies.auth_current_user import get_current_user
+from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.services.moodle_service import MoodleService as SharedMoodleService
 
 router = APIRouter(prefix="/temp", tags=["temp"])
 
@@ -107,14 +109,14 @@ async def bearer_test(current_user=Depends(get_current_user)):
 #     )
 
 
-# @router.get(
-#     "/list-manager-accounts",
-#     summary="Listar cuentas de administradores por instituto",
-# )
-# async def list_manager_accounts(
-#     institute: InstitutesEnum = Query(
-#         ..., description="Instituto para filtrar cuentas de administradores"
-#     ),
-# ):
-#     """Endpoint de prueba para listar cuentas de administradores por instituto."""
-#     return await RegisterMoodleService.get_admins(institute=institute)
+@router.get(
+    "/list-manager-accounts",
+    summary="Listar cuentas de administradores por instituto",
+)
+async def list_manager_accounts(
+    institute: InstitutesEnum = Query(
+        ..., description="Instituto para filtrar cuentas de administradores"
+    ),
+):
+    """Endpoint de prueba para listar cuentas de administradores por instituto."""
+    return await SharedMoodleService.get_admins(institute=institute)
