@@ -1,38 +1,47 @@
-# CONFIGURACIÓN DE LA BASE DE DATOS
-# Este módulo gestiona la conexión a SQLite y la sesión de SQLAlchemy.
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
-import os
+from app.core.db.postgres.postgres_init import init_postgres
+from app.core.db.sqlite.sqlite_init import init_sqlite
+from app.core.environment import environment
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+# Mapa de proveedores de base de datos a sus funciones de inicialización
+MAP_DB = {
+    "sqlite": init_sqlite,
+    "postgres": init_postgres,
+}
 
-# Configuración de rutas para el archivo .db
-BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'macti.db')}"
 
-# Motor de conexión
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, echo=True
-)
+def db_engine_factory() -> tuple[Engine, sessionmaker[Session]]:
+    """
+    Factory para inicializar el motor de base de datos y la sesión según la configuración.
+    Lee el proveedor de base de datos desde las variables de entorno y ejecuta la función correspondiente del mapa.
+    """
+    db_provider = environment.DB_PROVIDER.lower().strip()
 
-# Generador de sesiones
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    # Obtenemos la función de inicialización del mapa
+    initializer = MAP_DB.get(db_provider)
 
-# Base para los modelos
+    if not initializer:
+        valid_providers = ", ".join(MAP_DB.keys())
+        raise ValueError(
+            f"Proveedor de BD '{db_provider}' no soportado. "
+            f"Opciones válidas: {valid_providers}"
+        )
+
+    return initializer()
+
+
+# La Base para los modelos se queda centralizada aquí
 Base = declarative_base()
+# Inicialización dinámica al cargar el módulo
+engine, SessionLocal = db_engine_factory()
 
 
 def get_db():
-    """
-    Genera una sesión de DB para cada petición y la cierra al finalizar.
-
-    Esta función se usa como dependencia en FastAPI para inyectar la
-    sesión en los endpoints.
-    """
+    """Dependencia para FastAPI"""
     db = SessionLocal()
     try:
         yield db
     finally:
-        # Cerramos siempre la conexión por seguridad
         db.close()
