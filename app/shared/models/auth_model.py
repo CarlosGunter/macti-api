@@ -12,7 +12,7 @@ from sqlalchemy import Boolean, DateTime, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
-from app.core.database import Base
+from app.core.db.database import Base
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 # TYPE_CHECKING evita importaciones circulares en tiempo de ejecución

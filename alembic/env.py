@@ -21,7 +21,7 @@ if config.config_file_name:
 
 # Import la configuración y la metadata de la aplicación
 import app.shared.models  # noqa: F401,E402  # importar modelos para registrarlos
-from app.core.database import SQLALCHEMY_DATABASE_URL, Base  # noqa: E402
+from app.core.db.database import SQLALCHEMY_DATABASE_URL, Base  # noqa: E402
 
 target_metadata = Base.metadata
 

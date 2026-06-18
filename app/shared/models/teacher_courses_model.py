@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.db.database import Base
 from app.shared.enums.status_enum import RequestStatusEnum
 
 if TYPE_CHECKING:

@@ -10,7 +10,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.core.database import Base
+from app.core.db.database import Base
 from app.shared.enums.role_enum import AccountRoleEnum
 
 if TYPE_CHECKING:

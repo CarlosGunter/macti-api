@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import Base, engine
+from app.core.db.database import Base, engine
 from app.core.environment import environment
 from app.modules.courses.routes import router as courses_router
 from app.modules.nbgrader.routes import router as nbgrader_router
