@@ -5,13 +5,13 @@ Instrucciones rápidas para Alembic (migraciones)
 - Generar una revisión con autogeneración (detecta cambios en los modelos):
 
 ```bash
-alembic revision --autogenerate -m "initial"
+uv run alembic revision --autogenerate -m "initial"
 ```
 
 - Aplicar las migraciones a la BD:
 
 ```bash
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 Notas:
