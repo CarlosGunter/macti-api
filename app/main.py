@@ -4,10 +4,12 @@
 # seguridad (CORS), gestiona la creación automática del esquema de base de datos
 # y orquesta la inclusión de los diferentes módulos de negocio (Register, Courses, Temp).
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import Base, engine
+from app.core.db.database import Base, engine
 from app.core.environment import environment
 from app.modules.courses.routes import router as courses_router
 from app.modules.nbgrader.routes import router as nbgrader_router
@@ -15,13 +17,27 @@ from app.modules.register.routes import router as register_router
 from app.modules.temp.routes import router as temp_router
 from app.shared import models as _models  # noqa: F401
 
-# Inicialización de la persistencia: Crea las tablas si no existen al arrancar
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """
+    Context manager para manejar el ciclo de vida de la aplicación.
+    Se ejecuta al iniciar y cerrar la aplicación, permitiendo inicializar recursos
+    como la base de datos o servicios externos.
+    """
+    # Inicialización de la persistencia: Crea las tablas si no existen al arrancar
+    Base.metadata.create_all(bind=engine)
+    print("Base de datos inicializada y tablas creadas (si no existían).")
+
+    yield
+    # Aquí se pueden agregar tareas de limpieza si es necesario
+
 
 app = FastAPI(
     title="MACTI API",
     description="Backend para la gestión de identidades y recursos académicos UNAM",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Configuración de CORS

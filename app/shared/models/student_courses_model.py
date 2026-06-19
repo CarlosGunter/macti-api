@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Enum, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.db.database import Base
 from app.shared.enums.status_enum import RequestStatusEnum
 
 if TYPE_CHECKING:
@@ -22,7 +22,9 @@ class StudentCourseRequest(Base):
     moodle_course_id: Mapped[int] = mapped_column(Integer, nullable=True)
 
     status: Mapped[RequestStatusEnum] = mapped_column(
-        Enum(RequestStatusEnum), nullable=False
+        Enum(RequestStatusEnum, name="request_status"),
+        default=RequestStatusEnum.PENDING,
+        nullable=False,
     )
 
     auth: Mapped["Auth"] = relationship(

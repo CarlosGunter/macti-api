@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 
 from app.shared.models.auth_model import Auth
-from app.shared.models.JIDs_model import JIDs
+from app.shared.models.jids_model import JIDs
 
 
 class UserEnrolledCoursesRepository:

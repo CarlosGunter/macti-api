@@ -10,7 +10,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.core.database import Base
+from app.core.db.database import Base
 from app.shared.enums.role_enum import AccountRoleEnum
 
 if TYPE_CHECKING:
@@ -44,7 +44,9 @@ class UserProfile(Base):
     # Información personal del usuario
     name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[AccountRoleEnum] = mapped_column(Enum(AccountRoleEnum), nullable=False)
+    role: Mapped[AccountRoleEnum] = mapped_column(
+        Enum(AccountRoleEnum, name="account_role"), nullable=False
+    )
 
     # Auditoría
     created_at: Mapped[datetime] = mapped_column(
@@ -56,4 +58,4 @@ class UserProfile(Base):
 
     def __repr__(self):
         """Retorna una representación legible del objeto de perfil."""
-        return f"<UserProfile(name='{self.name} {self.last_name}', institute='{self.institute.value}')>"
+        return f"<UserProfile(name='{self.name} {self.last_name}', role='{self.role.value}')>"
