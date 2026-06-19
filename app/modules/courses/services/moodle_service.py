@@ -10,6 +10,9 @@ from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.services.moodle_client import make_moodle_request
 
+# Mandamos a llamar el servicio de shared para reutilizar la lógica de consulta de cursos inscritos por usuario, que es un método que agregamos recientemente en el MoodleService de Shared.
+from app.shared.services.moodle_service import MoodleService as SharedMoodleService
+
 
 class MoodleService:
     """
@@ -63,33 +66,20 @@ class MoodleService:
         """
         Consulta los cursos en los que un usuario específico está inscrito.
 
-        A diferencia del listado global, esta consulta ('core_enrol_get_users_courses')
-        requiere un 'userid' y retorna únicamente los cursos vinculados a ese perfil.
+        Delega la petición al servicio centralizado de shared para reutilizar la lógica
+        del ecosistema MACTI.
 
         Retorna:
             SimpleNamespace: Con los atributos .enrolled_courses (lista) y .error (str o None).
         """
-        config = MOODLE_CONFIG[institute]
-        params = {
-            "wstoken": config.moodle_token,
-            "wsfunction": "core_enrol_get_users_courses",
-            "moodlewsrestformat": "json",
-            "userid": user_id,
-        }
-
-        result = await make_moodle_request(
-            url=config.moodle_url,
-            params=params,
-            institute=institute,
+        # Llamamos al nuevo método que agregamos en el MoodleService de Shared
+        res = await SharedMoodleService.get_user_courses(
+            institute, moodle_userid=user_id
         )
 
-        if not result["success"]:
-            return SimpleNamespace(
-                enrolled_courses=[],
-                error=result["error_message"],
-            )
-
+        # Mantenemos el contrato original mapeando .courses de shared a .enrolled_courses
+        # para que tus rutas (routes.py) no rompan ni tengan que enterarse del cambio de nombre.
         return SimpleNamespace(
-            enrolled_courses=result["data"],
-            error=None,
+            enrolled_courses=res.courses,
+            error=res.error,
         )
