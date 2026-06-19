@@ -42,6 +42,18 @@ class CreateAccountRepository:
             .one_or_none()
         )
 
+    # Función para activar la cuenta de un usuario una vez que se aprueba su solicitud.
+    # Cambia el campo `is_active` a True.
+    def activate_auth_account(self, auth_id: int) -> Auth | None:
+        """Busca el registro Auth por id y cambia su bandera `is_active` a True.
+
+        Retorna la instancia modificada o None si el usuario no existe.
+        """
+        auth = self.db.query(Auth).filter(Auth.id == auth_id).one_or_none()
+        if auth:
+            auth.is_active = True
+        return auth
+
     def get_approved_teacher_course(self, auth_id: int) -> TeacherCourseRequest | None:
         """Retorna la solicitud de docente aprobada (si existe)."""
         return (
