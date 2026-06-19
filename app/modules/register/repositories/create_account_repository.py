@@ -1,7 +1,9 @@
-# Módulo CreateAccountRepository - Persistencia de Aprovisionamiento
-#
-# Encapsula las consultas a la base de datos necesarias para el
-# flujo de aprovisionamiento de cuentas (Keycloak + Moodle).
+"""
+Repositorio para `CreateAccountController`.
+
+Encapsula las consultas a la base de datos necesarias para el
+flujo de aprovisionamiento de cuentas (Keycloak + Moodle).
+"""
 
 from uuid import UUID
 
