@@ -208,11 +208,11 @@ class MoodleService:
             ),
         }
 
-    # Función para poder obtener los cursos en los que un usuario está inscrito, utilizando su ID 
-    # de Moodle. Esta función es útil para el endpoint que consulta los cursos inscritos por 
-    # usuario, y la llamamos desde el MoodleService del módulo de cursos para reutilizar la lógica 
-    # de consulta a Moodle. De esta forma, centralizamos toda la lógica de interacción con Moodle 
-    # dentro del servicio de Shared, y el módulo de cursos simplemente delega la consulta al 
+    # Función para poder obtener los cursos en los que un usuario está inscrito, utilizando su ID
+    # de Moodle. Esta función es útil para el endpoint que consulta los cursos inscritos por
+    # usuario, y la llamamos desde el MoodleService del módulo de cursos para reutilizar la lógica
+    # de consulta a Moodle. De esta forma, centralizamos toda la lógica de interacción con Moodle
+    # dentro del servicio de Shared, y el módulo de cursos simplemente delega la consulta al
     # servicio centralizado.
     @staticmethod
     async def get_user_courses(institute: InstitutesEnum, moodle_userid: int):
