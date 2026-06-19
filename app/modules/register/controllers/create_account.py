@@ -272,6 +272,8 @@ class CreateAccountController:
             moodle_id=moodle_user_id,
         )
 
+        repo.activate_auth_account(auth.id)
+
         # Eliminar token
         repo.delete_verification_token(auth.id)
 

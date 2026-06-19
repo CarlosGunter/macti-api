@@ -7,7 +7,7 @@
 from enum import Enum
 
 
-class RequestStatusEnum(Enum):
+class RequestStatusEnum(str, Enum):
     """
     Enumeración de los estados de una solicitud de curso.
 
