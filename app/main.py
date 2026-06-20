@@ -42,7 +42,7 @@ app = FastAPI(
 
 # Configuración de CORS
 frontend_origin = (
-    "https://macti-frontend.vercel.app" if environment.APP_ENV != "development" else "*"
+    environment.FRONTEND_URL if environment.APP_ENV != "development" else "*"
 )
 app.add_middleware(
     CORSMiddleware,
