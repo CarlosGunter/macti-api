@@ -38,6 +38,7 @@ app = FastAPI(
     description="Backend para la gestión de identidades y recursos académicos UNAM",
     version="1.0.0",
     lifespan=lifespan,
+    root_path="/macti-api",
 )
 
 # Configuración de CORS
