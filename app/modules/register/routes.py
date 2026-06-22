@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.db.database import get_db
 from app.modules.register.controllers.authenticated_student_request import (
     AuthenticatedStudentRequestController,
 )

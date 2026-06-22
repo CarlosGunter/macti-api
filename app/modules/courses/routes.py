@@ -8,7 +8,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.db.database import get_db
 from app.modules.courses.controllers.list_courses import ListCoursesController
 from app.modules.courses.controllers.user_enrolled_courses import (
     UserEnrolledCoursesController,

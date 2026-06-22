@@ -247,3 +247,39 @@ class MoodleService:
             error_message=None,
             admins=result_response.get("data", []),
         )
+
+    @staticmethod
+    async def get_user_courses(institute: InstitutesEnum, moodle_userid: int):
+        """
+        Función para poder obtener los cursos en los que un usuario está inscrito, utilizando su ID de Moodle.
+
+        Esta función es útil para el endpoint que consulta los cursos inscritos por usuario, y la llamamos desde el MoodleService del módulo de cursos para reutilizar la lógica de consulta a Moodle.
+
+        De esta forma, centralizamos toda la lógica de interacción con Moodle dentro del servicio de Shared, y el módulo de cursos simplemente delega la consulta al servicio centralizado.
+        """
+
+        config = MOODLE_CONFIG[institute]
+        params = {
+            "wstoken": config.moodle_token,
+            "wsfunction": "core_enrol_get_users_courses",
+            "moodlewsrestformat": "json",
+        }
+        data = {"userid": moodle_userid}
+
+        result = await make_moodle_request(
+            url=config.moodle_url,
+            params=params,
+            data=data,
+            institute=institute,
+        )
+
+        if not result["success"]:
+            return SimpleNamespace(
+                courses=[],
+                error=result["error_message"],
+            )
+
+        return SimpleNamespace(
+            courses=result["data"] if isinstance(result["data"], list) else [],
+            error=None,
+        )
