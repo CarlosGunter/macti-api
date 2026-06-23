@@ -39,7 +39,7 @@ class EnvironmentConfigs(BaseSettings):
     # Variable de entorno para controlar el registro de rutas temporales (Temp Module)
     APP_ENV: str = "production"
     # URL del frontend para la generación de enlaces en correos
-    FRONTEND_URL: str = "https://macti-frontend.vercel.app"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     @field_validator("APP_ENV")
     @classmethod

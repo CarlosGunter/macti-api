@@ -12,7 +12,7 @@ from app.modules.courses.repositories.user_enrolled_courses_repository import (
     UserEnrolledCoursesRepository,
 )
 from app.modules.courses.services.moodle_service import MoodleService
-from app.shared.dependecies.get_current_user import CurrentUser
+from app.shared.dependecies.auth_current_user import CurrentUser
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.services.moodle_service import MoodleService as SharedMoodleService
 

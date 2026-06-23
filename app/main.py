@@ -38,11 +38,12 @@ app = FastAPI(
     description="Backend para la gestión de identidades y recursos académicos UNAM",
     version="1.0.0",
     lifespan=lifespan,
+    root_path="/macti-api",
 )
 
 # Configuración de CORS
 frontend_origin = (
-    "https://macti-frontend.vercel.app" if environment.APP_ENV != "development" else "*"
+    environment.FRONTEND_URL if environment.APP_ENV != "development" else "*"
 )
 app.add_middleware(
     CORSMiddleware,

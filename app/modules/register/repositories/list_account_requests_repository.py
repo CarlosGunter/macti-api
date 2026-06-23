@@ -1,6 +1,5 @@
 """Repositorio para la consulta de solicitudes de cuenta visibles."""
 
-from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import case, select
@@ -27,14 +26,12 @@ class ListAccountRequestsRepository:
         self,
         course_id: int,
         institute: InstitutesEnum,
-        internal_roles: Sequence[AccountRoleEnum],
         status: RequestStatusEnum | None = None,
     ) -> list[dict[str, Any]]:
         """Retorna las solicitudes de alumnos visibles para el usuario actual."""
         stmt = self._build_statement(
             course_id=course_id,
             institute=institute,
-            internal_roles=internal_roles,
             status=status,
         )
 
@@ -45,7 +42,6 @@ class ListAccountRequestsRepository:
         self,
         course_id: int,
         institute: InstitutesEnum,
-        internal_roles: Sequence[AccountRoleEnum],
         status: RequestStatusEnum | None,
     ) -> Select[tuple[int, str, str, str, RequestStatusEnum, AccountRoleEnum]]:
         """Construye la consulta para listar solicitudes de alumnos."""
@@ -53,7 +49,6 @@ class ListAccountRequestsRepository:
         filters = self._build_filters(
             course_id=course_id,
             institute=institute,
-            internal_roles=internal_roles,
             status=status,
         )
 
@@ -87,14 +82,13 @@ class ListAccountRequestsRepository:
     def _build_filters(
         course_id: int,
         institute: InstitutesEnum,
-        internal_roles: Sequence[AccountRoleEnum],
         status: RequestStatusEnum | None,
     ) -> list[ColumnElement[bool]]:
         """Construye los filtros base de la consulta."""
         filters: list[ColumnElement[bool]] = [
             Auth.institute == institute,
             StudentCourseRequest.moodle_course_id == course_id,
-            UserProfile.role.in_(tuple(internal_roles)),
+            UserProfile.role == AccountRoleEnum.ALUMNO,
         ]
 
         if status is not None:

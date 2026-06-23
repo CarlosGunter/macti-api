@@ -145,7 +145,6 @@ class RequestStatusUpdateSchema(BaseModel):
     Payload para la transición de estados de solicitudes por parte del administrador.
     """
 
-    institute: InstitutesEnum
     request_id: int
     new_status: RequestStatusEnum
 
