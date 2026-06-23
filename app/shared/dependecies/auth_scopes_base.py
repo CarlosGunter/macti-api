@@ -21,7 +21,7 @@ class AuthScopes:
         self,
         current_user: Annotated[CurrentUser, Depends(get_current_user)],
         institute: InstitutesEnum = Query(..., description="Instituto"),
-    ):
+    ) -> bool | None:
         """
         Verifica si el usuario autenticado tiene el rol requerido.
 
@@ -47,5 +47,4 @@ class AuthScopes:
                 },
             )
 
-        if is_admin:
-            return  # El usuario es administrador, no se necesita más verificación
+        return is_admin

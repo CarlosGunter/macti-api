@@ -35,7 +35,11 @@ class ScopeCourseManager(AuthScopes):
         Raises:
             HTTPException: Si el usuario no tiene el rol de profesor en el curso especificado.
         """
-        await super().__call__(institute=institute, current_user=current_user)
+        is_admin = await super().__call__(
+            institute=institute, current_user=current_user
+        )
+        if is_admin:
+            return  # El usuario es administrador, no se necesita más verificación
 
         user_roles = await self._get_user_roles_or_raise(
             course_id=course_id,
