@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
-from pydantic import EmailStr, Field
+from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -73,7 +73,6 @@ class CurrentUser(BearerUserInfo):
     auth_id: int = Field(
         ..., description="ID interno del usuario en la tabla de autenticación"
     )
-    role: AccountRoleEnum = Field(..., description="Rol del usuario en el sistema")
 
 
 async def get_current_user(
@@ -143,38 +142,3 @@ async def get_moodle_id_from_web_service(
         )
 
     return user_profile_result.user_profile.get("id")
-
-
-def sync_role_with_moodle(email: EmailStr, institute: InstitutesEnum) -> None:
-    """
-    Sincroniza el rol del usuario en Moodle con el perfil local de MACTI.
-    """
-    pass
-
-
-async def is_admin_user(email: EmailStr, institute: InstitutesEnum) -> bool:
-    """
-    Verifica si el usuario es un administrador consultando Moodle.
-
-    Args:
-        email: Correo electrónico del usuario
-        institute: Instituto al que pertenece el usuario
-    """
-    moodle_admin_list = await MoodleService.get_admins(institute)
-    admin_list = moodle_admin_list.admins if moodle_admin_list.success else []
-
-    return any(admin["email"] == email for admin in admin_list)
-
-
-async def is_teacher_user(email: EmailStr, institute: InstitutesEnum) -> bool:
-    """
-    Verifica si el usuario es un docente consultando Moodle.
-
-    Args:
-        email: Correo electrónico del usuario
-        institute: Instituto al que pertenece el usuario
-    """
-    moodle_admin_list = await MoodleService.get_admins(institute)
-    admin_list = moodle_admin_list.admins if moodle_admin_list.success else []
-
-    return any(admin["email"] == email for admin in admin_list)
