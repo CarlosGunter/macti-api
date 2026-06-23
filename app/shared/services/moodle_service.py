@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from app.shared.config.moodle_configs import MOODLE_CONFIG
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.services.moodle_client import make_moodle_request
 
 
@@ -264,7 +265,7 @@ class MoodleService:
             "wsfunction": "core_enrol_get_users_courses",
             "moodlewsrestformat": "json",
         }
-        data = {"userid": moodle_userid}
+        data = {"userid": moodle_userid, "returnusercount": 0}
 
         result = await make_moodle_request(
             url=config.moodle_url,
@@ -283,3 +284,27 @@ class MoodleService:
             courses=result["data"] if isinstance(result["data"], list) else [],
             error=None,
         )
+
+    @staticmethod
+    async def get_user_roles(
+        institute: InstitutesEnum,
+        course_id: int,
+        moodle_id: int,
+    ) -> list[RoleEnum]:
+        """
+        Función auxiliar para recuperar roles asignados en un curso de Moodle.
+        """
+
+        get_user_profile_result = await MoodleService.get_user_profile(
+            institute=institute, user_id=moodle_id, course_id=course_id
+        )
+
+        if get_user_profile_result.error:
+            return []
+
+        user_roles = get_user_profile_result.user_profile.get("roles", [])
+
+        # Conversión de IDs numéricos de Moodle al Enum RoleEnum para tipado fuerte
+        list_roles = [RoleEnum(role["roleid"]) for role in user_roles]
+
+        return list_roles
