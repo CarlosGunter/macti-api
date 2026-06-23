@@ -17,7 +17,7 @@ from app.modules.courses.schemas import (
     CourseResponseSchema,
     UserEnrolledCoursesResponseSchema,
 )
-from app.shared.dependecies.get_current_user import CurrentUser, get_current_user
+from app.shared.dependecies.auth_current_user import CurrentUser, get_current_user
 from app.shared.enums.institutes_enum import InstitutesEnum
 
 # Definición del router con prefijo y etiquetas para la documentación automática (Swagger)
