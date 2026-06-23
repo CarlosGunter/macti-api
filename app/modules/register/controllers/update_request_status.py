@@ -2,6 +2,7 @@
 # Este controlador maneja la transición de estados de las solicitudes de cuenta.
 # Orquesta la lógica de negocio sin ocuparse directamente de la persistencia.
 
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,9 @@ from app.modules.register.services.email_service import EmailService
 from app.modules.register.services.kc_service import KeycloakService
 from app.modules.register.services.moodle_service import MoodleService
 from app.modules.register.use_cases.enroll_user import EnrollUserUseCase
+from app.shared.dependecies.auth_current_user import CurrentUser
+from app.shared.dependecies.auth_scope_course_manager import ScopeCourseManager
+from app.shared.dependecies.auth_scopes_base import AuthScopes
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum
@@ -54,6 +58,7 @@ class RequestStatusController:
         role: AccountRoleEnum,
         db: Session,
         institute: InstitutesEnum,
+        current_user: CurrentUser,
     ):
         """
         Cambia el estatus de una solicitud de cuenta específica.
@@ -81,6 +86,12 @@ class RequestStatusController:
             course_request.status, data.new_status
         )
 
+        await RequestStatusController._authorize_request_action(
+            course_request=course_request,
+            institute=institute,
+            current_user=current_user,
+        )
+
         # Procesar cambio de estado
         try:
             message = await RequestStatusController._process_status_transition(
@@ -103,6 +114,33 @@ class RequestStatusController:
         repository.commit()
 
         return {"message": message}
+
+    @staticmethod
+    async def _authorize_request_action(
+        course_request: StudentCourseRequest | TeacherCourseRequest,
+        institute: InstitutesEnum,
+        current_user: CurrentUser,
+    ) -> None:
+        """
+        Ejecuta manualmente la dependencia correcta según el tipo de solicitud.
+
+        - ALUMNO: valida permisos de gestión del curso usando ScopeCourseManager.
+        - DOCENTE: valida permisos administrativos usando AuthScopes.
+        """
+        if isinstance(course_request, StudentCourseRequest):
+            await ScopeCourseManager()(
+                current_user=current_user,
+                institute=institute,
+                course_id=course_request.moodle_course_id,
+            )
+            return
+
+        if isinstance(course_request, TeacherCourseRequest):
+            await AuthScopes(AccountRoleEnum.ADMIN)(
+                current_user=current_user,
+                institute=institute,
+            )
+            return
 
     @staticmethod
     def _validate_transition(
