@@ -25,6 +25,8 @@ from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
 from app.shared.dependecies.auth_current_user import CurrentUser, get_current_user
+from app.shared.dependecies.auth_scope_course_manager import ScopeCourseManager
+from app.shared.dependecies.auth_scopes_base import AuthScopes
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum
@@ -128,7 +130,7 @@ async def request_authenticated_teacher_account(
 )
 async def list_accounts_requests(
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUser, Depends(get_current_user)],
+    _: Annotated[None, Depends(ScopeCourseManager())],
     institute: InstitutesEnum = Query(..., description="Instituto"),
     course_id: int = Query(..., description="ID del curso en Moodle"),
     status: RequestStatusEnum | None = Query(
@@ -140,7 +142,6 @@ async def list_accounts_requests(
         course_id=course_id,
         institute=institute,
         status=status,
-        user_info=user_info,
     )
 
 
@@ -152,7 +153,7 @@ async def list_accounts_requests(
 )
 async def list_teacher_accounts_requests(
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUser, Depends(get_current_user)],
+    _: Annotated[None, Depends(AuthScopes(AccountRoleEnum.ADMIN))],
     institute: InstitutesEnum = Query(..., description="Instituto"),
     status: RequestStatusEnum | None = Query(
         None, description="Estatus de las solicitudes a filtrar"
@@ -161,7 +162,6 @@ async def list_teacher_accounts_requests(
     return await AccountRequestsTeacherController.list_teacher_accounts_requests(
         institute=institute,
         status=status,
-        user_info=user_info,
         db=db,
     )
 
