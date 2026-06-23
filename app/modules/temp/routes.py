@@ -9,7 +9,10 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.encoders import jsonable_encoder
 
 from app.shared.dependecies.auth_current_user import get_current_user
+from app.shared.dependecies.auth_scope_course_manager import ScopeCourseManager
+from app.shared.dependecies.auth_scopes_base import AuthScopes
 from app.shared.enums.institutes_enum import InstitutesEnum
+from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.services.moodle_service import MoodleService as SharedMoodleService
 
 router = APIRouter(prefix="/temp", tags=["temp"])
@@ -120,3 +123,34 @@ async def list_manager_accounts(
 ):
     """Endpoint de prueba para listar cuentas de administradores por instituto."""
     return await SharedMoodleService.get_admins(institute=institute)
+
+
+@router.get(
+    "/admin-permissions",
+    summary="Verificar permisos de administrador para el usuario actual",
+)
+async def check_admin_permissions(_=Depends(AuthScopes(AccountRoleEnum.ADMIN))):
+    """
+    Endpoint de prueba para verificar si el usuario actual tiene permisos de administrador.
+    """
+    return {"message": "El usuario tiene permisos de administrador."}
+
+
+@router.get(
+    "/course-manager-permissions",
+    summary="Verificar permisos de gestor de curso para el usuario actual",
+)
+async def check_course_manager_permissions(
+    institute: InstitutesEnum = Query(..., description="Instituto"),
+    course_id: int = Query(..., description="ID del curso en Moodle"),
+    _=Depends(ScopeCourseManager()),
+):
+    """
+    Endpoint de prueba para verificar si el usuario actual tiene permisos de gestor de curso.
+    """
+    # Aquí se podría agregar lógica adicional para verificar roles específicos en el curso
+    return {
+        "message": "El usuario tiene permisos de gestor de curso.",
+        "institute": institute,
+        "course_id": course_id,
+    }
