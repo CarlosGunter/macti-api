@@ -3,9 +3,10 @@ Dependencia para obtener el usuario autenticado a partir de la información del 
 """
 
 from dataclasses import dataclass
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -76,9 +77,11 @@ class CurrentUser(BearerUserInfo):
 
 
 async def get_current_user(
-    institute: InstitutesEnum,
-    db: Session = Depends(get_db),
-    bearer_user_info: BearerUserInfo = Depends(validate_jwt_token),
+    db: Annotated[Session, Depends(get_db)],
+    bearer_user_info: Annotated[BearerUserInfo, Depends(validate_jwt_token)],
+    institute: InstitutesEnum = Query(
+        ..., description="Instituto al que pertenece el usuario"
+    ),
 ) -> CurrentUser:
     """
     Dependencia de FastAPI que valida el token Bearer y retorna el usuario autenticado.
@@ -99,7 +102,7 @@ async def get_current_user(
             **bearer_user_info.model_dump(),
         )
 
-    auth_ids = await sync_user(bearer_user_info, repository, institute)
+    auth_ids = await _sync_user(bearer_user_info, repository, institute)
 
     return CurrentUser(
         moodle_id=auth_ids.moodle_id,
@@ -108,20 +111,20 @@ async def get_current_user(
     )
 
 
-async def sync_user(
+async def _sync_user(
     user_info: BearerUserInfo, repository: IdentityRepository, institute: InstitutesEnum
 ) -> AuthenticationIds:
     """
     Sincroniza el usuario con Moodle y crea la identidad local si no existe relación previa.
     """
-    moodle_id = await get_moodle_id_from_web_service(institute, user_info.email)
+    moodle_id = await _get_moodle_id_from_web_service(institute, user_info.email)
     auth_id = repository.create_identity(
         user_info=user_info, institute=institute, moodle_id=moodle_id
     )
     return AuthenticationIds(moodle_id=moodle_id, auth_id=auth_id)
 
 
-async def get_moodle_id_from_web_service(
+async def _get_moodle_id_from_web_service(
     institute: InstitutesEnum, user_email: str
 ) -> int:
     """

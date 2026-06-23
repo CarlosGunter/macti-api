@@ -2,11 +2,12 @@
 Módulo de Verificación de Autenticación
 """
 
+from typing import Annotated
 from uuid import UUID
 
 import httpx
-from fastapi import Depends, HTTPException
-from fastapi.security import HTTPBearer
+from fastapi import Depends, HTTPException, Query
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from pydantic import BaseModel, Field, ValidationError
@@ -43,18 +44,20 @@ class KeycloakHeader(BaseModel):
 
 
 async def validate_jwt_token(
-    institute: InstitutesEnum,
-    credentials=Depends(security),
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    institute: InstitutesEnum = Query(
+        ..., description="Instituto al que pertenece el usuario"
+    ),
 ) -> BearerUserInfo:
     """
     Decodifica y valida firma/claims del token usando las llaves públicas del instituto."""
     jwt_bearer = credentials.credentials
-    unverified_header = get_unverified_header(jwt_bearer)
+    unverified_header = _get_unverified_header(jwt_bearer)
 
-    jwks = await get_jwks_for_institute(institute)
-    signing_key = find_signing_key(jwks=jwks, kid=unverified_header.kid)
+    jwks = await _get_jwks_for_institute(institute)
+    signing_key = _find_signing_key(jwks=jwks, kid=unverified_header.kid)
 
-    return decode_and_validate_token(
+    return _decode_and_validate_token(
         jwt_bearer=jwt_bearer,
         signing_key=signing_key,
         algorithm=unverified_header.alg,
@@ -62,7 +65,7 @@ async def validate_jwt_token(
     )
 
 
-def get_unverified_header(token: str) -> KeycloakHeader:
+def _get_unverified_header(token: str) -> KeycloakHeader:
     """Extrae y valida la estructura del encabezado del token."""
     try:
         unverified_header = jwt.get_unverified_header(token)
@@ -87,7 +90,7 @@ def get_unverified_header(token: str) -> KeycloakHeader:
         ) from e
 
 
-async def get_jwks_for_institute(institute: InstitutesEnum) -> dict:
+async def _get_jwks_for_institute(institute: InstitutesEnum) -> dict:
     """
     Recupera el conjunto de llaves públicas (JWKS) desde el servidor de Keycloak.
 
@@ -113,7 +116,7 @@ async def get_jwks_for_institute(institute: InstitutesEnum) -> dict:
     return JWKS_CACHE[institute]
 
 
-def find_signing_key(jwks: dict, kid: str) -> dict:
+def _find_signing_key(jwks: dict, kid: str) -> dict:
     """
     Busca la clave de firma específica dentro del JWKS utilizando el 'kid'
     (Key ID) presente en el encabezado del token.
@@ -131,7 +134,7 @@ def find_signing_key(jwks: dict, kid: str) -> dict:
     )
 
 
-def decode_and_validate_token(
+def _decode_and_validate_token(
     jwt_bearer: str, signing_key: dict, algorithm: str, institute: InstitutesEnum
 ) -> BearerUserInfo:
     """
