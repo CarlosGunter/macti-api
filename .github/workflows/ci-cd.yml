@@ -43,7 +43,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Validar tipos con Pyright
-        run: uv run pyright
+        run: uvx pyright
 
       - name: Smoke test de FastAPI
         run: |
