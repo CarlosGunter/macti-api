@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.modules.nbgrader.services.jupyter_service import JupyterService
 from app.modules.register.repositories.create_account_repository import (
     CreateAccountRepository,
 )
@@ -83,6 +84,31 @@ class CreateAccountController:
                     "message": f"Error al inscribir al usuario en el curso: {enroll_result.error}",
                 },
             )
+
+        try:
+            # Forzamos la limpieza del texto del rol
+            rol_actual = str(auth.profile.role.value).lower()
+            if "docente" in rol_actual:
+                rol_actual = "docente"
+
+            # Recuperamos los nombres reales de la DB de MACTI
+            first_name = getattr(auth.profile, "name", "")
+            last_name = getattr(auth.profile, "last_name", "")
+
+            print(
+                f"📡 ENVIANDO A JUPYTER -> Email: {auth.email} | Rol: {rol_actual} | Nombre: {first_name} {last_name}"
+            )
+
+            # Enviamos el rol y los nombres reales directamente a la API de JupyterHub
+            await JupyterService.sync_user_role(
+                email=auth.email,
+                role=rol_actual,
+                first_name=first_name,
+                last_name=last_name,
+            )
+
+        except Exception as e:
+            print(f"❌ FALLO CRÍTICO EN EL CONTROLADOR DE JUPYTER: {str(e)}")
 
         # Finalizar: actualizar estados y limpiar token
         CreateAccountController._finalize_transaction(

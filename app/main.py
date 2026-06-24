@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import Base, engine
 from app.core.environment import environment
 from app.modules.courses.routes import router as courses_router
+from app.modules.nbgrader.routes import router as jupyter_router
 from app.modules.nbgrader.routes import router as nbgrader_router
+from app.modules.nbgrader.routes import sync_router
 from app.modules.register.routes import router as register_router
 from app.modules.temp.routes import router as temp_router
 from app.shared import models as _models  # noqa: F401
@@ -47,6 +49,8 @@ async def read_root():
 app.include_router(register_router)
 app.include_router(courses_router)
 app.include_router(nbgrader_router)
+app.include_router(sync_router)
+app.include_router(jupyter_router)
 
 if environment.APP_ENV == "development":
     app.include_router(temp_router)
