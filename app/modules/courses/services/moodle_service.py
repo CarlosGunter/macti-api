@@ -30,7 +30,13 @@ class MoodleService:
         Retorna:
             SimpleNamespace: Con los atributos .courses (lista) y .error (str o None).
         """
-        config = MOODLE_CONFIG[institute]
+        config = MOODLE_CONFIG.get(institute, None)
+        if not config:
+            return SimpleNamespace(
+                courses=[],
+                error="Configuración de Moodle no encontrada para el instituto especificado.",
+            )
+
         params = {
             "wstoken": config.moodle_token,
             "wsfunction": "core_course_get_courses",
