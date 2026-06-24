@@ -83,8 +83,8 @@ jobs:
           context: .
           push: ${{ github.event_name == 'push' }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/macti-api:latest
-            ghcr.io/${{ github.repository_owner }}/macti-api:${{ github.sha }}
+            ghcr.io/carlosgunter/macti-api:latest
+            ghcr.io/carlosgunter/macti-api:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max,ignore-error=true
