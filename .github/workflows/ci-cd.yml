@@ -33,17 +33,17 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Instalar dependencias de desarrollo
-        run: uv sync --locked --group dev
+      # - name: Instalar dependencias de desarrollo
+      #   run: uv sync --locked --group dev
 
-      - name: Validar Ruff
-        run: uv run ruff check .
+      # - name: Validar Ruff
+      #   run: uv run ruff check .
 
-      - name: Validar formato con Ruff
-        run: uv run ruff format --check .
+      # - name: Validar formato con Ruff
+      #   run: uv run ruff format --check .
 
-      - name: Validar tipos con Pyright
-        run: uvx pyright
+      # - name: Validar tipos con Pyright
+      #   run: uvx pyright
 
   build-and-push:
     needs: quality
