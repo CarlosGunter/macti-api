@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
+from sqlalchemy.orm import Session
+
 from app.modules.register.services.moodle_service import MoodleService
+from app.modules.register.use_cases.repositories.enrollment_status_repository import (
+    EnrollmentStatusRepository,
+)
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_moodle_enum import RoleEnum
 from app.shared.models.student_courses_model import StudentCourseRequest
@@ -16,9 +21,15 @@ class EnrollUserResult:
 class EnrollUserUseCase:
     """Orquesta la inscripción de un usuario en un curso"""
 
-    def __init__(self, moodle_service: MoodleService, institute: InstitutesEnum):
+    def __init__(
+        self,
+        moodle_service: MoodleService,
+        institute: InstitutesEnum,
+        db: Session,  # ← NUEVO: sesión de BD para el repo
+    ):
         self.moodle_service = moodle_service
         self.institute = institute
+        self.db = db  # ← NUEVO
 
     async def execute(
         self,
@@ -69,7 +80,20 @@ class EnrollUserUseCase:
             if not enrolled.enrolled:
                 return EnrollUserResult(enrolled=False, error=enrolled.error)
 
+        self._update_request_status_to_enrolled(request_course_data)
+
         return EnrollUserResult(enrolled=True, error=None)
+
+    def _update_request_status_to_enrolled(
+        self,
+        request_course_data: StudentCourseRequest | TeacherCourseRequest,
+    ) -> None:
+        """
+        Actualiza el status de la solicitud a ENROLLED solo si la inscripción fue exitosa.
+        Delega la persistencia al repositorio pequeño debajo del caso de uso.
+        """
+        status_repo = EnrollmentStatusRepository(self.db)
+        status_repo.mark_as_enrolled(request_course_data)
 
     def _get_moodle_role_from_account(
         self, request_course_data: TeacherCourseRequest | StudentCourseRequest

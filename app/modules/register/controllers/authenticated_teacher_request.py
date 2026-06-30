@@ -8,6 +8,7 @@ from app.modules.register.repositories.authenticated_teacher_request_repository 
     AuthenticatedTeacherRequestRepository,
 )
 from app.shared.dependecies.get_current_user import CurrentUserReturn
+from app.shared.enums.status_enum import RequestStatusEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.teacher_courses_model import TeacherCourseRequest
 
@@ -72,7 +73,8 @@ class AuthenticatedTeacherRequestController:
         auth: Auth,
         course_full_name: str,
     ) -> None:
-        """Valida que no exista una solicitud para el mismo curso e instituto."""
+        """Valida que no exista una solicitud duplicada y que no esté ya inscrito."""
+        # Validación 1: ¿Ya existe una solicitud para este curso e instituto?
         exists_duplicate_request = (
             repository.exists_teacher_request_for_course_and_institute(
                 auth_id=auth.id,
@@ -89,6 +91,20 @@ class AuthenticatedTeacherRequestController:
                     "message": "Ya existe una solicitud para este curso e instituto.",
                 },
             )
+
+        for request in auth.teacher_course_requests:
+            if (
+                request.course_full_name.strip().lower()
+                == course_full_name.strip().lower()
+                and request.status == RequestStatusEnum.ENROLLED
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error_code": "YA_INSCRITO",
+                        "message": "Ya estás inscrito en este curso.",
+                    },
+                )
 
     @staticmethod
     def _persist_request_or_raise(
