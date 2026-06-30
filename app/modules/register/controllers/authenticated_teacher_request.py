@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.modules.register.repositories.authenticated_teacher_request_repository import (
     AuthenticatedTeacherRequestRepository,
 )
-from app.shared.dependecies.get_current_user import CurrentUserReturn
+from app.shared.dependecies.auth_current_user import CurrentUser
 from app.shared.enums.status_enum import RequestStatusEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.teacher_courses_model import TeacherCourseRequest
@@ -22,7 +22,7 @@ class AuthenticatedTeacherRequestController:
     async def request_teacher_course(
         data: AuthenticatedTeacherRequestSchema,
         db: Session,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> dict[str, str]:
         """Orquesta la creación de una solicitud de nuevo curso para un docente autenticado."""
         repository = AuthenticatedTeacherRequestRepository(db)
@@ -51,7 +51,7 @@ class AuthenticatedTeacherRequestController:
     @staticmethod
     def _get_auth_or_raise(
         repository: AuthenticatedTeacherRequestRepository,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> Auth:
         """Recupera el `Auth` asociado al usuario autenticado o retorna HTTP 404."""
         auth = repository.get_auth_with_relations(user_info.auth_id)
@@ -92,6 +92,7 @@ class AuthenticatedTeacherRequestController:
                 },
             )
 
+        # Validación 2 (NUEVA): ¿Ya está ENROLLED en este curso?
         for request in auth.teacher_course_requests:
             if (
                 request.course_full_name.strip().lower()

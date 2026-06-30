@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import Base, engine
+from app.core.db.database import Base, engine
 from app.core.environment import environment
 from app.core.logging.config import setup_logging
 from app.modules.courses.routes import router as courses_router
@@ -43,7 +43,7 @@ app = FastAPI(
 
 # CORS
 frontend_origin = (
-    "https://macti-frontend.vercel.app" if environment.APP_ENV != "development" else "*"
+    environment.FRONTEND_URL if environment.APP_ENV != "development" else "*"
 )
 app.add_middleware(
     CORSMiddleware,

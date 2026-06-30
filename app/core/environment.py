@@ -14,6 +14,9 @@ class EnvironmentConfigs(BaseSettings):
     y las configuraciones necesarias para el envío de correos vía SMTP.
     """
 
+    DATABASE_URL: str = ""
+    DB_PROVIDER: str = "postgres"
+
     # Secretos de cliente para la administración de Keycloak por instituto
     PRINCIPAL_ADMIN_CLIENT_SECRET: str = ""
     CUANTICO_ADMIN_CLIENT_SECRET: str = ""

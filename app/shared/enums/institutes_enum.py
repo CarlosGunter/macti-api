@@ -8,7 +8,7 @@
 from enum import Enum
 
 
-class InstitutesEnum(Enum):
+class InstitutesEnum(str, Enum):
     """
     Enumeración de los institutos soportados por la plataforma.
 

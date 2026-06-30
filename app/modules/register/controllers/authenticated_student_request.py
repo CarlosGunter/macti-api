@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.modules.register.repositories.authenticated_student_request_repository import (
     AuthenticatedStudentRequestRepository,
 )
-from app.shared.dependecies.get_current_user import CurrentUserReturn
+from app.shared.dependecies.auth_current_user import CurrentUser
 from app.shared.enums.status_enum import RequestStatusEnum
 from app.shared.models.auth_model import Auth
 from app.shared.models.student_courses_model import StudentCourseRequest
@@ -22,7 +22,7 @@ class AuthenticatedStudentRequestController:
     async def request_student_course(
         data: AuthenticatedStudentRequestSchema,
         db: Session,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> dict[str, str]:
         """Orquesta la creación de una solicitud de curso para un alumno autenticado."""
         repository = AuthenticatedStudentRequestRepository(db)
@@ -50,7 +50,7 @@ class AuthenticatedStudentRequestController:
     @staticmethod
     def _get_auth_or_raise(
         repository: AuthenticatedStudentRequestRepository,
-        user_info: CurrentUserReturn,
+        user_info: CurrentUser,
     ) -> Auth:
         """Recupera el `Auth` asociado al usuario autenticado o retorna HTTP 404."""
         auth = repository.get_auth_with_relations(user_info.auth_id)
@@ -73,6 +73,7 @@ class AuthenticatedStudentRequestController:
         course_id: int,
     ) -> None:
         """Valida que no exista una solicitud duplicada y que no esté ya inscrito."""
+        # Validación 1: ¿Ya existe una solicitud para este curso e instituto?
         exists_duplicate_request = (
             repository.exists_student_request_for_course_and_institute(
                 auth_id=auth.id,
@@ -90,6 +91,7 @@ class AuthenticatedStudentRequestController:
                 },
             )
 
+        # Validación 2 (NUEVA): ¿Ya está ENROLLED en este curso?
         for request in auth.student_course_requests:
             if (
                 request.moodle_course_id == course_id

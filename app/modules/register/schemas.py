@@ -1,6 +1,6 @@
 """Esquemas Pydantic usados por el módulo de registro."""
 
-from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
@@ -145,7 +145,6 @@ class RequestStatusUpdateSchema(BaseModel):
     Payload para la transición de estados de solicitudes por parte del administrador.
     """
 
-    institute: InstitutesEnum
     request_id: int
     new_status: RequestStatusEnum
 
@@ -197,8 +196,19 @@ class CourseRequestInfo(BaseModel):
     status: RequestStatusEnum
     moodle_course_id: int | None = None  # Para alumnos
     course_full_name: str | None = None  # Para docentes
-    groups: str | None = None  # Para docentes
+    groups: list[str] | None = None  # Para docentes
+
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("groups", mode="before")
+    @classmethod
+    def _parse_groups_to_list(cls, value):
+        """
+        Convierte una cadena de grupos separados por comas en una lista de cadenas.
+        """
+        if isinstance(value, str):
+            return [group.strip() for group in value.split(",") if group.strip()]
+        return value
 
 
 class UserInfoResponse(BaseModel):

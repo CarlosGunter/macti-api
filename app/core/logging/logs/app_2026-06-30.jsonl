@@ -1,1 +1,2 @@
 {"timestamp": "2026-06-30 14:04:44.304206","level": "INFO","logger": "macti.logging","file": "app.core.logging.config","line": 98,"function": "setup_logging","message": "Logging configurado correctamente","extra": {}}
+{"timestamp": "2026-06-30 15:01:14.479272","level": "INFO","logger": "macti.logging","file": "app.core.logging.config","line": 98,"function": "setup_logging","message": "Logging configurado correctamente","extra": {}}

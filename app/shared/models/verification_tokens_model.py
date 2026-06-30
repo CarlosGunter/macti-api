@@ -13,7 +13,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.core.database import Base
+from app.core.db.database import Base
 
 if TYPE_CHECKING:
     from app.shared.models.auth_model import Auth

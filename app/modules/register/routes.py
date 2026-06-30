@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.db.database import get_db
 from app.modules.register.controllers.authenticated_student_request import (
     AuthenticatedStudentRequestController,
 )
@@ -24,7 +24,9 @@ from app.modules.register.controllers.list_account_requests_teacher import (
 from app.modules.register.controllers.update_request_status import (
     RequestStatusController,
 )
-from app.shared.dependecies.get_current_user import CurrentUserReturn, get_current_user
+from app.shared.dependecies.auth_current_user import CurrentUser, get_current_user
+from app.shared.dependecies.auth_scope_course_manager import ScopeCourseManager
+from app.shared.dependecies.auth_scopes_base import AuthScopes
 from app.shared.enums.institutes_enum import InstitutesEnum
 from app.shared.enums.role_enum import AccountRoleEnum
 from app.shared.enums.status_enum import RequestStatusEnum
@@ -75,7 +77,7 @@ async def request_student_account(
 async def request_authenticated_student_account(
     body_info: AuthenticatedStudentRequestSchema,
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    user_info: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> dict[str, str]:
     """Registra una solicitud de curso usando la identidad autenticada del alumno."""
     return await AuthenticatedStudentRequestController.request_student_course(
@@ -111,7 +113,7 @@ async def request_teacher_account(
 async def request_authenticated_teacher_account(
     body_info: AuthenticatedTeacherRequestSchema,
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    user_info: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> dict[str, str]:
     """Registra una solicitud de nuevo curso usando la identidad autenticada del docente."""
     return await AuthenticatedTeacherRequestController.request_teacher_course(
@@ -128,7 +130,7 @@ async def request_authenticated_teacher_account(
 )
 async def list_accounts_requests(
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    _: Annotated[None, Depends(ScopeCourseManager())],
     institute: InstitutesEnum = Query(..., description="Instituto"),
     course_id: int = Query(..., description="ID del curso en Moodle"),
     status: RequestStatusEnum | None = Query(
@@ -140,7 +142,6 @@ async def list_accounts_requests(
         course_id=course_id,
         institute=institute,
         status=status,
-        user_info=user_info,
     )
 
 
@@ -152,7 +153,7 @@ async def list_accounts_requests(
 )
 async def list_teacher_accounts_requests(
     db: Annotated[Session, Depends(get_db)],
-    user_info: Annotated[CurrentUserReturn, Depends(get_current_user)],
+    _: Annotated[None, Depends(AuthScopes(AccountRoleEnum.ADMIN))],
     institute: InstitutesEnum = Query(..., description="Instituto"),
     status: RequestStatusEnum | None = Query(
         None, description="Estatus de las solicitudes a filtrar"
@@ -161,7 +162,6 @@ async def list_teacher_accounts_requests(
     return await AccountRequestsTeacherController.list_teacher_accounts_requests(
         institute=institute,
         status=status,
-        user_info=user_info,
         db=db,
     )
 
@@ -178,9 +178,17 @@ async def update_request_status(
         AccountRoleEnum, Path(description="Rol de la solicitud a actualizar")
     ],
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    institute: InstitutesEnum = Query(
+        ..., description="Instituto al que pertenece la solicitud"
+    ),
 ):
     return await RequestStatusController.update_request_status(
-        data=body_info, role=role, db=db
+        data=body_info,
+        role=role,
+        db=db,
+        institute=institute,
+        current_user=current_user,
     )
 
 
