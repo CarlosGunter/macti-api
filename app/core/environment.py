@@ -37,6 +37,11 @@ class EnvironmentConfigs(BaseSettings):
     APP_ENV: str = "production"
     # URL del frontend para la generación de enlaces en correos
     FRONTEND_URL: str = "https://macti-frontend.vercel.app"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    REDIS_CACHE_TTL: int = 300  # 5 minutos por defecto
 
     @field_validator("APP_ENV")
     @classmethod

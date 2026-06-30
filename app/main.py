@@ -3,6 +3,8 @@
 # Este módulo inicializa la aplicación FastAPI, configura los middlewares de
 # seguridad (CORS), gestiona la creación automática del esquema de base de datos
 # y orquesta la inclusión de los diferentes módulos de negocio (Register, Courses, Temp).
+# app/main.py
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,14 +16,29 @@ from app.modules.nbgrader.routes import router as nbgrader_router
 from app.modules.register.routes import router as register_router
 from app.modules.temp.routes import router as temp_router
 from app.shared import models as _models  # noqa: F401
+from app.shared.services.redis_client import redis_client
 
-# Inicialización de la persistencia: Crea las tablas si no existen al arrancar
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Maneja el ciclo de vida de la app: conecta y desconecta Redis."""
+    # Al arrancar
+    await redis_client.connect()
+    print("✅ Redis conectado")
+    yield
+    # Al apagar
+    await redis_client.disconnect()
+    print("🔌 Redis desconectado")
+
+
+# Inicialización de la persistencia
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="MACTI API",
     description="Backend para la gestión de identidades y recursos académicos UNAM",
     version="1.0.0",
+    lifespan=lifespan,  # ← NUEVO
 )
 
 # Configuración de CORS

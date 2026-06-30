@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.12.3",
     "pydantic-settings>=2.11.0",
     "python-jose>=3.5.0",
+    "redis>=8.0.1",
     "sqlalchemy>=2.0.44",
     "uvicorn>=0.38.0",
 ]
