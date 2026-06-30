@@ -9,6 +9,7 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi[standard]>=0.120.0",
     "httpx>=0.28.1",
+    "loguru>=0.7.3",
     "pre-commit>=4.3.0",
     "pydantic>=2.12.3",
     "pydantic-settings>=2.11.0",

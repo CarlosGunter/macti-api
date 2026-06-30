@@ -4,6 +4,7 @@
 # seguridad (CORS), gestiona la creación automática del esquema de base de datos
 # y orquesta la inclusión de los diferentes módulos de negocio (Register, Courses, Temp).
 # app/main.py
+# app/main.py
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 from app.core.environment import environment
+from app.core.logging.config import setup_logging
 from app.modules.courses.routes import router as courses_router
 from app.modules.nbgrader.routes import router as nbgrader_router
 from app.modules.register.routes import router as register_router
@@ -21,27 +23,25 @@ from app.shared.services.redis_client import redis_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Maneja el ciclo de vida de la app: conecta y desconecta Redis."""
-    # Al arrancar
+    """Maneja el ciclo de vida de la app."""
+    # Arranque
+    setup_logging()
     await redis_client.connect()
-    print("✅ Redis conectado")
     yield
-    # Al apagar
+    # Apagado
     await redis_client.disconnect()
-    print("🔌 Redis desconectado")
 
 
-# Inicialización de la persistencia
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="MACTI API",
     description="Backend para la gestión de identidades y recursos académicos UNAM",
     version="1.0.0",
-    lifespan=lifespan,  # ← NUEVO
+    lifespan=lifespan,
 )
 
-# Configuración de CORS
+# CORS
 frontend_origin = (
     "https://macti-frontend.vercel.app" if environment.APP_ENV != "development" else "*"
 )
@@ -56,11 +56,9 @@ app.add_middleware(
 
 @app.get("/", tags=["Root"])
 async def read_root():
-    """Endpoint de verificación de salud (Health Check)."""
     return {"Inicio": "MACTI API - Sistema en línea"}
 
 
-# Registro de rutas modulares
 app.include_router(register_router)
 app.include_router(courses_router)
 app.include_router(nbgrader_router)
