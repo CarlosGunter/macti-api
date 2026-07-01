@@ -112,3 +112,6 @@ venv.bak/
 /*.py
 
 view_bd.py
+/test
+.check_imports.py
+.test_redis_cachepy

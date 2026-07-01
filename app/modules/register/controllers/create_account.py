@@ -69,7 +69,9 @@ class CreateAccountController:
         )
         approved_request = CreateAccountController._get_approved_course_request(auth)
         enroll_user_use_case = EnrollUserUseCase(
-            moodle_service=MoodleService(), institute=auth.institute
+            moodle_service=MoodleService(),
+            institute=auth.institute,
+            db=db,
         )
         enroll_result = await enroll_user_use_case.execute(
             request_course_data=approved_request,
